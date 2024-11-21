@@ -9,13 +9,15 @@ trj_path='/home/antonio/Desktop/VIRMAT/Paper_PB_KDE/SIMs/RBD-PBLs_wGlyc_closed_l
 
 u=mda.Universe(f"{trj_path}md_0_1.gro",f"{trj_path}md_short_compact.xtc")
 
-sel = u.select_atoms("protein")
-handler_from_atomgroup = protein2D_analysis(sel,)
-print(np.shape(handler_from_atomgroup.atom_group.atoms))
-pos=handler_from_atomgroup.getPositions(inplace=False)
-print(pos.shape)
-pos=handler_from_atomgroup.getPositions()
-print(handler_from_atomgroup.pos.shape)
-handler_from_atomgroup.FilterMinFrames(zlim=30, Nframes=200, control_plots=True)
+sel = u.select_atoms("protein and resid 34-45")
+ag_analysis = protein2D_analysis(sel)
+print(np.shape(ag_analysis.atom_group.atoms))
+pos=ag_analysis.getPositions()
+print(ag_analysis.pos.shape)
+
+zlim=40
+ag_analysis.FilterMinFrames(zlim=zlim, Nframes=200, control_plots=False)
 # pos=handler_from_atomgroup.getPositions(inplace=False)
 # print(handler_from_atomgroup.pos.shape)
+hist_arr,pos_hist=ag_analysis.PolarAnalysis('resid 193-200 or resid 12',900, zlim=zlim,control_plots=False,plot=True)
+print(hist_arr.shape,pos_hist.shape)
