@@ -19,5 +19,5 @@ zlim=40
 ag_analysis.FilterMinFrames(zlim=zlim, Nframes=200, control_plots=False)
 # pos=handler_from_atomgroup.getPositions(inplace=False)
 # print(handler_from_atomgroup.pos.shape)
-hist_arr,pos_hist=ag_analysis.PolarAnalysis('resid 193-200 or resid 12',900, zlim=zlim,control_plots=False,plot=True)
-print(hist_arr.shape,pos_hist.shape)
+hist_arr,pos_hist=ag_analysis.PolarAnalysis('resid 193-200 or resid 12',900, sort=[1,2,3,4,5,6,7,8,0],zlim=zlim,control_plots=False,plot=True)
+# print(hist_arr.shape,pos_hist.shape)

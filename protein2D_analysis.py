@@ -115,7 +115,7 @@ class protein2D_analysis:
             plt.show() 
         return pos_masked
     
-    def PolarAnalysis(self,select_res,Nframes,max_hist=None,plot=False,control_plots=False, zlim=15,Nbins=1000,resolution=5):
+    def PolarAnalysis(self,select_res,Nframes,max_hist=None,sort='max',plot=False,control_plots=False, zlim=15,Nbins=1000,resolution=5):
         ## ------------------####
         # Makes the histogram based on the angles respect to the center of mass of the protein
         ## -------------------####
@@ -194,8 +194,6 @@ class protein2D_analysis:
         # time = np.linspace(0.0, 1501,1501)
         max_arr=[]
         hist_arr=[]
-
-
     #     t=np.arange(Univs[0].trajectory[fromF].time,Univs[0].trajectory[endF].time,Univs[0].trajectory[0].dt)/1000
         for r in range(len(pos_selected[0])):
             res_pos_selected=pos_selected[:,r]
@@ -211,21 +209,32 @@ class protein2D_analysis:
         hist_arr=np.array(hist_arr)
 
         if not max_hist:
-            print(np.max(max_arr))
-            norm_max_hist=1/np.max(max_arr)
+            max_hist=np.max(max_arr)
         else:
-            norm_max_hist=1/max_hist
+            max_hist=max_hist
+
+        if sort=='max':
+            sort_i=np.argsort(max_arr)[::-1]
+            ordered_selected_pos=pos_selected[:,sort_i]
+        elif isinstance(sort,(list,np.ndarray)):
+            sort_i=sort
+            ordered_selected_pos=pos_selected[:,sort_i]
+        else:
+            ordered_selected_pos=pos_selected
+            sort_i=np.arange(ordered_selected_pos.shape[1])
+        print(pos_selected.shape, ordered_selected_pos.shape)
+        print(pos_selected[:,:3].shape, ordered_selected_pos[:,:3].shape)
         if plot==True:
+            norm_max_hist=1/max_hist
             ax = plt.subplot(111, polar=True)
-            # ax = plt.subplot(111)
-            for i in range(pos_selected.shape[1]):
-                fig_label='%i-%s'%(prot.residues.resids[i],prot.residues.resnames[i])
+            for i in range(ordered_selected_pos.shape[1]):
+                fig_label='%i-%s'%(prot.residues.resids[sort_i[i]],prot.residues.resnames[sort_i[i]])
                 # if res.residues.resids[i]>=193 and res.residues.resids[i]>=200:
                 #     fig_label='%ith Glyc. Carb.\n%s'%(res.residues.resids[i]-192,res.residues.resnames[i])
                 with mpl.rc_context():
                     # mpl.style.use('classic')
 
-                    bars = ax.bar(hist_arr[i,0], hist_arr[i,1]*max_height*norm_max_hist,
+                    bars = ax.bar(hist_arr[sort_i[i],0], hist_arr[sort_i[i],1]*max_height*norm_max_hist,
                             width=width,label='%s'%fig_label,
                             bottom=bottom,#color=colors[i],
                             alpha=0.8
@@ -237,4 +246,4 @@ class protein2D_analysis:
             plt.tight_layout()
             plt.show()
         #     ax.set_theta_zero_location('N')
-        return hist_arr,pos_selected
+        return hist_arr,ordered_selected_pos
