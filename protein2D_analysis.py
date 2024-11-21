@@ -233,7 +233,6 @@ class protein2D_analysis:
                 #     fig_label='%ith Glyc. Carb.\n%s'%(res.residues.resids[i]-192,res.residues.resnames[i])
                 with mpl.rc_context():
                     # mpl.style.use('classic')
-
                     bars = ax.bar(hist_arr[sort_i[i],0], hist_arr[sort_i[i],1]*max_height*norm_max_hist,
                             width=width,label='%s'%fig_label,
                             bottom=bottom,#color=colors[i],
@@ -247,3 +246,50 @@ class protein2D_analysis:
             plt.show()
         #     ax.set_theta_zero_location('N')
         return hist_arr,ordered_selected_pos
+    
+    ######## Radii of Gyration 2D Analysis ###################
+    def RG2D(self, masses, total_mass=None):
+        # coordinates change for each frame
+        coordinates = self.atom_group.positions
+        center_of_mass = self.atom_group.center_of_mass()
+
+        # get squared distance from center
+        ri_sq = (coordinates-center_of_mass)**2
+        # sum the unweighted positions
+        sq = np.sum(ri_sq, axis=1)
+        sq_par = np.sum(ri_sq[:,[0,1]], axis=1) # sum over x and y, parallel Rg
+        #print(sq_par.shape)
+        sq_perp = ri_sq[:,2] # sum over zfor perpendicular Rg
+
+        # make into array
+        sq_rs = np.array([sq, sq_perp, sq_par])
+
+        # weight positions
+        rog_sq = np.sum(masses*sq_rs, axis=1)/total_mass
+        # square root and return
+        return np.sqrt(rog_sq)
+    
+    def getRgs2D(self, plot=True):
+        colors=['tab:blue','tab:orange','tab:green']
+        rg_arr=np.zeros((len(self.universe.trajectory),4))
+        i=0
+        masses=self.atom_group.atoms.masses
+        total_mass=np.sum(masses)
+
+        for ts in self.universe.trajectory:
+            rg_arr[i,0]=ts.time/1000
+            rgs=self.RG2D(masses, total_mass)
+            rg_arr[i,1:]=rgs
+            i+=1
+        legend_names=['3D','Perp','Parallel']
+        if plot:
+            plt.plot(rg_arr[:,0], rg_arr[:,1], label=legend_names[0],color=colors[0])
+            plt.plot(rg_arr[:,0], rg_arr[:,2], label=legend_names[1],color=colors[1])
+            plt.plot(rg_arr[:,0], rg_arr[:,3], label=legend_names[2],color=colors[2])
+            plt.legend()
+            plt.xlabel('Time (ns)')    
+            plt.ylabel('Radius of gyration (Angs)')    
+            plt.show()
+        return rg_arr    
+    
+###  POTENTIAL UPGADE: RG2D could compute directly all frames to avoid reruning trajectory. A "getCOM" Method would be required.

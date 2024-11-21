@@ -15,9 +15,19 @@ print(np.shape(ag_analysis.atom_group.atoms))
 pos=ag_analysis.getPositions()
 print(ag_analysis.pos.shape)
 
-zlim=40
-ag_analysis.FilterMinFrames(zlim=zlim, Nframes=200, control_plots=False)
+########### TEST GENERAL MODULES #############
+# zlim=40
+# ag_analysis.FilterMinFrames(zlim=zlim, Nframes=200, control_plots=False)
 # pos=handler_from_atomgroup.getPositions(inplace=False)
 # print(handler_from_atomgroup.pos.shape)
-hist_arr,pos_hist=ag_analysis.PolarAnalysis('resid 193-200 or resid 12',900, sort=[1,2,3,4,5,6,7,8,0],zlim=zlim,control_plots=False,plot=True)
+############# TEST POLAR ANAÑYSIS ############
+# hist_arr,pos_hist=ag_analysis.PolarAnalysis('resid 193-200 or resid 12',900, sort=[1,2,3,4,5,6,7,8,0],zlim=zlim,control_plots=False,plot=True)
 # print(hist_arr.shape,pos_hist.shape)
+############# TEST RADII of GYRATION ANALYSIS ########
+prot=ag_analysis.atom_group
+masses=prot.atoms.masses
+total_mass=np.sum(masses)
+
+rgs=ag_analysis.RG2D(masses, total_mass)
+print(rgs)
+ag_analysis.getRgs2D()
