@@ -28,6 +28,7 @@ class protein2D_analysis:
         self.startF=int(self.startT/self.stepT) 
         self.endF=int(self.endT/self.stepT)
         self.stepF=int(self.stepT/self.stepT)
+        self.pos=None
 
     def __repr__(self):
         return f"<{self.__class__.__name__} with {len(self.atom_group)} atoms>"
@@ -49,7 +50,7 @@ class protein2D_analysis:
             print("  N selected residues:", len(self.atom_group.residues))
             print("  N selected segments:", len(self.atom_group.segments))
 
-    def getPositions(self,pos_type='COM'):
+    def getPositions(self,pos_type='COM', inplace=True):
 
         print('Getting positions from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
 
@@ -72,5 +73,37 @@ class protein2D_analysis:
                 pos[j,:,0]=ts.time/1000
                 pos[j,:,1:]= prot.atoms.positions
             j+=1
-        return np.array(pos)
+        if inplace:
+            self.pos=np.array(pos)
+            return None
+        else:
+            return np.array(pos)
         
+
+    def FilterMinFrames(self, zlim,Nframes,control_plots=False):
+        '''
+        pos: 
+        array of shape (TotalFrames,Nresidues,4 <t,x,y,z>)
+        
+        returns:
+        array of shape (Nframes,Nresidues,4 <t,x,y,z>) of frames 
+        
+        '''
+        pos=self.pos
+        print('Taking', Nframes, 'closest frames to surface...')
+        ##Take the mean of all selected residues
+        mean_z_top=pos[:,:,3].mean(axis=1)
+        # Select frames where the mean of selected residues is < zlim
+        # to garanty that same frames are used for all residues. 
+        zMask= mean_z_top < zlim
+        pos_masked=pos[zMask]
+        print('There are', len(pos_masked),' frames < %i A in Z'%zlim)
+        pos_masked=pos_masked[np.argsort(pos_masked[:,:,3].mean(axis=1),axis=0)]
+        print(pos_masked[:5:,0,0],'pos_masked shuffled')
+
+        if control_plots:
+            ires=9
+            plt.plot(pos[:,ires,0],pos[:,ires,3],)
+            plt.plot(pos_masked[:,ires,0],pos_masked[:,ires,3],'.',ms=2)
+            plt.show() 
+        return pos_masked
