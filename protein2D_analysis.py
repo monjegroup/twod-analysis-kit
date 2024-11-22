@@ -32,6 +32,7 @@ class protein2D_analysis:
         self.times=np.arange(self.startT,self.endT,self.stepT)
         self.frames=np.arange(self.startF,self.endF)
         self.pos=None
+        self.com=None
 
     def __repr__(self):
         return f"<{self.__class__.__name__} with {len(self.atom_group)} atoms>"
@@ -66,10 +67,6 @@ class protein2D_analysis:
    
         j=0
         for ts in self.universe.trajectory[self.startF:self.endF:self.stepF]:
-            if pos_type=='CA':
-                pos[j,:,0]=ts.time/1000
-                pos[j,:,1:]=prot.atoms.positions
-                # print('Getting C-alphas..')
             if pos_type=='COM':
                 pos[j,:,0]=ts.time/1000
                 pos[j,:,1:]=[r.atoms.center_of_mass() for r in prot.residues]
@@ -83,6 +80,28 @@ class protein2D_analysis:
             return None
         else:
             return np.array(pos)
+
+    def getCOMs(self, inplace=True, select=None):
+
+        print('Getting center of masses from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
+
+        prot=self.atom_group
+        if select:
+            prot=self.universe.select_atoms(select)
+
+        com=np.zeros((int((self.endF-self.startF)/self.stepF),4)) 
+   
+        j=0
+        for ts in self.universe.trajectory[self.startF:self.endF:self.stepF]:
+
+            com[j,0]=ts.time/1000
+            com[j,1:]= prot.atoms.center_of_mass()
+            j+=1
+        if inplace:
+            self.com=np.array(com)
+            return None
+        else:
+            return np.array(com)
         
 
     def FilterMinFrames(self, zlim,Nframes,control_plots=False):
@@ -248,6 +267,7 @@ class protein2D_analysis:
         return hist_arr,ordered_selected_pos
     
     ######## Radii of Gyration 2D Analysis ###################
+
     def RG2D(self, masses, total_mass=None):
         # coordinates change for each frame
         coordinates = self.atom_group.positions
