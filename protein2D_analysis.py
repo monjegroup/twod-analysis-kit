@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.integrate import simpson
 import matplotlib as mpl
 from MDAnalysis.analysis.hydrogenbonds import HydrogenBondAnalysis
+from MDAnalysis.exceptions import SelectionError
 import sys
 class protein2D_analysis:
     def __init__(self, obj):
@@ -398,16 +399,20 @@ class protein2D_analysis:
             # plt.pause(2)
             if control_plots:
                 plt.pause(2)
-            plt.close()
+        plt.close()
         if inplace:
             self.kdeanalysis.paths=paths_arr
         return paths_arr
-    def plotPathsInLvl(self, contour_lvl):
+
+    def plotPathsInLvl(self, contour_lvl,color='k',alpha=0.5,show=False):
         paths_in_lvl=self.kdeanalysis.paths[contour_lvl]
         for p in range(len(paths_in_lvl)):
             x_val,y_val=paths_in_lvl[p].T
-            plt.plot(x_val,y_val)
-        plt.show()
+            plt.plot(x_val,y_val,color, alpha)
+        if show:
+            plt.show()
+
+
     def getAreas(self,contour_lvl,getTotal=False):
         #---------------------------#
         # For a given contour level,this function computes the area within this area. Negative area values are holes. 
@@ -445,6 +450,16 @@ class protein2D_analysis:
 
         region2_hydrogens_sel = hbonds.guess_hydrogens(region2)
         region2_acceptors_sel = hbonds.guess_acceptors(region2)
+        
+        if not region1_hydrogens_sel:
+            raise SelectionError(f"Region1 has no hydrogen donors.")
+        if not region1_acceptors_sel:
+            raise SelectionError(f"Region1 has no acceptors.")
+        if not region2_hydrogens_sel:
+            raise SelectionError(f"Region2 has no hydrogen donors.")
+        if not region2_acceptors_sel:
+            raise SelectionError(f"Region2 has no acceptors.")
+
 
         hbonds.hydrogens_sel = f"({region1_hydrogens_sel}) or ({region2_hydrogens_sel})"
         hbonds.acceptors_sel = f"({region1_acceptors_sel}) or ({region2_acceptors_sel})"
@@ -460,8 +475,35 @@ class protein2D_analysis:
             plt.show()
         return hbonds.results
     
+    def HbondsPerResidues(self,plot=False):
+        result=np.array(self.hbonds.hbonds[:,[2,3]], dtype=int)
+        resids=np.array([self.universe.atoms[result[:,0]].resids,self.universe.atoms[result[:,1]].resids])
+        df=pd.DataFrame(data=resids.T, columns=['Hydrogen', 'Acceptors'])
+        Acc_resids = df[np.isin(df['Acceptors'],self.atom_group.residues.resids)].pivot_table(columns=['Acceptors'], aggfunc='size')
+        H_resids = df[np.isin(df['Acceptors'],self.atom_group.residues.resids)].pivot_table(columns=['Hydrogen'], aggfunc='size')
+        print(H_resids,Acc_resids)
+        final_count=Acc_resids.add(H_resids, fill_value=0)
+        df_final=pd.DataFrame(np.array([self.universe.residues[final_count.index-1].resids,self.universe.residues[final_count.index-1].resnames,final_count]).T,
+                            columns=['ResIDs','ResNames','Count'])
+        if plot:
+            data=df_final.copy()
+            max_val=df_final['Count'].max()
+            plt.grid(alpha=.3)
+            for i in range(data.shape[0]):
+                norm_val=data['Count'].iloc[i]/len(self.universe.trajectory) #max_val
+                norm_val_plot=data['Count'].iloc[i]/max_val
+                plt.plot(data['Norm X'].iloc[i],data['Norm Y'].iloc[i], 'o',
+                        label='%s-%s (%.2f)'%(data['Resids'].iloc[i],data['Resnames'].iloc[i], norm_val*100),)
+                plt.scatter(data['Norm X'].iloc[i],data['Norm Y'].iloc[i], s=(8*20*norm_val_plot)**2, alpha=.5)
+        #     plt.title('RBD-PBL1 %s'%var)
 
+            
+            plt.xlabel(r'X-axis($\AA$)',)#fontsize=20)
+            plt.ylabel(r'Y-axis($\AA$)',)#fontsize=20)
+            plt.gca().set_aspect('equal')
+            plt.tight_layout()    
+            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5),#prop={'size':22}, 
+                    title="ResID-ResName(Hbond %)",)#title_fontsize=20)
 
+        return df_final
         
-        
-
