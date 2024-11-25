@@ -35,7 +35,8 @@ Nframes=200
 
 # ##########TEST Contour PLOTS ################
 
-ag_analysis.getKDEAnalysis(zlim,Nframes)
+paths=ag_analysis.getKDEAnalysis(zlim,Nframes)
 
+ag_analysis.plotPathsInLvl(1)
 
 

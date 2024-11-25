@@ -371,7 +371,7 @@ class protein2D_analysis:
             i+=2
         return paths
         
-    def getKDEAnalysis(self,zlim,Nframes,control_plots=False):
+    def getKDEAnalysis(self,zlim,Nframes,inplace=True,control_plots=False):
         pos_selected=self.FilterMinFrames(zlim,Nframes,control_plots=control_plots)
         ## Concatenate positions of all residues
         print(pos_selected.shape)
@@ -385,10 +385,29 @@ class protein2D_analysis:
         ### LIST IN self.kdeanalysis.paths PATHS OF ALL LEVELS
         paths_arr=[]
         Nlvls=len(kde_plot.collections[-1].get_paths())
-        print(f"There are {Nlvls} in the KDE.")
+        print(f"There are {Nlvls} levels in the KDE.")
         for lvl in range(Nlvls):
-            paths=protein2D_analysis.ListPathsInLevel(kde_plot,lvl,plot_paths=True)
-            plt.pause(2)
+            paths=protein2D_analysis.ListPathsInLevel(kde_plot,lvl,plot_paths=control_plots)
+            if not paths:
+                continue
+            # print(np.shape(paths[0]))
+            # print(np.shape(paths[1]))
+            paths_arr.append(paths)
+            # plt.pause(2)
+            if control_plots:
+                plt.pause(2)
+            plt.close()
+        if inplace:
+            self.kdeanalysis.paths=paths_arr
+        return paths_arr
+    def plotPathsInLvl(self, contour_lvl):
+        for p in range(len(self.kdeanalysis.paths[contour_lvl])):
+            paths_in_lvl=self.kdeanalysis.paths[contour_lvl]
+            x_val,y_val=paths_in_lvl[p].T
+            plt.plot(x_val,y_val)
+        plt.show()
+
+
         
         
 
