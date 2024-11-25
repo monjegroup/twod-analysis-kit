@@ -14,25 +14,28 @@ ag_analysis = protein2D_analysis(sel)
 print(np.shape(ag_analysis.atom_group.atoms))
 pos=ag_analysis.getPositions()
 print(ag_analysis.pos.shape)
-pos=ag_analysis.getCOMs()
-print(ag_analysis.com.shape)
+# pos=ag_analysis.getCOMs()
+# print(ag_analysis.com.shape)
+ag_analysis.system_name='Omicron PBL0'
 
 ########### TEST GENERAL MODULES #############
-# zlim=40
-# ag_analysis.FilterMinFrames(zlim=zlim, Nframes=200, control_plots=False)
+zlim=40
+Nframes=200
+# ag_analysis.FilterMinFrames(zlim=zlim, Nframes=Nframes, control_plots=False)
 # pos=handler_from_atomgroup.getPositions(inplace=False)
 # print(handler_from_atomgroup.pos.shape)
-############# TEST POLAR ANAÑYSIS ############
+############# TEST POLAR ANALYSIS ############
 # hist_arr,pos_hist=ag_analysis.PolarAnalysis('resid 193-200 or resid 12',900, sort=[1,2,3,4,5,6,7,8,0],zlim=zlim,control_plots=False,plot=True)
 # print(hist_arr.shape,pos_hist.shape)
 ############# TEST RADII of GYRATION ANALYSIS ########
-# prot=ag_analysis.atom_group
-# masses=prot.atoms.masses
-# total_mass=np.sum(masses)
 
-# rgs=ag_analysis.RG2D(masses, total_mass)
-# print(rgs)
-# ag_analysis.getRgs2D()
-rgs=ag_analysis.RGs2D()
-print(rgs)
+# rgs=ag_analysis.getRgs2D()
+# print(rgs.shape)
+# ag_analysis.RgPerpvsRgsPar(rgs, 'tab:green',show=True)
+
+# ##########TEST Contour PLOTS ################
+
+ag_analysis.getKDEAnalysis(zlim,Nframes)
+
+
 

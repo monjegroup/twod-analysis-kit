@@ -33,6 +33,8 @@ class protein2D_analysis:
         self.frames=np.arange(self.startF,self.endF)
         self.pos=None
         self.com=None
+        self.system_name=None
+        self.kdeanalysis = lambda: None  # Create an empty object-like container
 
     def __repr__(self):
         return f"<{self.__class__.__name__} with {len(self.atom_group)} atoms>"
@@ -268,7 +270,7 @@ class protein2D_analysis:
     
     ######## Radii of Gyration 2D Analysis ###################
 
-    def RG2D(self, masses, total_mass=None):
+    def computeRG2D(self, masses, total_mass=None):
         # coordinates change for each frame
         coordinates = self.atom_group.positions
         center_of_mass = self.atom_group.center_of_mass()
@@ -289,16 +291,16 @@ class protein2D_analysis:
         # square root and return
         return np.sqrt(rog_sq)
     
-    def getRgs2D(self, plot=True):
+    def getRgs2D(self, plot=False):
         colors=['tab:blue','tab:orange','tab:green']
         rg_arr=np.zeros((len(self.universe.trajectory),4))
         i=0
         masses=self.atom_group.atoms.masses
         total_mass=np.sum(masses)
 
-        for ts in self.universe.trajectory:
+        for ts in self.universe.trajectory[self.startF:self.endF:self.stepF]:
             rg_arr[i,0]=ts.time/1000
-            rgs=self.RG2D(masses, total_mass)
+            rgs=self.computeRG2D(masses, total_mass)
             rg_arr[i,1:]=rgs
             i+=1
         legend_names=['3D','Perp','Parallel']
@@ -311,5 +313,82 @@ class protein2D_analysis:
             plt.ylabel('Radius of gyration (Angs)')    
             plt.show()
         return rg_arr    
-    
-###  POTENTIAL UPGADE: RG2D could compute directly all frames to avoid reruning trajectory. A "getCOM" Method would be required.
+
+    def RgPerpvsRgsPar(self,rgs,color, marker='s',plot=True,show=False):
+        data=rgs[:,1:]
+        print(data.shape)
+        rg_ratio=(data[:,0]**2).mean()/(data[:,1]**2).mean()
+        if plot:
+            plt.plot(data[:,1],data[:,0],'o',markersize=1,c=color)
+            label='%s (%.3f)'%(self.system_name,rg_ratio)
+            plt.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=10, label=label,color='k')
+            plt.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)')
+            if show:
+                plt.show()
+        return rg_ratio
+
+        ############# Compute Contour Area #################
+    def ListPathsInLevel(kde_plot,contour_level,plot_paths=False):
+        #---------------------------#
+        # This function returns a list of lists with the separated paths for given contour level.
+        #---------------------------#
+        
+        # Extract the contour levels
+        contour_collections = kde_plot.collections
+        outermost_contour = contour_collections[-1]
+        
+        # Extract the contour paths
+        contour_paths = outermost_contour.get_paths()
+        # inner_contour_paths = innermost_contour.get_paths()
+        # print(contour_paths)
+        
+        # Extract the vertices of the outermost contour
+        vertices = contour_paths[contour_level].vertices
+        codes = contour_paths[contour_level].codes
+        
+        # inner_vertices = contour_paths[-1].vertices
+    #    print(vertices.shape)
+    #    print(codes.shape)
+        
+        # Find how many borders
+        paths=[]
+        i=1
+        # print(codes)
+        while i < len(vertices):
+            one_path=[]
+            first_i_of_path=i
+            while codes[i] == 2:
+                # plt.scatter(vertices[i,0],vertices[i,1],c='k')
+                one_path.append([vertices[i,0],vertices[i,1]])
+                i+=1
+                if i == len(vertices)-1:
+                    break
+            one_path.append([vertices[first_i_of_path,0],vertices[first_i_of_path,1]])
+            one_path=np.array(one_path)
+            paths.append(one_path)
+            if plot_paths:
+                plt.plot(one_path[:,0],one_path[:,1],color='orange')    
+            i+=2
+        return paths
+        
+    def getKDEAnalysis(self,zlim,Nframes,control_plots=False):
+        pos_selected=self.FilterMinFrames(zlim,Nframes,control_plots=control_plots)
+        ## Concatenate positions of all residues
+        print(pos_selected.shape)
+        pos_selected_reshape=np.reshape(pos_selected,(pos_selected.shape[0]*pos_selected.shape[1],pos_selected.shape[2]))
+        print(pos_selected_reshape.shape)
+        fig,ax=plt.subplots()  
+        df0=pd.DataFrame(pos_selected_reshape, columns=['t','x','y','z'])
+        # kde_plot=sns.kdeplot(df0, x='x',y='y', color = 'black',alpha=1,fill=True)
+        kde_plot = sns.kdeplot(df0, x='x', y='y', fill=True, cmap="Purples", color='black')
+        kde_plot=sns.kdeplot(df0, x='x',y='y', color = 'black',alpha=0.5)
+        ### LIST IN self.kdeanalysis.paths PATHS OF ALL LEVELS
+        paths_arr=[]
+        Nlvls=len(kde_plot.collections[-1].get_paths())
+        print(f"There are {Nlvls} in the KDE.")
+        for lvl in range(Nlvls):
+            paths=protein2D_analysis.ListPathsInLevel(kde_plot,lvl,plot_paths=True)
+            plt.pause(2)
+        
+        
+
