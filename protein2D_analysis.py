@@ -5,6 +5,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy.integrate import simpson
 import matplotlib as mpl
+from MDAnalysis.analysis.hydrogenbonds import HydrogenBondAnalysis
 import sys
 class protein2D_analysis:
     def __init__(self, obj):
@@ -34,10 +35,84 @@ class protein2D_analysis:
         self.pos=None
         self.com=None
         self.system_name=None
-        self.kdeanalysis = lambda: None  # Create an empty object-like container
-
+        self.kdeanalysis = lambda : None  # Create an empty object-like container
+        self.kdeanalysis.paths = None
+        self.hbonds=None
     def __repr__(self):
         return f"<{self.__class__.__name__} with {len(self.atom_group)} atoms>"
+    # def __add__(self, b):
+    #     self.universe.trajectory=np.concatenate((self.universe.trajectory,b.universe.trajectory), axis=0)
+    #     self.times=np.concatenate((self.times,b.times), axis=0)
+    #     self.pos=np.concatenate((self.pos,b.pos), axis=0)
+
+    #     # self.com=np.concatenate((self.com,b.com), axis=0)
+    #     # if self.pos != None:
+    #     #     self.pos=np.concatenate((self.pos,b.pos), axis=0)
+    #     # if self.com != None:
+    #     #     self.com=np.concatenate((self.com,b.com), axis=0)
+    #     return self
+    def __add__(self, other):
+        """
+        Adds two protein2D_analysis objects by merging the time series of their atom groups and concatenating attributes.
+
+        Parameters:
+        other (protein2D_analysis): Another protein2D_analysis object.
+
+        Returns:
+        protein2D_analysis: A new protein2D_analysis object with merged atom group trajectories.
+        """
+        if not isinstance(other, protein2D_analysis):
+            raise TypeError("Can only add another protein2D_analysis object")
+        
+        # Check if the atom groups have the same number of atoms
+        if len(self.atom_group) != len(other.atom_group):
+            raise ValueError("The atom groups have different numbers of atoms, cannot merge")
+        
+        # Extract the time series (positions) for each atom group
+        self_timeseries = self.atom_group.universe.trajectory.timeseries(asel=self.atom_group)
+        other_timeseries = other.atom_group.universe.trajectory.timeseries(asel=other.atom_group)
+        
+        # Concatenate the time series along the time axis
+        merged_timeseries = np.concatenate((self_timeseries, other_timeseries), axis=0)
+        
+        # Create a new universe for the merged data
+        merged_universe = mda.Merge(self.atom_group)
+        
+        # Load the merged trajectory data into the new universe
+        merged_universe.load_new(merged_timeseries)
+        # print(len(merged_universe.trajectory), "merged_universe")
+        
+        # Create a new instance for the result
+        result = protein2D_analysis(merged_universe)
+        
+        # Concatenate the trajectory times
+        result.times = np.concatenate((self.times, other.times), axis=0)
+        
+        # Handle position concatenation, if not None
+        if self.pos is not None and other.pos is not None:
+            result.pos = np.concatenate((self.pos, other.pos), axis=0)
+        elif self.pos is not None:
+            result.pos = self.pos.copy()
+        elif other.pos is not None:
+            result.pos = other.pos.copy()
+        
+        # Handle center of mass concatenation, if not None
+        if self.com is not None and other.com is not None:
+            result.com = np.concatenate((self.com, other.com), axis=0)
+        elif self.com is not None:
+            result.com = self.com.copy()
+        elif other.com is not None:
+            result.com = other.com.copy()
+        
+        # Concatenate system names if they exist
+        if self.system_name and other.system_name:
+            result.system_name = f"{self.system_name} + {other.system_name}"
+        elif self.system_name:
+            result.system_name = self.system_name
+        elif other.system_name:
+            result.system_name = other.system_name
+        
+        return result
     
     def INFO(self):
         """
@@ -401,11 +476,63 @@ class protein2D_analysis:
             self.kdeanalysis.paths=paths_arr
         return paths_arr
     def plotPathsInLvl(self, contour_lvl):
-        for p in range(len(self.kdeanalysis.paths[contour_lvl])):
-            paths_in_lvl=self.kdeanalysis.paths[contour_lvl]
+        paths_in_lvl=self.kdeanalysis.paths[contour_lvl]
+        for p in range(len(paths_in_lvl)):
             x_val,y_val=paths_in_lvl[p].T
             plt.plot(x_val,y_val)
         plt.show()
+    def getAreas(self,contour_lvl,getTotal=False):
+        #---------------------------#
+        # For a given contour level,this function computes the area within this area. Negative area values are holes. 
+        #---------------------------#
+        if not self.kdeanalysis.paths:
+            print("Must compute contour paths first. Please compute getKDEAnalysis method first.")
+            return 
+
+        Areas=[]    
+        paths_in_lvl=self.kdeanalysis.paths[contour_lvl]
+        for i_paths in range(len(paths_in_lvl)):
+            x_values,y_values=paths_in_lvl[i_paths].T
+            area_outline = simpson(y_values[::-1], x=x_values[::-1])
+            print("Area of the outline %s:"%i_paths,np.abs(area_outline))
+            Areas.append(np.abs(area_outline))        
+        if getTotal:
+            return np.sum(Areas)
+        else:
+            return Areas
+    def getHbonds(self,region1,region2, update_selections=True,trj_plot=False, inplace=True ):
+
+        u=self.universe
+        hbonds = HydrogenBondAnalysis(
+            universe=u,
+#             donors_sel=None,
+            between=[region2, region1],
+            d_a_cutoff=3.0,
+            d_h_a_angle_cutoff=20,
+            update_selections=update_selections
+        )
+
+
+        region1_hydrogens_sel = hbonds.guess_hydrogens(region1)
+        region1_acceptors_sel = hbonds.guess_acceptors(region1)
+
+        region2_hydrogens_sel = hbonds.guess_hydrogens(region2)
+        region2_acceptors_sel = hbonds.guess_acceptors(region2)
+
+        hbonds.hydrogens_sel = f"({region1_hydrogens_sel}) or ({region2_hydrogens_sel})"
+        hbonds.acceptors_sel = f"({region1_acceptors_sel}) or ({region2_acceptors_sel})"
+        hbonds.run(verbose=True)
+
+        if inplace:
+            self.hbonds=hbonds.results
+
+        if trj_plot:
+            plt.plot(hbonds.times/1000, hbonds.count_by_time(), lw=2, label='%s'%self.system_name)
+            plt.xlabel("Time (ns)")
+            plt.ylabel(r"$N_{HB}$")
+            plt.show()
+        return hbonds.results
+    
 
 
         
