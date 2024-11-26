@@ -38,6 +38,7 @@ class protein2D_analysis:
         self.system_name=None
         self.kdeanalysis = lambda : None  # Create an empty object-like container
         self.kdeanalysis.paths = None
+        self.kdeanalysis.kde = None
         self.hbonds=None
     def __repr__(self):
         return f"<{self.__class__.__name__} with {len(self.atom_group)} atoms>"
@@ -385,7 +386,8 @@ class protein2D_analysis:
         # kde_plot=sns.kdeplot(df0, x='x',y='y', color = 'black',alpha=1,fill=True)
         kde_plot = sns.kdeplot(df0, x='x', y='y', fill=True, cmap="Purples", color='black')
         kde_plot=sns.kdeplot(df0, x='x',y='y', color = 'black',alpha=0.5)
-        ### LIST IN self.kdeanalysis.paths PATHS OF ALL LEVELS
+        self.kdeanalysis.kde=kde_plot
+
         paths_arr=[]
         Nlvls=len(kde_plot.collections[-1].get_paths())
         print(f"There are {Nlvls} levels in the KDE.")
@@ -404,11 +406,11 @@ class protein2D_analysis:
             self.kdeanalysis.paths=paths_arr
         return paths_arr
 
-    def plotPathsInLvl(self, contour_lvl,color='k',alpha=0.5,show=False):
+    def plotPathsInLevel(self, contour_lvl,color='k',alpha=0.3,show=False):
         paths_in_lvl=self.kdeanalysis.paths[contour_lvl]
         for p in range(len(paths_in_lvl)):
             x_val,y_val=paths_in_lvl[p].T
-            plt.plot(x_val,y_val,color, alpha)
+            plt.plot(x_val,y_val,color=color, alpha=alpha)
         if show:
             plt.show()
 
@@ -475,7 +477,7 @@ class protein2D_analysis:
             plt.show()
         return hbonds.results
     
-    def HbondsPerResidues(self,plot=False):
+    def HbondsPerResidues(self):
         result=np.array(self.hbonds.hbonds[:,[2,3]], dtype=int)
         resids=np.array([self.universe.atoms[result[:,0]].resids,self.universe.atoms[result[:,1]].resids])
         df=pd.DataFrame(data=resids.T, columns=['Hydrogen', 'Acceptors'])
@@ -485,25 +487,52 @@ class protein2D_analysis:
         final_count=Acc_resids.add(H_resids, fill_value=0)
         df_final=pd.DataFrame(np.array([self.universe.residues[final_count.index-1].resids,self.universe.residues[final_count.index-1].resnames,final_count]).T,
                             columns=['ResIDs','ResNames','Count'])
-        if plot:
-            data=df_final.copy()
-            max_val=df_final['Count'].max()
-            plt.grid(alpha=.3)
-            for i in range(data.shape[0]):
-                norm_val=data['Count'].iloc[i]/len(self.universe.trajectory) #max_val
-                norm_val_plot=data['Count'].iloc[i]/max_val
-                plt.plot(data['Norm X'].iloc[i],data['Norm Y'].iloc[i], 'o',
-                        label='%s-%s (%.2f)'%(data['Resids'].iloc[i],data['Resnames'].iloc[i], norm_val*100),)
-                plt.scatter(data['Norm X'].iloc[i],data['Norm Y'].iloc[i], s=(8*20*norm_val_plot)**2, alpha=.5)
-        #     plt.title('RBD-PBL1 %s'%var)
-
-            
-            plt.xlabel(r'X-axis($\AA$)',)#fontsize=20)
-            plt.ylabel(r'Y-axis($\AA$)',)#fontsize=20)
-            plt.gca().set_aspect('equal')
-            plt.tight_layout()    
-            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5),#prop={'size':22}, 
-                    title="ResID-ResName(Hbond %)",)#title_fontsize=20)
 
         return df_final
+    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, print_table=True):
+
+        df=self.HbondsPerResidues()
+        max_val=df['Count'].max()
+        str_resids=' '.join(np.array(df['ResIDs'],dtype=str))
+        print(str_resids)
+        res_w_hbonds=self.universe.select_atoms(f'resid {str_resids}')
+        ag_w_hbonds=protein2D_analysis(res_w_hbonds)
+        ag_w_hbonds.getPositions()
+        df[['X','Y', 'Z']]=ag_w_hbonds.pos[:,:,1:].mean(axis=0)
+        sorted_df=df.sort_values('Count', ascending=False)
+        if print_table:
+            print(sorted_df.iloc[:top])
+
+        if not contour_lvls_to_plot:
+            contour_lvls_to_plot=range(len(paths_for_contour))
+        for lvl in contour_lvls_to_plot:
+            plotPathsInLevel(paths_for_contour,lvl)
+
+        colors = ['C%s' % i for i in range(10)]  # Define color palette
+        num_colors = len(colors)
+        for i in range(ag_w_hbonds.pos[:,:top].shape[1]):
+            # Use modular indexing to cycle through colors
+            color = colors[i % num_colors]
+            norm_val=sorted_df['Count'].iloc[i]/len(ag_w_hbonds.universe.trajectory) #max_val
+            norm_val_plot=sorted_df['Count'].iloc[i]/max_val
+            pos=sorted_df[['X','Y','Z']].iloc[i]
+            plt.plot(pos['X'],pos['Y'], 'o',color=color,
+                    label='%s-%s (%.2f)'%(sorted_df['ResIDs'].iloc[i],
+                                        sorted_df['ResNames'].iloc[i],
+                                        norm_val*100),)
+            plt.scatter(pos['X'],pos['Y'], s=(8*20*norm_val_plot)**2, alpha=.5, color=color)
+        plt.xlabel(r'X-axis($\AA$)',)#fontsize=20)
+        plt.ylabel(r'Y-axis($\AA$)',)#fontsize=20)
+        plt.gca().set_aspect('equal')
+        plt.tight_layout()    
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5),#prop={'size':22}, 
+                    title="ResID-ResName(Hbond %)",)#title_fontsize=20)
+        plt.show()
         
+def plotPathsInLevel(paths, contour_lvl,color='k',alpha=0.3,show=False):
+    paths_in_lvl=paths[contour_lvl]
+    for p in range(len(paths_in_lvl)):
+        x_val,y_val=paths_in_lvl[p].T
+        plt.plot(x_val,y_val,color=color, alpha=alpha)
+    if show:
+        plt.show()
