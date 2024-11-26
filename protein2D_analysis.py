@@ -10,6 +10,7 @@ from MDAnalysis.exceptions import SelectionError
 import sys
 class protein2D_analysis:
     def __init__(self, obj):
+        
         """
         Initializes the class with either an MDAnalysis Universe or AtomGroup.
         
@@ -52,7 +53,8 @@ class protein2D_analysis:
         print("  N atoms:", len(self.universe.atoms))
         print("  N residues:", len(self.universe.residues))
         print("  N segments:", len(self.universe.segments))
-        
+        print(f"  Time : {self.universe.trajectory[0].time/1000}-{self.universe.trajectory[-1].time/1000}ns dt={self.universe.trajectory.dt/1000}ns")
+        print(f"  N frames : {len(self.universe.trajectory[0].frames)}")
         # AtomGroup-specific information (only if a subset is selected)
         if len(self.atom_group) < len(self.universe.atoms):
             print("=== SELECTION INFO ===")
@@ -61,6 +63,18 @@ class protein2D_analysis:
             print("  N selected segments:", len(self.atom_group.segments))
 
     def getPositions(self,pos_type='COM', inplace=True, select=None):
+        """
+        Computes positions of selection from self.startT to self.endT with self.stepT steps of frames. 
+        By default, these parameters are set to compute over the whole trajectory.
+
+        Args:
+            pos_type (str, optional): Computes the positions of "all" atoms of the object or the "COM" (center of mass) of residues. Defaults to 'COM'.
+            inplace (bool, optional): If True, position values are assigned to the self.pos attribute and None is returned. If False, positions are returned. Defaults to True.
+            select (None or str, optional): If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None.
+
+        Returns:
+            None or np.ndarray: None if inplace=True, numpy array if inplace=False with the positions of the center of mass of residues (if pos_type="COM")or positions of all atoms (pos_type="all")
+        """
 
         print('Getting positions from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
 
@@ -88,7 +102,17 @@ class protein2D_analysis:
             return np.array(pos)
 
     def getCOMs(self, inplace=True, select=None):
+        """        
+        Computes positions of selection from self.startT to self.endT with self.stepT steps of frames. 
+        By default, these parameters are set to compute over the whole trajectory.
 
+        Args:
+            inplace (bool, optional): If True, position values are assigned to the self.com attribute and None is returned. If False, center of mass at each frame are returned. Defaults to True.
+            select (None or str, optional):If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None.
+
+        Returns:
+           None or np.ndarray: None if inplace=True, numpy array if inplace=False with the center of mass of the AtomGroup.
+        """
         print('Getting center of masses from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
 
         prot=self.atom_group
@@ -111,14 +135,18 @@ class protein2D_analysis:
         
 
     def FilterMinFrames(self, zlim,Nframes,control_plots=False):
-        '''
-        pos: 
-        array of shape (TotalFrames,Nresidues,4 <t,x,y,z>)
-        
-        returns:
-        array of shape (Nframes,Nresidues,4 <t,x,y,z>) of frames 
-        
-        '''
+        """
+        Selects a set of Nframes in which the AtomGroup is closer to the surface and bellow a zlim threshold distance to the surface. 
+
+        Args:
+            zlim (float): Distance (in angstroms) threshold limit in which the AtomGroup is considered adsorped to the surface. 
+            Nframes (int): Nframes closest to the surface within the frames where the AtomGroup is < zlim. 
+            control_plots (bool, optional): If control plots are to be shown. Defaults to False.
+
+        Returns:
+            np.ndarray (Nframes,Nresidues or Natoms,4 <t,x,y,z>): Numpy array with the AtomGroup positions in self.pos that are below zlim and closest to the surface.
+        """
+
         pos=self.pos
         ##Take the mean of all selected residues
         mean_z_top=pos[:,:,3].mean(axis=1)
@@ -141,11 +169,24 @@ class protein2D_analysis:
         return pos_masked
     
     def PolarAnalysis(self,select_res,Nframes,max_hist=None,sort='max',plot=False,control_plots=False, zlim=15,Nbins=1000,resolution=5):
-        ## ------------------####
-        # Makes the histogram based on the angles respect to the center of mass of the protein
-        ## -------------------####
-        # RBM_resids=self.atom_group.residues.resids
-        # RBM_str=' '.join(RBM_resids)
+        """
+        Makes a Polar Histogram of the positions of the center of mass of select_res residues considering Nframes closest to the surface within the < zlim threshold. self.pos attribute is used to compute the center of mass of the AtomGroup, which will be the referential center of the histograms. 
+        The colors of the histogram are ordered according to sort parameter. 
+
+        Args:
+            select_res (str): MDAnalysis string selection of the residues to which compute the histograms.  
+            Nframes (int):  Nframes closest to the surface within the frames where the AtomGroup is < zlim. 
+            max_hist (None or float, optional): Value to normalize the histograms. If None, highest histogram value is used to normalize the histograms. Defaults to None.
+            sort (str, list, ndarray or None, optional): How to sort the histograms in the legend and the coloring. If "max", histograms will be ploted descending from the residue with highest peak in its histogram to the flattest peak. If sort is a list or ndarray, sort is the index positions of the residues to which reorder the histograms. If None, they well be plotted by MDAnalysis default sort (ascending Resid values). Defaults to 'max'.
+            plot (bool, optional): Show the polar plot (True) or only return the data (False). Defaults to False.
+            control_plots (bool, optional): Show control plots of the different steps of the polar analysis calculation. Defaults to False.
+            zlim (float, optional):  Distance (in angstroms) threshold limit in which the AtomGroup is considered adsorped to the surface.. Defaults to 15.
+            Nbins (int, optional): How many bins to use in the histograms. Defaults to 1000.
+            resolution (float, optional): One the position vectors of each residue are normalized, resolution is the value too which the normalized positions are multiplied. An increase in this value will make higher peaks in the histograms since position vector are further away. Reducing this value represents an increase of resolution of the histogram. Defaults to 5.
+         Returns:
+            np.ndarray (Nframes,Nresidues or Natoms,4 <t,x,y,z>): Numpy array with the AtomGroup positions in self.pos that are below zlim and closest to the surface.
+        """
+
 
 
         colors=['C%s'%(c+7) for c in range(10)]
@@ -254,8 +295,7 @@ class protein2D_analysis:
             ax = plt.subplot(111, polar=True)
             for i in range(ordered_selected_pos.shape[1]):
                 fig_label='%i-%s'%(prot.residues.resids[sort_i[i]],prot.residues.resnames[sort_i[i]])
-                # if res.residues.resids[i]>=193 and res.residues.resids[i]>=200:
-                #     fig_label='%ith Glyc. Carb.\n%s'%(res.residues.resids[i]-192,res.residues.resnames[i])
+
                 with mpl.rc_context():
                     # mpl.style.use('classic')
                     bars = ax.bar(hist_arr[sort_i[i],0], hist_arr[sort_i[i],1]*max_height*norm_max_hist,
@@ -477,7 +517,7 @@ class protein2D_analysis:
             plt.show()
         return hbonds.results
     
-    def HbondsPerResidues(self):
+    def HbondsPerResidues(self,sorted=True):
         result=np.array(self.hbonds.hbonds[:,[2,3]], dtype=int)
         resids=np.array([self.universe.atoms[result[:,0]].resids,self.universe.atoms[result[:,1]].resids])
         df=pd.DataFrame(data=resids.T, columns=['Hydrogen', 'Acceptors'])
@@ -488,10 +528,13 @@ class protein2D_analysis:
         df_final=pd.DataFrame(np.array([self.universe.residues[final_count.index-1].resids,self.universe.residues[final_count.index-1].resnames,final_count]).T,
                             columns=['ResIDs','ResNames','Count'])
 
-        return df_final
+        if sorted:
+            return df_final.sort_values('Count', ascending=False)
+        else:
+            return df_final
     def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, print_table=True):
 
-        df=self.HbondsPerResidues()
+        df=self.HbondsPerResidues(sorted=False)
         max_val=df['Count'].max()
         str_resids=' '.join(np.array(df['ResIDs'],dtype=str))
         print(str_resids)
