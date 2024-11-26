@@ -528,6 +528,7 @@ class protein2D_analysis:
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5),#prop={'size':22}, 
                     title="ResID-ResName(Hbond %)",)#title_fontsize=20)
         plt.show()
+        return sorted_df
         
 def plotPathsInLevel(paths, contour_lvl,color='k',alpha=0.3,show=False):
     paths_in_lvl=paths[contour_lvl]
