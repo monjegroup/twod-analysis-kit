@@ -8,7 +8,7 @@ import matplotlib as mpl
 from MDAnalysis.analysis.hydrogenbonds import HydrogenBondAnalysis
 from MDAnalysis.exceptions import SelectionError
 import sys
-class protein2D_analysis:
+class BioPolymer2D_analysis:
     def __init__(self, obj):
         
         """
@@ -237,7 +237,7 @@ class protein2D_analysis:
         # sys.exit()
 
         pos_centered=pos-np.array([0,to_center[0],to_center[1],0])
-        pos_selected=protein2D_analysis.FilterMinFrames(pos_centered,zlim,Nframes,control_plots=control_plots)
+        pos_selected=BioPolymer2D_analysis.FilterMinFrames(pos_centered,zlim,Nframes,control_plots=control_plots)
 
         print(pos_selected.shape)
 
@@ -356,7 +356,7 @@ class protein2D_analysis:
         sq = np.sum(ri_sq, axis=1)
         sq_par = np.sum(ri_sq[:,[0,1]], axis=1) # sum over x and y, parallel Rg
         #print(sq_par.shape)
-        sq_perp = ri_sq[:,2] # sum over zfor perpendicular Rg
+        sq_perp = ri_sq[:,2] # sum over z for perpendicular Rg
 
         # make into array
         sq_rs = np.array([sq, sq_perp, sq_par])
@@ -368,7 +368,7 @@ class protein2D_analysis:
     
     def getRgs2D(self, plot=False):
         colors=['tab:blue','tab:orange','tab:green']
-        rg_arr=np.zeros((len(self.universe.trajectory),4))
+        rg_arr=np.zeros((len(self.pos),4))
         i=0
         masses=self.atom_group.atoms.masses
         total_mass=np.sum(masses)
@@ -459,7 +459,7 @@ class protein2D_analysis:
         return paths
         
     def getKDEAnalysis(self,zlim,Nframes,inplace=True,control_plots=False):
-        pos_selected=protein2D_analysis.FilterMinFrames(self.pos,zlim,Nframes,control_plots=control_plots)
+        pos_selected=BioPolymer2D_analysis.FilterMinFrames(self.pos,zlim,Nframes,control_plots=control_plots)
         ## Concatenate positions of all residues
         print(pos_selected.shape)
         pos_selected_reshape=np.reshape(pos_selected,(pos_selected.shape[0]*pos_selected.shape[1],pos_selected.shape[2]))
@@ -475,7 +475,7 @@ class protein2D_analysis:
         Nlvls=len(kde_plot.collections[-1].get_paths())
         print(f"There are {Nlvls} levels in the KDE.")
         for lvl in range(Nlvls):
-            paths=protein2D_analysis.ListPathsInLevel(kde_plot,lvl,plot_paths=control_plots)
+            paths=BioPolymer2D_analysis.ListPathsInLevel(kde_plot,lvl,plot_paths=control_plots)
             if not paths:
                 continue
             # print(np.shape(paths[0]))
@@ -591,7 +591,7 @@ class protein2D_analysis:
         if not contour_lvls_to_plot:
             contour_lvls_to_plot=range(len(paths_for_contour))
         for lvl in contour_lvls_to_plot:
-            protein2D_analysis.plotPathsInLevel(paths_for_contour,lvl)
+            BioPolymer2D_analysis.plotPathsInLevel(paths_for_contour,lvl)
 
         colors = ['C%s' % i for i in range(10)]  # Define color palette
         num_colors = len(colors)
