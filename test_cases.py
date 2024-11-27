@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.integrate import simps
+# from scipy.integrate import simpson
 import time
 from matplotlib.patches import Patch
 import nglview as nv
@@ -11,16 +11,17 @@ import nglview as nv
 from twodanalysis import twod_analysis
 
 
-top = "dopcchol_Charmm.pdb"
-traj = "dopcchol_Charmm.pdb"
-tpr = "veamos.tpr"
+top = "../membrane.gro"
+traj = "../membrane.gro"
+tpr = "../veamos.tpr"
 
 
-top = "membrane.gro"
-traj = "membrane.xtc"
-membrane = twod_analysis(top,
-                         traj,
-                        tpr=tpr,
+# top = "membrane.gro"
+# traj = "membrane.xtc"
+u=mda.Universe(tpr,traj)
+membrane = twod_analysis(u,#top,
+                         #traj,
+                        #tpr=tpr,
                         v_min = -10,
                         v_max = 180,
                         verbose = True,

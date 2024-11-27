@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.integrate import simps
+# from scipy.integrate import simps
 import time
 from matplotlib.patches import Patch
 import nglview as nv
@@ -14,8 +14,9 @@ import nglview as nv
 class twod_analysis:
     def __init__(
                 self,
-                top,
-                traj,
+                obj,
+                # top,
+                # traj,
                 lipid_list = None,
                 tpr = None,
                 info = False,
@@ -29,11 +30,14 @@ class twod_analysis:
 
 
 
-        if tpr:
-            self.u = mda.Universe(tpr, traj)
+        if isinstance(obj, mda.Universe):
+            self.u = obj
+            self.atom_group = obj.atoms  # Select all atoms
+        elif isinstance(obj, mda.core.groups.AtomGroup):
+            self.u = obj.u
+            self.atom_group = obj
         else:
-            self.u = mda.Universe(top, traj)
-        #print(self.u.resids)
+            raise TypeError("Input must be an MDAnalysis Universe or AtomGroup")
 
         if not lipid_list: # Select only elements of the membrane
             self.memb = self.u.select_atoms("all and not protein and not (resname URA or resname GUA or resname ADE or resname CYT)")
