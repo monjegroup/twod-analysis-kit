@@ -10,12 +10,16 @@ from MDAnalysis.exceptions import SelectionError
 import sys
 class BioPolymer2D_analysis:
     def __init__(self, obj):
-        
-        """
-        Initializes the class with either an MDAnalysis Universe or AtomGroup.
-        
-        Parameters:
-        obj (Universe or AtomGroup): The object to initialize with.
+        """Initializes the class with either an MDAnalysis Universe or AtomGroup.
+
+        Parameters
+        ----------
+        obj : (Universe or AtomGroup)
+
+        Raises
+        ------
+        TypeError
+           Error if the is not being initialized with MDAnalysis.Universe or MDAnalysis.AtomGroup
         """
         if isinstance(obj, mda.Universe):
             self.universe = obj
@@ -45,8 +49,7 @@ class BioPolymer2D_analysis:
         return f"<{self.__class__.__name__} with {len(self.atom_group)} atoms>"
     
     def INFO(self):
-        """
-        Print information about the Universe and/or AtomGroup.
+        """Prints general information of the Universe and/or Atomgroup 
         """
         # Universe-level information
         print("=== UNIVERSE INFO ===")
@@ -63,17 +66,22 @@ class BioPolymer2D_analysis:
             print("  N selected segments:", len(self.atom_group.segments))
 
     def getPositions(self,pos_type='COM', inplace=True, select=None):
-        """
-        Computes positions of selection from self.startT to self.endT with self.stepT steps of frames. 
+        """        Computes positions of selection from self.startT to self.endT with self.stepT steps of frames. 
         By default, these parameters are set to compute over the whole trajectory.
 
-        Args:
-            pos_type (str, optional): Computes the positions of "all" atoms of the object or the "COM" (center of mass) of residues. Defaults to 'COM'.
-            inplace (bool, optional): If True, position values are assigned to the self.pos attribute and None is returned. If False, positions are returned. Defaults to True.
-            select (None or str, optional): If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None.
+        Parameters
+        ----------
+        pos_type : str, optional
+            Computes the positions of "all" atoms of the object or the "COM" (center of mass) of residues, by default 'COM'.
+        inplace : bool, optional
+           If True, position values are assigned to the self.pos attribute and None is returned. If False, positions are returned, by default True
+        select : None or str, optional
+             If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None., by default None
 
-        Returns:
-            None or np.ndarray: None if inplace=True, numpy array if inplace=False with the positions of the center of mass of residues (if pos_type="COM")or positions of all atoms (pos_type="all")
+        Returns
+        -------
+        None or np.ndarray
+            None if inplace=True, numpy array if inplace=False with the positions of the center of mass of residues (if pos_type="COM")or positions of all atoms (pos_type="all")
         """
 
         print('Getting positions from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
@@ -102,17 +110,22 @@ class BioPolymer2D_analysis:
             return np.array(pos)
 
     def getCOMs(self, inplace=True, select=None):
-        """        
-        Computes positions of selection from self.startT to self.endT with self.stepT steps of frames. 
+        """Computes positions of selection from self.startT to self.endT with self.stepT steps of frames. 
         By default, these parameters are set to compute over the whole trajectory.
 
-        Args:
-            inplace (bool, optional): If True, position values are assigned to the self.com attribute and None is returned. If False, center of mass at each frame are returned. Defaults to True.
-            select (None or str, optional):If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None.
+        Parameters
+        ----------
+        inplace : bool, optional
+            If True, position values are assigned to the self.com attribute and None is returned. If False, center of mass at each frame are returned. By default True
+        select : None or str, optional
+            If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group. By default None
 
-        Returns:
-           None or np.ndarray: None if inplace=True, numpy array if inplace=False with the center of mass of the AtomGroup.
+        Returns
+        -------
+        None or np.ndarray
+           None if inplace=True, numpy array if inplace=False with the center of mass of the AtomGroup.
         """
+
         print('Getting center of masses from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
 
         prot=self.atom_group
@@ -170,18 +183,25 @@ class BioPolymer2D_analysis:
     
     @staticmethod
     def FilterMinFrames(pos, zlim,Nframes,control_plots=False):
+        """Selects a set of Nframes in which the AtomGroup is closer to the surface and bellow a zlim threshold distance to the surface. 
+
+
+        Parameters
+        ----------
+        pos : list or np.ndarray (TotalFrames,Nresidues or Natoms,4 <t,x,y,z>)
+            Positions over time to be filtered.
+        zlim : float
+            Distance (in angstroms) threshold limit in which the AtomGroup is considered adsorped to the surface. 
+        Nframes : int
+            Nframes closest to the surface within the frames where the AtomGroup is < zlim.
+        control_plots : bool, optional
+            If control plots are to be shown, by default False
+
+        Returns
+        -------
+        np.ndarray
+            Filtered positions (Nframes,Nresidues or Natoms,4 <t,x,y,z>)
         """
-        Selects a set of Nframes in which the AtomGroup is closer to the surface and bellow a zlim threshold distance to the surface. 
-
-        Args:
-            zlim (float): Distance (in angstroms) threshold limit in which the AtomGroup is considered adsorped to the surface. 
-            Nframes (int): Nframes closest to the surface within the frames where the AtomGroup is < zlim. 
-            control_plots (bool, optional): If control plots are to be shown. Defaults to False.
-
-        Returns:
-            np.ndarray (Nframes,Nresidues or Natoms,4 <t,x,y,z>): Numpy array with the AtomGroup positions in self.pos that are below zlim and closest to the surface.
-        """
-
         # pos=self.pos
         ##Take the mean of all selected residues
         mean_z_top=pos[:,:,3].mean(axis=1)
@@ -203,23 +223,36 @@ class BioPolymer2D_analysis:
             plt.show() 
         return pos_masked
     
-    def PolarAnalysis(self,select_res,Nframes,max_hist=None,sort='max',plot=False,control_plots=False, zlim=15,Nbins=1000,resolution=5):
-        """
-        Makes a Polar Histogram of the positions of the center of mass of select_res residues considering Nframes closest to the surface within the < zlim threshold. self.pos attribute is used to compute the center of mass of the AtomGroup, which will be the referential center of the histograms. 
+    def PolarAnalysis(self,select_res,Nframes,max_hist=None,sort='max',plot=False,control_plots=False, zlim=14,Nbins=1000,resolution=5):
+        """Makes a Polar Histogram of the positions of the center of mass of select_res residues considering Nframes closest to the surface within the < zlim threshold. self.pos attribute is used to compute the center of mass of the AtomGroup, which will be the referential center of the histograms. 
         The colors of the histogram are ordered according to sort parameter. 
 
-        Args:
-            select_res (str): MDAnalysis string selection of the residues to which compute the histograms.  
-            Nframes (int):  Nframes closest to the surface within the frames where the AtomGroup is < zlim. 
-            max_hist (None or float, optional): Value to normalize the histograms. If None, highest histogram value is used to normalize the histograms. Defaults to None.
-            sort (str, list, ndarray or None, optional): How to sort the histograms in the legend and the coloring. If "max", histograms will be ploted descending from the residue with highest peak in its histogram to the flattest peak. If sort is a list or ndarray, sort is the index positions of the residues to which reorder the histograms. If None, they well be plotted by MDAnalysis default sort (ascending Resid values). Defaults to 'max'.
-            plot (bool, optional): Show the polar plot (True) or only return the data (False). Defaults to False.
-            control_plots (bool, optional): Show control plots of the different steps of the polar analysis calculation. Defaults to False.
-            zlim (float, optional):  Distance (in angstroms) threshold limit in which the AtomGroup is considered adsorped to the surface.. Defaults to 15.
-            Nbins (int, optional): How many bins to use in the histograms. Defaults to 1000.
-            resolution (float, optional): One the position vectors of each residue are normalized, resolution is the value too which the normalized positions are multiplied. An increase in this value will make higher peaks in the histograms since position vector are further away. Reducing this value represents an increase of resolution of the histogram. Defaults to 5.
-         Returns:
-            np.ndarray (Nframes,Nresidues or Natoms,4 <t,x,y,z>): Numpy array with the AtomGroup positions in self.pos that are below zlim and closest to the surface.
+        Parameters
+        ----------
+        select_res : str
+            MDAnalysis string selection of the residues to which compute the histograms.
+        Nframes : int
+            Nframes closest to the surface within the frames where the AtomGroup is < zlim. 
+        max_hist : None or float, optional
+            Value to normalize the histograms. If None, highest histogram value is used to normalize the histograms., by default None
+        sort : str, list, ndarray or None, optional
+            How to sort the histograms in the legend and the coloring. If "max", histograms will be ploted descending from the residue with highest peak in its histogram to the flattest peak. If sort is a list or ndarray, sort is the index positions of the residues to which reorder the histograms. If None, they well be plotted by MDAnalysis default sort (ascending Resid values)., by default 'max'
+        plot : bool, optional
+            Show the polar plot (True) or only return the data (False), by default False
+        control_plots : bool, optional
+            Show control plots of the different steps of the polar analysis calculation., by default False
+        zlim : float, optional
+            Distance (in angstroms) threshold limit in which the AtomGroup is considered adsorped to the surface, by default 14
+        Nbins : int, optional
+             How many bins to use in the histograms., by default 1000
+        resolution : float, optional
+            One the position vectors of each residue are normalized, resolution is the value too which the normalized positions are multiplied. An increase in this value will make higher peaks in the histograms since position vector are further away. Reducing this value represents an increase of resolution of the histogram. By default 5
+        
+        Returns
+        -------
+        list,np.ndarray
+            Histogram data (Nresidues, 2 <X_bin_values,Y_bin_values>, Nbins),
+            Positions in order in which they were plotted (Nframes,Nresidues or Natoms,4 <t,x,y,z>)
         """
 
         # colors=['C%s'%(c+7) for c in range(10)]
@@ -346,6 +379,24 @@ class BioPolymer2D_analysis:
     ######## Radii of Gyration 2D Analysis ###################
 
     def computeRG2D(self, masses, total_mass=None):
+        """Computes parallel, perpendicular and 3D radius of gyration in 1 frame. 
+
+        ..math: R_{\textrm{g}\parallel}= \sqrt{ \frac{1}{m_T}\sum_{i} m_{i}\left[ (x_i-x_{\textrm{CM}})^2+(y_i-y_{\text{CM}})^2\right]}
+        ..math:  R_{\textrm{g}\perp} = \sqrt{\frac{1}{m_T}\sum_{i} m_{i} (z_i-z_{\text{CM}})^2,}
+
+        where :math:`{\bf R}_{\textrm{CM}}=(x_{\textrm{CM}}`, :math:`y_{\textrm{CM}}`, :math:`z_{\textrm{CM}})` is the position of the center of mass, :math:`m_{i}` the mass of each residue and :math:`m_T` the total mass of the residues.
+        Parameters
+        ----------
+        masses : np.ndarray (Natoms)
+            Mass vallues of each atom.
+        total_mass : _type_, optional
+            Sum of these masses. By default None
+
+        Returns
+        -------
+        np.ndarray
+            3D, perpendicular and parallel radius of gyration values (3, Natoms)
+        """
         # coordinates change for each frame
         coordinates = self.atom_group.positions
         center_of_mass = self.atom_group.center_of_mass()
@@ -390,7 +441,7 @@ class BioPolymer2D_analysis:
         return rg_arr    
 
     def RgPerpvsRgsPar(self,rgs,color, marker='s',plot=True,show=False):
-        data=rgs[:,1:]
+        data=rgs[:,2:]
         print(data.shape)
         rg_ratio=(data[:,0]**2).mean()/(data[:,1]**2).mean()
         if plot:
@@ -398,6 +449,8 @@ class BioPolymer2D_analysis:
             label='%s (%.3f)'%(self.system_name,rg_ratio)
             plt.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=10, label=label,color='k')
             plt.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)')
+            plt.xlabel(r'$Rg_\perp$ (angs)')
+            plt.xlabel(r'$Rg_\perp$ (angs)')
             if show:
                 plt.show()
         return rg_ratio
@@ -405,7 +458,7 @@ class BioPolymer2D_analysis:
     ############# Compute Contour Area #################
     @staticmethod
     def ListPathsInLevel(kde_plot,contour_level,plot_paths=False):
-        """_summary_
+        """Lists vertices of a path in a contour level of the KDE plot. 
 
         Parameters
         ----------
