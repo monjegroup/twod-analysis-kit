@@ -1,3 +1,15 @@
+"""
+twod_analysis
+=============
+
+
+Classes
+-------
+
+.. autoclass:: BioPolymer2D_analysis
+    :members:
+"""
+
 import MDAnalysis as mda
 import pandas as pd
 import numpy as np
@@ -381,15 +393,18 @@ class BioPolymer2D_analysis:
     def computeRG2D(self, masses, total_mass=None):
         """Computes parallel, perpendicular and 3D radius of gyration in 1 frame. 
 
-        ..math: R_{\textrm{g}\parallel}= \sqrt{ \frac{1}{m_T}\sum_{i} m_{i}\left[ (x_i-x_{\textrm{CM}})^2+(y_i-y_{\text{CM}})^2\right]}
-        ..math:  R_{\textrm{g}\perp} = \sqrt{\frac{1}{m_T}\sum_{i} m_{i} (z_i-z_{\text{CM}})^2,}
+        .. math:: R_{\\textrm{g}\parallel}= \sqrt{ \\frac{1}{m_T}\sum_{i} m_{i}\left[ (x_i-x_{\\textrm{CM}})^2+(y_i-y_{\\text{CM}})^2\\right]}
+        
+        .. math:: R_{\\textrm{g}\perp} = \sqrt{\\frac{1}{m_T}\sum_{i} m_{i} (z_i-z_{\\text{CM}})^2,}
 
-        where :math:`{\bf R}_{\textrm{CM}}=(x_{\textrm{CM}}`, :math:`y_{\textrm{CM}}`, :math:`z_{\textrm{CM}})` is the position of the center of mass, :math:`m_{i}` the mass of each residue and :math:`m_T` the total mass of the residues.
+        where :math:`{\\bf R}_{\\textrm{CM}}=(x_{\\textrm{CM}}`, :math:`y_{\\textrm{CM}}`, :math:`z_{\\textrm{CM}})` is the position of the center of mass, :math:`m_{i}` the mass of each residue and :math:`m_T` the total mass of the residues.
+        
+        
         Parameters
         ----------
         masses : np.ndarray (Natoms)
             Mass vallues of each atom.
-        total_mass : _type_, optional
+        total_mass : float, optional
             Sum of these masses. By default None
 
         Returns
@@ -418,6 +433,18 @@ class BioPolymer2D_analysis:
         return np.sqrt(rog_sq)
     
     def getRgs2D(self, plot=False):
+        """Computes the radii of gyration over the trajectory using computeRG2D method. 
+
+        Parameters
+        ----------
+        plot : bool, optional
+            If True, it plots the raw Rg data values in time, by default False
+
+        Returns
+        -------
+        np.ndarray
+            3D, perpendicular and parallel radius of gyration values at each frame (self.endF-self.startF frames,3, Natoms)
+        """
         colors=['tab:blue','tab:orange','tab:green']
         rg_arr=np.zeros((len(self.pos),4))
         i=0
@@ -441,6 +468,26 @@ class BioPolymer2D_analysis:
         return rg_arr    
 
     def RgPerpvsRgsPar(self,rgs,color, marker='s',plot=True,show=False):
+        """Generates :math:`R_{g\perp}` vs. :math:`R_{g\parallel}` plots. Also, returns the :math:`\langle R_{g\perp}^2 \\rangle /\langle R_{g\parallel}^2 \\rangle` ratio
+
+        Parameters
+        ----------
+        rgs : np.ndarray 
+            Radii of gyration data. It must have Rg data as [Rg 3D, Rg parallel, Rg perpendicular], analogue to getRgs2D functions
+        color : str
+            Color used to plot points. Color names use the same of those of Matplotlib package.
+        marker : str, optional
+            Marker used to plot. Marker names use the same of those of Matplotlib package. , by default 's'
+        plot : bool, optional
+            If False, only the :math:`\langle R_{g\perp}^2 \\rangle /\langle R_{g\parallel}^2 \\rangle` ir returned with out make plot, by default True
+        show : bool, optional
+            If True, matplotlib.pyplot.show() is executed. This is left optional in case further characterization of plot is desired. Also, this enables showing multple data in the same figure. By default False.
+
+        Returns
+        -------
+        float
+            :math:`\langle R_{g\perp}^2 \\rangle /\langle R_{g\parallel}^2 \\rangle`
+        """
         data=rgs[:,2:]
         print(data.shape)
         rg_ratio=(data[:,0]**2).mean()/(data[:,1]**2).mean()
