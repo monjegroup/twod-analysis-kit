@@ -78,7 +78,7 @@ class BioPolymer2D_analysis:
             print("  N selected segments:", len(self.atom_group.segments))
 
     def getPositions(self,pos_type='COM', inplace=True, select=None):
-        """        Computes positions of selection from self.startT to self.endT with self.stepT steps of frames. 
+        """Computes positions of selection from self.startT to self.endT with self.stepT steps of frames. 
         By default, these parameters are set to compute over the whole trajectory.
 
         Parameters
@@ -398,7 +398,7 @@ class BioPolymer2D_analysis:
         .. math:: R_{\\textrm{g}\perp} = \sqrt{\\frac{1}{m_T}\sum_{i} m_{i} (z_i-z_{\\text{CM}})^2,}
 
         where :math:`{\\bf R}_{\\textrm{CM}}=(x_{\\textrm{CM}}`, :math:`y_{\\textrm{CM}}`, :math:`z_{\\textrm{CM}})` is the position of the center of mass, :math:`m_{i}` the mass of each residue and :math:`m_T` the total mass of the residues.
-        
+
         
         Parameters
         ----------
@@ -496,7 +496,7 @@ class BioPolymer2D_analysis:
             label='%s (%.3f)'%(self.system_name,rg_ratio)
             plt.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=10, label=label,color='k')
             plt.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)')
-            plt.xlabel(r'$Rg_\perp$ (angs)')
+            plt.ylabel(r'$Rg_\parallel$ (angs)')
             plt.xlabel(r'$Rg_\perp$ (angs)')
             if show:
                 plt.show()
@@ -509,16 +509,13 @@ class BioPolymer2D_analysis:
 
         Parameters
         ----------
-        kde_plot : _type_
-            _description_
-        contour_level : _type_
-            _description_
+        kde_plot : kde_plot
+            Results of seaborn.kde_plot function. Once computed getKDEAnalysis, self.kde stores this input.
+        contour_level : int
+            Contour Level in which to enlist paths or vertices.
         plot_paths : bool, optional
-            _description_, by default False
+            If True,all the paths of a given contour level are plotted, by default False
         """
-        #---------------------------#
-        # This function returns a list of lists with the separated paths for given contour level.
-        #---------------------------#
         
         # Extract the contour levels
         contour_collections = kde_plot.collections
@@ -559,6 +556,24 @@ class BioPolymer2D_analysis:
         return paths
         
     def getKDEAnalysis(self,zlim,Nframes,inplace=True,control_plots=False):
+        """Computes KDE Contours using seaborn.kde_plot() function and extracts the paths of each contour level. The output of the seaborn.kde_plot() is stored in self.kdeanalysis.kde, and the paths of each contour level is stored in self.kdeanalysis.paths if inplace=True.
+
+        Parameters
+        ----------
+        zlim : float
+            zlim of BioPolymer2D_analysis.FilterMinFrames(). Only use frames under a zlim threshold, to avoid using frames with desorbed molecule.
+        Nframes : int
+            Nframes of BioPolymer2D_analysis.FilterMinFrames(). To ensure to have a controled number of frames under zlim threshold.
+        inplace : bool, optional
+            If True, stores the paths of al contour levels in self.kdeanalysis.paths. Otherwise, it only returns it. By default True
+        control_plots : bool, optional
+            Make control plots, by default False
+
+        Returns
+        -------
+        list
+            List of all paths in all the contour levels.
+        """
         pos_selected=BioPolymer2D_analysis.FilterMinFrames(self.pos,zlim,Nframes,control_plots=control_plots)
         ## Concatenate positions of all residues
         print(pos_selected.shape)
@@ -599,9 +614,20 @@ class BioPolymer2D_analysis:
 
 
     def getAreas(self,contour_lvl,getTotal=False):
-        #---------------------------#
-        # For a given contour level,this function computes the area within this area. Negative area values are holes. 
-        #---------------------------#
+        """Computes the area of each path a given contour level. Negative values of area are holes in the contour level. If getTotal=True, computes the area of the whole contour level.
+
+        Parameters
+        ----------
+        contour_lvl : int
+            Contour level to compute the area.
+        getTotal : bool, optional
+            If False, gives the area of each path of the contour level. If getTotal=True, sums up the contribution of each path in the contour level returning the area of the whole contour level. By default False
+
+        Returns
+        -------
+        list or float
+            A list with the area of each path in the contour level, or the total area of the contour level (if getTotal=True)
+        """
         if not self.kdeanalysis.paths:
             print("Must compute contour paths first. Please compute getKDEAnalysis method first.")
             return 
@@ -617,37 +643,58 @@ class BioPolymer2D_analysis:
             return np.sum(Areas)
         else:
             return Areas
-    def getHbonds(self,region1,region2, update_selections=True,trj_plot=False, inplace=True ):
+    def getHbonds(self,selection1,selection2, update_selections=True,trj_plot=False, inplace=True ):
+        """Computes H-bonds between to selection1 and selection2 of the trajectory using MDAnalysis.analysis.hydrogenbonds.HydrogenBondAnalysis.
+
+        Parameters
+        ----------
+        selection1 : str
+            First selection to which compute H-bonds
+        selection2 : str
+            Second selection to which compute H-bonds
+        update_selections : bool, optional
+            Fills parameter update_selection from MDAnalysis.analysis.hydrogenbonds.HydrogenBondAnalysis. If True, it updates donor and acceptor at each frame. , by default True
+        trj_plot : bool, optional
+            True to have a look at the Hbonds over the trajectory. By default False
+        inplace : bool, optional
+            If True, it stores results of H-bond run in self.hbonds. by default True
+        
+        
+        Returns
+        -------
+        MDAnalysis.analysis.base.Results
+            A list with the area of each path in the contour level, or the total area of the contour level (if getTotal=True)
+        """
 
         u=self.universe
         hbonds = HydrogenBondAnalysis(
             universe=u,
 #             donors_sel=None,
-            between=[region2, region1],
+            between=[selection2, selection1],
             d_a_cutoff=3.0,
-            d_h_a_angle_cutoff=20,
+            d_h_a_angle_cutoff=150,
             update_selections=update_selections
         )
 
 
-        region1_hydrogens_sel = hbonds.guess_hydrogens(region1)
-        region1_acceptors_sel = hbonds.guess_acceptors(region1)
+        selection1_hydrogens_sel = hbonds.guess_hydrogens(selection1)
+        selection1_acceptors_sel = hbonds.guess_acceptors(selection1)
 
-        region2_hydrogens_sel = hbonds.guess_hydrogens(region2)
-        region2_acceptors_sel = hbonds.guess_acceptors(region2)
+        selection2_hydrogens_sel = hbonds.guess_hydrogens(selection2)
+        selection2_acceptors_sel = hbonds.guess_acceptors(selection2)
         
-        if not region1_hydrogens_sel:
-            raise SelectionError(f"Region1 has no hydrogen donors.")
-        if not region1_acceptors_sel:
-            raise SelectionError(f"Region1 has no acceptors.")
-        if not region2_hydrogens_sel:
-            raise SelectionError(f"Region2 has no hydrogen donors.")
-        if not region2_acceptors_sel:
-            raise SelectionError(f"Region2 has no acceptors.")
+        if not selection1_hydrogens_sel:
+            raise SelectionError(f"Selection1 has no hydrogen donors.")
+        if not selection1_acceptors_sel:
+            raise SelectionError(f"Selection1 has no acceptors.")
+        if not selection2_hydrogens_sel:
+            raise SelectionError(f"Selection2 has no hydrogen donors.")
+        if not selection2_acceptors_sel:
+            raise SelectionError(f"Selection2 has no acceptors.")
 
 
-        hbonds.hydrogens_sel = f"({region1_hydrogens_sel}) or ({region2_hydrogens_sel})"
-        hbonds.acceptors_sel = f"({region1_acceptors_sel}) or ({region2_acceptors_sel})"
+        hbonds.hydrogens_sel = f"({selection1_hydrogens_sel}) or ({selection2_hydrogens_sel})"
+        hbonds.acceptors_sel = f"({selection1_acceptors_sel}) or ({selection2_acceptors_sel})"
         hbonds.run(verbose=True)
 
         if inplace:
@@ -661,12 +708,24 @@ class BioPolymer2D_analysis:
         return hbonds.results
     
     def HbondsPerResidues(self,sorted=True):
+        """Computes the number of H-bonds of each residue during the simulation. self.getHbonds(inplace=True) must be computed prior to the use this function.
+
+        Parameters
+        ----------
+        sorted : bool, optional
+            If True, returns data sorted by number of H-bonds. By default True
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame showing all the residues with H-bonds.
+        """
         result=np.array(self.hbonds.hbonds[:,[2,3]], dtype=int)
         resids=np.array([self.universe.atoms[result[:,0]].resids,self.universe.atoms[result[:,1]].resids])
         df=pd.DataFrame(data=resids.T, columns=['Hydrogen', 'Acceptors'])
         Acc_resids = df[np.isin(df['Acceptors'],self.atom_group.residues.resids)].pivot_table(columns=['Acceptors'], aggfunc='size')
         H_resids = df[np.isin(df['Acceptors'],self.atom_group.residues.resids)].pivot_table(columns=['Hydrogen'], aggfunc='size')
-        print(H_resids,Acc_resids)
+        # print(H_resids,Acc_resids)
         final_count=Acc_resids.add(H_resids, fill_value=0)
         df_final=pd.DataFrame(np.array([self.universe.residues[final_count.index-1].resids,self.universe.residues[final_count.index-1].resnames,final_count]).T,
                             columns=['ResIDs','ResNames','Count'])
@@ -675,7 +734,25 @@ class BioPolymer2D_analysis:
             return df_final.sort_values('Count', ascending=False)
         else:
             return df_final
-    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, print_table=True):
+    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, print_table=True): ### Add a Residue Filter option
+        """Makes a figure showing the center of mass of the residues with H-bonds. Figure shows a contour plot as a reference of position of the whole molecule. Legend of the Figure shows the percentage of time in which there were Hbonds during the simulation of the plotted residues. 
+
+        Parameters
+        ----------
+        paths_for_contour : list
+            List of paths of all the contour levels.
+        top : int, optional
+            Residues are plotted ranked by residues with most contact to least. This parameters indicates how many residues to plot of these ranked residues, e.g. top=5 wil plot the 5 residues with most Hbonds during the simulations. By default -1, plots all the residues with H-bonds.
+        contour_lvls_to_plot : list, optional
+            Contour Levels to show in plot, by default None
+        print_table : bool, optional
+            Whether or not to print the pandas.DataFrame with the data shown in figure, by default True
+
+        Returns
+        -------
+        pandas.DataFrame
+            Sorted DataFrame from the residues with most contact to the residue with least contacts.
+        """
 
         df=self.HbondsPerResidues(sorted=False)
         max_val=df['Count'].max()
@@ -717,6 +794,21 @@ class BioPolymer2D_analysis:
     
     @staticmethod   
     def plotPathsInLevel(paths, contour_lvl,color='k',alpha=0.3,show=False):
+        """Plots the paths of a given contour level. 
+
+        Parameters
+        ----------
+        paths : list
+            List with all the paths of all the contour levels.
+        contour_lvl : int
+            Contour level to plot
+        color : str, optional
+            Color to plot the contour level , by default 'k', corresponding to a black color. 
+        alpha : float, optional
+            Sets trasparency. Fills parameter alpha of matplolib.pyplot.plot method by default 0.3
+        show : bool, optional
+            Where to show or not the plot yet with matplolib.pyplot.plot, by default False
+        """
         paths_in_lvl=paths[contour_lvl]
         for p in range(len(paths_in_lvl)):
             x_val,y_val=paths_in_lvl[p].T
