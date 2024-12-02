@@ -10,6 +10,7 @@ import nglview as nv
 from twodanalysis import twod_analysis
 import imageio
 import os
+import time
 
 
 
@@ -17,9 +18,9 @@ top = "dopcchol_Charmm.pdb"
 traj = "dopcchol_Charmm.pdb"
 tpr = "veamos.tpr"
 
-top = "../../centered_prot.gro"
-traj = "../../centered_prot.xtc"
-tpr = "../../veamos.tpr"
+top = "../../../../centered_prot.gro"
+traj = "../../../../centered_prot.xtc"
+tpr = "../../../../veamos.tpr"
 
 #top = "membrane.gro"
 #traj = "membrane.xtc"
@@ -40,45 +41,73 @@ lipid_list = list(membrane.lipid_list)
 first_lipids = membrane.first_lipids
 
 ######### Lipid order 2d code related ########
-
+"""
 layers = ["top", "bot", "both"]
 lipid_list.remove("CHL1")
 nbins = 50
 lipids = membrane.chain_info
-"""
+
 for layer in layers:
     for key in lipid_list:
-        H, edges = membrane.order_histogram(key, layer, nbins, lipids[key])
+        start_time = time.time()
+        H, edges = membrane.order_histogram(key, layer, nbins, lipids[key], start=60, final=100)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"Elapsed time: {elapsed_time:.6f} seconds")
+
+
         print(key, layer, nbins, lipids[key], 0, 180)
         plt.imshow(H,cmap = "Spectral", extent = [edges[0][0], edges[0][-1], edges[1][0], edges[1][-1]])
         plt.colorbar(cmap = "Spectral")
         plt.savefig(f"{key}_test1_{layer}.png")
+        plt.show()
         plt.close()
+        start_time = time.time()
+        H1, edges = membrane.order_histogram(key, layer, nbins, lipids[key], start=60, final=100, method = "numpy")
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"Elapsed time: {elapsed_time:.6f} seconds")
+
+        print(key, layer, nbins, lipids[key], 0, 180)
+        plt.imshow(H1,cmap = "Spectral", extent = [edges[0], edges[-1], edges[0], edges[-1]])
+        plt.colorbar(cmap = "Spectral")
+        plt.savefig(f"{key}_test2_{layer}.png")
+
+        plt.show()
+        plt.close()
+
+        plt.scatter(H.flatten(), H1.flatten())
+        plt.show()
+
+
+
+
+layer = "top"
+"""
+"""
+mat_top, edges = membrane.all_lip_order("top", nbins,
+                        start = 60,
+                        final = 100,
+                        step = 1)#
+
+
+mat_bot, edges = membrane.all_lip_order("bot", nbins,
+                        start = 60,
+                        final = 100,
+                        step = 1)
+
+mat_both, edges = membrane.all_lip_order("both", nbins,
+                        start = 60,
+                        final = 100,
+                        step = 1)
+
+plt.imshow(mat_top, cmap = "Spectral")
+plt.show()
+plt.imshow(mat_bot, cmap = "Spectral")
+plt.show()
+plt.imshow(mat_both, cmap = "Spectral")
 plt.show()
 """
-layer = "top"
-#mat_top, edges = membrane.all_lip_order("top", nbins,
-#                        start = 0,
-#                        final = 100,
-#                        step = 1)#
-
-
-#mat_bot, edges = membrane.all_lip_order("bot", nbins,
-#                        start = 0,
-#                        final = 100,
-#                        step = 1)
-
-#mat_both, edges = membrane.all_lip_order("both", nbins,
-#                        start = 0,
-#                        final = 100,
-#                        step = 1)
-
-#plt.imshow(mat_top, cmap = "Spectral")
-#plt.show()
-#plt.imshow(mat_top, cmap = "Spectral")
-#plt.show()
-
-
 
 
 ##### Packing deffects related ######
@@ -116,40 +145,101 @@ for key in lipid_polar.keys():
 #membrane.visualize_polarity()
 
 #print(membrane.non_polar_dict["POPE"])
-"""
-membrane.visualize_polarity()
-membrane.non_polar_dict["POPI24"].append("H91")
-membrane.non_polar_dict["POPI24"].append("H101")
+
+#membrane.visualize_polarity()
+
+#membrane.non_polar_dict["POPE"].append("H91")
+#membrane.non_polar_dict["POPE"].append("H101")
 membrane.non_polar_dict["POPI15"].append("H91")
 membrane.non_polar_dict["POPI15"].append("H101")
-membrane.visualize_polarity()
+membrane.non_polar_dict["POPI24"].append("H91")
+membrane.non_polar_dict["POPI24"].append("H101")
+#membrane.visualize_polarity()
+
+vmin, vmax = membrane.guess_minmax_space()
+print(vmin, vmax)
+#membrane.v_max = vmax
+#membrane.v_min = vmin
+
 count = 0
 filenames = []
-for ts in membrane.u.trajectory[51::3]:
-    matrix, matrix_height = membrane.packing_defects(
-                                    nbins = 200,
+positions = []
+protein = membrane.u.select_atoms("resid 1-180")
+for ts in membrane.u.trajectory[51::10]:
+    positions.append(protein.positions)
+
+positions = np.concatenate(positions, axis = 0)
+
+
+
+print("fdsfdsfd################################3", positions.shape)
+
+
+plt.plot(positions[:,0], positions[:,1])
+plt.xlim(0, 180)
+plt.ylim(0, 180)
+plt.show()
+plt.close()
+
+
+percentage = []
+for ts in membrane.u.trajectory[51:500:2]:
+
+    start_time = time.time()
+    matrix, return_dict = membrane.packing_defects(
+                                    nbins = 150,
                                     layer = "bot",
-                                    height = True,
-
+                                    height = False,
+                                    periodic=True,
+                                    area = True,
+                                    edges = [80,120,40,80]
                                     )
-    fig,ax = plt.subplots(1,2)
-    ax[0].imshow(np.rot90(matrix))
-    ax[1].imshow(np.rot90(matrix_height))
-    ax[0].set_title(f"Frame {count}")
-    plt.savefig(f"frame_{count}.png")
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"Elapsed time: {elapsed_time:.6f} seconds")
 
-    filenames.append(f"frame_{count}.png")
+
+    edges = return_dict["edges"]
+
+    
+
+    area = f" deffects: {return_dict['area']['deffects']}, total {return_dict['area']['total']} "
+    area_p = f"percentage : {return_dict['area']['deffects']/return_dict['area']['total']}"
+    percentage.append(return_dict['area']['deffects']/return_dict['area']['total'])
+    #fig,ax = plt.subplots(1,2)
+    #ax[0].imshow(np.rot90(matrix), extent = [edges[0], edges[1], edges[0], edges[1]])
+    #ax[1].imshow(np.rot90(matrix_height), extent = [edges[0], edges[1], edges[0], edges[1]])
+    #ax[0].set_title(f"Frame {count}, area {area_p}")
+    #plt.savefig(f"frame_{count}_periodic.png")
+    #plt.close()
+
+    filenames.append(f"frame_{count}_periodic.png")
     count += 1
 
-with imageio.get_writer("gif_packing.gif", mode = "I", duration = 0.3) as writer:
+
+
+with imageio.get_writer("gif_packing.gif", mode = "I", duration = 2) as writer:
     for filename in filenames:
         image = imageio.imread(filename)
         writer.append_data(image)
+    plt.close()
 
 for filename in filenames:
     os.remove(filename)
 
-"""
+plt.close()
+plt.clf()
+data = pd.DataFrame()
+x = list(range(len(percentage)))
+data["percentage"] = percentage
+data["frame"] = x
+data["frame"] = data["frame"]*2
+data["rolling"] = data["percentage"].rolling(50, center=True).mean()
+
+plt.plot(data["frame"], data["percentage"])
+plt.plot(data["frame"], data["rolling"])
+plt.show()
+plt.close()
 
 
 
@@ -177,14 +267,14 @@ for filename in filenames:
 ###### Code to test apl ######
 
 
-voronoi_dict = membrane.voronoi_apl(layer = "top")
+#voronoi_dict = membrane.voronoi_apl(layer = "top")
 
 
-colors = {"DODMA": "blue",
-        "POPE": "red",
-        "DSPC": "green",
-        "CHL1": "yellow"
-}
+#colors = {"DODMA": "blue",
+#        "POPE": "red",
+#        "DSPC": "green",
+#        "CHL1": "yellow"
+#}
 """
 plt.scatter(*voronoi_dict["points"].T, c =[colors[lipid] for lipid in voronoi_dict["resnames"]])
 count = 0
@@ -200,14 +290,15 @@ plt.show()
 
 #membrane.map_voronoitest(voronoi_dict["vertices"], voronoi_dict["areas"], 100, [membrane.v_min, membrane.v_max, membrane.v_min, membrane.v_max])
 #membrane.map_voronoi(voronoi_dict["points"], voronoi_dict["areas"], 300, [membrane.v_min, membrane.v_max, membrane.v_min, membrane.v_max])
-
-#membrane.grid_apl(layer = "top", start = 100, final = 200, step = 1, lipid_list = None)
+'''
+resu = membrane.grid_apl(layer = "top", start = 100, final = 101, step = 1, lipid_list = None)
+print(resu)
 
 matrices = membrane.windows_apl(layer = "top",
                                 start = 260,
-                                final = 560,
+                                final = 290,
                                 step = 1,
-                                w_size = 20,
+                                w_size = 2,
                                 lipid_list = None,
                                 nbins = 150,
                                 )
@@ -225,9 +316,10 @@ for i, matrix in enumerate(matrices):
     indices.append(np.corrcoef(x_ref, y)[0,1])
 plt.show()
 plt.close()
-index = 4*(np.array(list(range(len(indices))))/5)
-lista = [0.9999999999999998, 0.6025176760541637, 0.3472441438579375, 0.26539688826701563, 0.2850464370677984, 0.1480777929465581, 0.04842089982626965, 0.08878377145501166, 0.17719296655312355, 0.2072503188050951, 0.11521773655176341, 0.08574894206908254]
-plt.plot(index,indices)
-plt.plot(list(range(len(lista))),lista)
-print(indices)
-plt.show()
+'''
+#index = 4*(np.array(list(range(len(indices))))/5)
+#lista = [0.9999999999999998, 0.6025176760541637, 0.3472441438579375, 0.26539688826701563, 0.2850464370677984, 0.1480777929465581, 0.04842089982626965, 0.08878377145501166, 0.17719296655312355, 0.2072503188050951, 0.11521773655176341, 0.08574894206908254]
+#plt.plot(index,indices)
+#plt.plot(list(range(len(lista))),lista)
+#print(indices)
+#plt.show()

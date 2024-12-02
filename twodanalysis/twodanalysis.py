@@ -86,6 +86,11 @@ class twod_analysis:
             self.memb = self.u.select_atoms(f"{self.build_resname(list(lipid_list))}")
 
 
+        # Set ercentage for periodicity
+
+        self.periodicity = 0.1
+
+
         # Set radius sizes of different elements
         self.radii_dict = 0
         if add_radii:
@@ -149,8 +154,8 @@ class twod_analysis:
             self.non_polar_visualize = {}
             for lipid in self.lipid_list:
                 first_lipid = self.memb.select_atoms(f"resname {lipid}").resids[0]
-                actual_sn1 = self.memb.select_atoms(f"resid {first_lipid} and name C2*")
-                actual_sn2 = self.memb.select_atoms(f"resid {first_lipid} and name C3*")
+                actual_sn1 = self.memb.select_atoms(f"resid {first_lipid} and name C3*")
+                actual_sn2 = self.memb.select_atoms(f"resid {first_lipid} and name C2*")
                 actual_sn1 = actual_sn1.names
                 actual_sn2 = actual_sn2.names
                 self.chain_info[lipid] = [len(actual_sn1) - 2, len(actual_sn2) - 2]
@@ -204,21 +209,13 @@ class twod_analysis:
         lipids : str, optional 
             Lipids to show polarity, by default "all"
         """
-        
-        
-
-
-
         aspect_ratio = [1, 1, 1]
-
         # Get lipids to work
         if lipids == "all":
             lipids = self.lipid_list
         else:
             if isinstance(lipids, list):
                 lipids = [lipids]
-
-
         #Guess bonds if needed
         try:
             self.u.bonds
@@ -233,7 +230,6 @@ class twod_analysis:
             return
         else:
             nplots = len(lipids)
-
             fig = plt.figure(figsize=(5 * nplots, 5))
 
 
@@ -273,6 +269,121 @@ class twod_analysis:
         plt.show()
 
 
+
+
+
+
+    ############## Order parameters related code ####################
+
+
+
+
+    def order_histogram(self, lipid, layer, n_grid,
+                        n_chain,
+                        v_min = None,
+                        v_max = None,
+                        all_head = None,
+                        start = None,
+                        final = None,
+                        step = 1,
+                        method = "numpy",
+                        ):
+        """Method that allows for the computation of order parameters in 2D fashion
+
+        Parameters
+        ----------
+        lipid : str
+            Working lipid to compute the order parameters
+        layer : str
+            working layer, can be top, bot or both
+        n_grid : int
+            number of divisions of the grid
+        n_chain : int or list
+            number of carbons in the first chain or in both chains, e.g., 16 or [16,18]
+        v_min : float, optional
+            min value for the 2D grid, by default None
+        v_max : float, optional
+            min value for the 2D grid,, by default None
+        all_head : AtomGroup, optional
+            atoms considered to define the middle of the membrane (all p atoms used as default), by default None
+        start : int, optional
+            start frame, by default None
+        final : int, optional
+            final frame, by default None
+        step : int, optional
+            frames to skip, by default 1
+        method : str, optional
+            method to compute the 2d histogram, by default "numpy" which uses np.histogram2d for each carbon in the lipid tails. 
+
+        Returns
+        -------
+        ndarray(n_grid,n_grid), ndarray(4) (Still check the return)
+            matrix containind the 2D SCD and the edges in the following disposition [v_min,v_max,v_min,_vmax] (Can be used to plot directly with extent)
+        """
+
+        if all_head == None:
+            all_head = self.all_head
+        if start == None:
+            start = self.start
+        if final == None:
+            final = self.final
+
+        if layer == "top":
+            sign = " > "
+        elif layer == "bot":
+            sign = " < "
+
+        try:
+            n_chain1 = n_chain[0]
+            n_chain2 = n_chain[1]
+        except:
+            n_chain1 = n_chain
+            n_chain2 = 0
+
+        matrix = [] # this will store a matrix of the shape (2+n_chain,
+        for ts in self.u.trajectory[start:final:step]:
+            z = all_head.positions[:,2]
+            z_mean = z.mean() # get middel of the membrane
+
+            #Pick atoms in the layer
+            if layer == "both":
+                layer_at = self.memb.select_atoms(f"byres ((resname {lipid} and name {self.working_lip[lipid]['head']}))")
+            else:
+                layer_at = self.memb.select_atoms(f"byres ((resname {lipid} and name {self.working_lip[lipid]['head']}) and prop z {sign} {z_mean})")
+            #print("Info:", all_head.n_atoms, z_mean, layer.n_atoms)
+
+            only_p = layer_at.select_atoms(f"name {self.working_lip[lipid]['head']}")
+            positions = only_p.positions[:,:2]
+            angles_sn1 = self.individual_order_sn1(layer_at, lipid, n_chain1)
+            angles_sn1 = angles_sn1.T
+
+            #print(angles_sn1.T.shape, positions.shape)
+            #print(angles_sn1.shape, positions.shape)
+            to_write = np.concatenate([positions, angles_sn1], axis = 1)
+            if n_chain2 != 0:
+                angles_sn2 = self.individual_order_sn2(layer_at, lipid, n_chain2)
+                angles_sn2 = angles_sn2.T
+                to_write = np.concatenate([to_write, angles_sn2], axis = 1)
+
+            matrix.append(to_write) # Expect dim (n_lipids, 2+n_chain1+n_chain2)
+            #print("Frame:",to_write.shape)
+
+        #matrix = np.array(matrix) # Expect dim (frames, n_lipids, 2+n_chain1+n_chain2)
+        matrix = np.concatenate(matrix, axis = 0) # Expect dim (n_lipids*frames, 2+n_chain1+n_chain2)
+        v_min = self.v_min
+        v_max = self.v_max
+
+        if method == "numpy":
+            H, edges = self.numpyhistogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = n_grid, v_min = v_min, v_max = v_max)
+        else:
+            H, edges = self.histogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = n_grid, v_min = v_min, v_max = v_max)
+        plt.imshow(H,cmap="Spectral")
+        plt.colorbar()
+        plt.close()
+        H = np.rot90(H)
+        H[H==0] = np.nan
+
+        return H, edges
 
 
 
@@ -356,7 +467,7 @@ class twod_analysis:
 
         # Define list to store the chain cos^2(theta)
         chains = []
-        print(lipid)
+
 
         # Loop over carbons
         for i in range(n_chain):
@@ -382,8 +493,10 @@ class twod_analysis:
                     lista.append(atoms)
             # Call get_individual that computes the cos^2(theta) for each carbon.
             chains.append(self.get_individual(lista))
+
             #print(i, self.get_individual(lista).shape, self.get_individual(lista))
         chains = np.array(chains) # Expect array of dim (n_chain, n_lipids)
+
         return chains
 
 
@@ -430,7 +543,7 @@ class twod_analysis:
                             f"name H{i+2}S and not name HS",
                             f"name H{i+2}T and not name HT"
                         ]
-            if lipid == "POPE" or lipid == "POPS" or lipid == "POPI1" or lipid == "POPI2":
+            if lipid == "POPE" or lipid == "POPS" or lipid == "POPI15" or lipid == "POPI24":
                 if selections[0] == "name C29":
                     selections[1] = "name H91"
                 if selections[0] == "name C210":
@@ -442,21 +555,155 @@ class twod_analysis:
                 atoms = sel.select_atoms(selection)
                 if atoms.n_atoms != 0:
                     lista.append(atoms)
-
-
             angles = self.get_individual(lista)
-            #print(angles, "############################")
-            if len(angles) > max_v:
-                max_v = len(angles)
             chains.append(angles)
-
-
         chains = np.array(chains) # Expect array of dim (n_chain, n_lipids)
         return chains
+    
+
+
+    # Computes teh histogram of the average order parameters in each bin
+    def histogram2D(self,sample1, weights, n_chain, bins = 10, v_min = None, v_max = None):
+        """ Computes the 2D histogram of 2D data with various values taking an average of them
+
+        Parameters
+        ----------
+        sample1 : np.array(n,2)
+            2D data information
+        weights : np.array(n,m)
+            m values can be attached to the data (usually lenght of the tails)
+        n_chain : int or list
+            Number of carbons in each chain, e.g, 16 or [16,16] for both chains
+        bins : int, optional
+            Number of bins to split the space, by default 10
+        v_min : float, optional
+            Min value of the 2D grid, by default None
+        v_max : float, optional
+            Max value of the 2D grid, by default None
+
+        Returns
+        -------
+        np.array, np.array
+            matrix containining the averaged 2D histogram, edges corresponding to te matrix
+        """
+        if v_min == None:
+            v_min = np.min(sample1)
+        if v_max == None:
+            v_max = np.max(sample1)
+
+        #print(v_min, v_max)
+        nbin = np.empty(2,np.intp)
+        edges = 2*[None]
+
+        for i in range(2):
+            edges[i] = np.linspace(v_min, v_max, bins +1)
+            nbin[i] = len(edges[i]) + 1
+
+        Ncount = (tuple(np.searchsorted(edges[i], sample1[:,i], side = "right") for i in range(2)))
+
+        for i in range(2):
+            on_edge = (sample1[:,i] == edges[i][-1])
+            Ncount[i][on_edge] -= 1
+
+        xy = np.ravel_multi_index(Ncount, nbin)
+        xy_test = xy.reshape(-1,1)
+
+        xy_test = np.concatenate((xy_test, weights), axis = 1)
+
+        hist = self.count_order(xy_test, nbin.prod(), n_chain)
+        hist = hist.reshape(nbin)
+        hist = hist.astype(float, casting = "safe")
+        core = 2*(slice(1,-1),)
+        hist = hist[core]
+
+        return hist, edges
+    
+    # Computes teh histogram of the average order parameters in each bin
+    def numpyhistogram2D(self,sample1, weights, n_chain, bins = 10, v_min = None, v_max = None):
+        """ Computes the 2D histogram of 2D data with various values taking an average of them
+
+        Parameters
+        ----------
+        sample1 : np.array(n,2)
+            2D data information
+        weights : np.array(n,m)
+            m values can be attached to the data (usually lenght of the tails)
+        n_chain : int or list
+            Number of carbons in each chain, e.g, 16 or [16,16] for both chains
+        bins : int, optional
+            Number of bins to split the space, by default 10
+        v_min : float, optional
+            Min value of the 2D grid, by default None
+        v_max : float, optional
+            Max value of the 2D grid, by default None
+
+        Returns
+        -------
+        np.array, np.array
+            matrix containining the averaged 2D histogram, edges corresponding to te matrix
+        """
+        if v_min == None:
+            v_min = np.min(sample1)
+        if v_max == None:
+            v_max = np.max(sample1)
+        
+        #print(sample1.shape, weights.shape)
+        if type(n_chain) == int:
+            n_chain = [n_chain]
+
+        hist, xedges,yedges = np.histogram2d(sample1[:,0], sample1[:,1], bins = bins, range = [[v_min, v_max], [v_min, v_max]])
+        hist[hist == 0] = 1
+
+        count = 0
+        mat_chain = []
+        
+        n_feat = 0
+        for chain in n_chain:
+            n_feat += chain
+
+        #print("here", n_feat, weights.shape[1])
+        if n_feat == weights.shape[1]:
+            "Las dimensiones don correctad"
+
+        weights = 1.5*weights-0.5
+
+        for chain in n_chain:
+            matrix = np.zeros(hist.shape)
+            for i in range(chain):
+                temp, xedges, yedges = np.histogram2d(sample1[:,0], sample1[:,1], weights = weights[:,count * n_chain[0]+ i], bins = bins, range = [[v_min, v_max], [v_min, v_max]])
+                matrix += np.abs(temp)
+                
+            count += 1
+            matrix = matrix/(chain*hist)
+            matrix[matrix == 0] = np.nan
+            mat_chain.append(matrix)
+        
+        matrix = 0.5*(mat_chain[0] +mat_chain[1])
+
+        return matrix, xedges
+
+
+
 
 
     @staticmethod
     def count_order(data, min_lenght, n_chain):
+        """ Function used to count and average the order parameter in each grid square
+
+        Parameters
+        ----------
+        data : ndarray(n,2 + len(n_chain[0]) or 2 + len(n_chain[0]) +len(n_chain[1])) 
+            Array that contains the order parameters data to be averaged.
+        min_lenght : int
+            size of the data
+        n_chain : int or list
+            Sets the number of carbons in the fatty acida chain
+
+        Returns
+        -------
+        _np.array
+            Array containing the mean SCD for each grid square
+        """
         columns = ["index"]
         carbons_sn2 = False
         try:
@@ -494,284 +741,7 @@ class twod_analysis:
         result = np.array(result)
         result = result[:,1]
         return result
-
-
-    # Method to average vector to pseudovector program
-    @staticmethod
-    def average_vector(data, min_lenght):
-        columns = ["index", "x", "y", "z"] # Data expected is an np array with columns ["index", "x", "y", "z"]
-
-        df = pd.DataFrame(data, columns = columns)
-        result = []
-
-        for i in range(min_lenght):
-            temp = df[df["index"] == i]
-            if len(temp) > 0 :
-                bin_vect = temp[columns[1:]]
-                bin_vect = bin_vect.mean()
-                result.append(bin_vect.to_list())
-            else:
-                result.append([np.nan, np.nan, np.nan])
-        result = np.array(result)
-
-        return result
-
-    @staticmethod
-    def get_highest(data, min_lenght):
-        """get_highest Code to get the highest value given two columns that are to be ordered in a 2D grid
-
-
-
-        Parameters
-        ----------
-        data : (ndarray(:,2))
-            Array with two columns (column1: map to a 2D grid, column2: values)
-        min_lenght : (int)
-            Size of squares in the 2D grid
-
-        Returns
-        -------
-        ndarray(:,2)
-            With the maximun of each grid square
-        """
-        
-
-        columns = ["index", "weight"] # Data expected is an np array with columns ["index", "x", "y", "z"]
-        df = pd.DataFrame(data, columns = columns)
-        result = df.groupby('index', as_index=False)['weight'].max()
-        result_dict = dict(zip(result['index'], result['weight']))
-        hist = []
-        for i in range(min_lenght):
-            try:
-                hist.append(result_dict[i])
-            except:
-                hist.append(np.nan)
-        return np.array(hist)
-
-    # Computes the average vector for each bin, sample are the raw x,y positions and weights are the vectors related to the head
-    def pseudohistogram2D(self,sample1, weights, bins = 10, v_min = None, v_max = None):
-        if v_min == None:
-            v_min = np.min(sample1)
-        if v_max == None:
-            v_max = np.max(sample1)
-
-        #print(v_min, v_max)
-        nbin = np.empty(2,np.intp)
-        edges = 2*[None]
-
-        for i in range(2):
-            edges[i] = np.linspace(v_min, v_max, bins +1)
-            nbin[i] = len(edges[i]) + 1
-
-        Ncount = (tuple(np.searchsorted(edges[i], sample1[:,i], side = "right") for i in range(2)))
-
-        for i in range(2):
-            on_edge = (sample1[:,i] == edges[i][-1])
-            Ncount[i][on_edge] -= 1
-
-
-        xy = np.ravel_multi_index(Ncount, nbin)
-        xy_test = xy.reshape(-1,1)
-
-        xy_test = np.concatenate((xy_test, weights), axis = 1)
-        hist = self.average_vector(xy_test, nbin.prod())
-        nbin = (nbin[0], nbin[1], 3)
-        hist = hist.reshape(nbin)
-        hist = hist.astype(float, casting = "safe")
-        core = 2*(slice(1,-1),)
-        hist = hist[core]
-
-        return hist, edges
-
-    # Computes teh histogram of the average order parameters in each bin
-    def histogram2D(self,sample1, weights, n_chain, bins = 10, v_min = None, v_max = None):
-        if v_min == None:
-            v_min = np.min(sample1)
-        if v_max == None:
-            v_max = np.max(sample1)
-
-        #print(v_min, v_max)
-        nbin = np.empty(2,np.intp)
-        edges = 2*[None]
-
-        for i in range(2):
-            edges[i] = np.linspace(v_min, v_max, bins +1)
-            nbin[i] = len(edges[i]) + 1
-
-        Ncount = (tuple(np.searchsorted(edges[i], sample1[:,i], side = "right") for i in range(2)))
-
-        for i in range(2):
-            on_edge = (sample1[:,i] == edges[i][-1])
-            Ncount[i][on_edge] -= 1
-
-        xy = np.ravel_multi_index(Ncount, nbin)
-        xy_test = xy.reshape(-1,1)
-
-        xy_test = np.concatenate((xy_test, weights), axis = 1)
-
-        hist = self.count_order(xy_test, nbin.prod(), n_chain)
-        hist = hist.reshape(nbin)
-        hist = hist.astype(float, casting = "safe")
-        core = 2*(slice(1,-1),)
-        hist = hist[core]
-
-        return hist, edges
-
-    # Computes  and return the indexes of the data if where arranegd in a 2d histogram
-    def get_indexes(self,
-                    data,
-                    bins = 10,
-                    v_min = None,
-                    v_max = None,
-                    matrix_height = False):
-
-        if v_min == None:
-            v_min = self.v_min
-        if v_max == None:
-            v_max = self.v_max
-
-
-        nbin = np.empty(2,np.intp)
-        edges = 2*[None]
-
-        for i in range(2):
-            edges[i] = np.linspace(v_min, v_max, bins +1)
-            nbin[i] = len(edges[i]) + 1
-
-
-        if not matrix_height:
-
-            indexes = (tuple(np.searchsorted(edges[i], data[:,i], side = "right") for i in range(2)))
-        else:
-            indexes = (tuple(np.searchsorted(edges[i], data[:,i], side = "right") for i in range(2)))
-
-            xy = np.ravel_multi_index(indexes, nbin)
-            xy_test = xy.reshape(-1,1)
-
-            #print("last shape", data[:,2].reshape(-1,1).shape, xy_test.shape)
-            xy_test = np.concatenate((xy_test, data[:,2].reshape(-1,1)), axis = 1)
-            hist = self.get_highest(xy_test, nbin.prod())
-
-
-            hist = hist.reshape(nbin)
-            hist = hist.astype(float, casting = "safe")
-            hist[np.isnan(hist)] = 0
-            #core = 2*(slice(1,-1),)
-            #hist = hist[core]
-            #print("here", hist[20,:])
-            return indexes, hist
-
-        #for i in range(2):
-        #    on_edge = (data[:,i] == edges[i][-1])
-        #    Ncount[i][on_edge] -= 1
-        #print(np.min(Ncount[0]), np.max(Ncount[0]), np.min(Ncount[1]), np.max(Ncount[1]))
-        #print(len(edges[0]), "edges len")
-
-
-
-
-        return indexes
-
-
-
-    def order_histogram(self, lipid, layer, n_grid,
-                        n_chain,
-                        v_min = None,
-                        v_max = None,
-                        all_head = None,
-                        start = None,
-                        final = None,
-                        step = 1):
-
-        if all_head == None:
-            all_head = self.all_head
-        if start == None:
-            start = self.start
-        if final == None:
-            final = self.final
-
-        if layer == "top":
-            sign = " > "
-        elif layer == "bot":
-            sign = " < "
-
-        try:
-            n_chain1 = n_chain[1]
-            n_chain2 = n_chain[0]
-        except:
-            n_chain1 = n_chain
-            n_chain2 = 0
-
-        matrix = [] # this will store a matrix of the shape (2+n_chain,
-        for ts in self.u.trajectory[start:final:step]:
-            z = all_head.positions[:,2]
-            z_mean = z.mean() # get middel of the membrane
-
-            #Pick atoms in the layer
-            if layer == "both":
-                layer_at = self.memb.select_atoms(f"byres ((resname {lipid} and name {self.working_lip[lipid]['head']}))")
-            else:
-                layer_at = self.memb.select_atoms(f"byres ((resname {lipid} and name {self.working_lip[lipid]['head']}) and prop z {sign} {z_mean})")
-            #print("Info:", all_head.n_atoms, z_mean, layer.n_atoms)
-
-            only_p = layer_at.select_atoms(f"name {self.working_lip[lipid]['head']}")
-            positions = only_p.positions[:,:2]
-            angles_sn1 = self.individual_order_sn1(layer_at, lipid, n_chain1)
-            angles_sn1 = angles_sn1.T
-
-            print(angles_sn1.T.shape, positions.shape)
-            print(angles_sn1.shape, positions.shape)
-            to_write = np.concatenate([positions, angles_sn1], axis = 1)
-            if n_chain2 != 0:
-                angles_sn2 = self.individual_order_sn2(layer_at, lipid, n_chain2)
-                angles_sn2 = angles_sn2.T
-                to_write = np.concatenate([to_write, angles_sn2], axis = 1)
-
-            matrix.append(to_write) # Expect dim (n_lipids, 2+n_chain1+n_chain2)
-            #print("Frame:",to_write.shape)
-
-        #matrix = np.array(matrix) # Expect dim (frames, n_lipids, 2+n_chain1+n_chain2)
-        matrix = np.concatenate(matrix, axis = 0) # Expect dim (n_lipids*frames, 2+n_chain1+n_chain2)
-        v_min = self.v_min
-        v_max = self.v_max
-
-        H, edges = self.histogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = n_grid, v_min = v_min, v_max = v_max)
-        H = np.rot90(H)
-        H[H==0] = np.nan
-
-        return H, edges
-
-    @staticmethod
-    def build_resname(resnames_list):
-        resnames_list = list(resnames_list)
-        string = " (resname " + resnames_list[0]
-
-        for resname in resnames_list[1:]:
-            string = string + " or resname " + resname
-
-        string = string + ") "
-        return string
-
-    def build_resname_head(self,resnames_list):
-        resnames_list = list(resnames_list)
-        string = f"( (resname {resnames_list[0]}  and name {self.working_lip[resnames_list[0]]['head']}) "
-
-        for resname in resnames_list[1:]:
-            string += f" or (resname {resnames_list[0]}  and name {self.working_lip[resnames_list[0]]['head']}) "
-
-        string +=  " ) "
-        return string
-
-    @staticmethod
-    def build_name(resnames_list):
-        string = " (name " + resnames_list[0]
-
-        for resname in resnames_list[1:]:
-            string = string + " or name " + resname
-
-        string = string + ") "
-        return string
-
+    
 
     def all_lip_order(self, layer, nbins,
                         v_min = None,
@@ -845,6 +815,201 @@ class twod_analysis:
             plt.close()
 
         return matrices, edges
+    
+
+    ############## End of order parameters related code ############################3
+
+    """
+    # Method to average vector to pseudovector program
+    @staticmethod
+    def average_vector(data, min_lenght):
+        columns = ["index", "x", "y", "z"] # Data expected is an np array with columns ["index", "x", "y", "z"]
+        df = pd.DataFrame(data, columns = columns)
+        result = []
+        for i in range(min_lenght):
+            temp = df[df["index"] == i]
+            if len(temp) > 0 :
+                bin_vect = temp[columns[1:]]
+                bin_vect = bin_vect.mean()
+                result.append(bin_vect.to_list())
+            else:
+                result.append([np.nan, np.nan, np.nan])
+        result = np.array(result)
+        return result
+    
+    
+    # Computes the average vector for each bin, sample are the raw x,y positions and weights are the vectors related to the head
+    def pseudohistogram2D(self,sample1, weights, bins = 10, v_min = None, v_max = None):
+        if v_min == None:
+            v_min = np.min(sample1)
+        if v_max == None:
+            v_max = np.max(sample1)
+
+        #print(v_min, v_max)
+        nbin = np.empty(2,np.intp)
+        edges = 2*[None]
+
+        for i in range(2):
+            edges[i] = np.linspace(v_min, v_max, bins +1)
+            nbin[i] = len(edges[i]) + 1
+
+        Ncount = (tuple(np.searchsorted(edges[i], sample1[:,i], side = "right") for i in range(2)))
+
+        for i in range(2):
+            on_edge = (sample1[:,i] == edges[i][-1])
+            Ncount[i][on_edge] -= 1
+
+
+        xy = np.ravel_multi_index(Ncount, nbin)
+        xy_test = xy.reshape(-1,1)
+
+        xy_test = np.concatenate((xy_test, weights), axis = 1)
+        hist = self.average_vector(xy_test, nbin.prod())
+        nbin = (nbin[0], nbin[1], 3)
+        hist = hist.reshape(nbin)
+        hist = hist.astype(float, casting = "safe")
+        core = 2*(slice(1,-1),)
+        hist = hist[core]
+
+        return hist, edges
+
+    """
+
+
+
+    @staticmethod
+    def get_highest(data, min_lenght):
+        """get_highest Code to get the highest value given two columns that are to be ordered in a 2D grid
+
+
+
+        Parameters
+        ----------
+        data : (ndarray(:,2))
+            Array with two columns (column1: map to a 2D grid, column2: values)
+        min_lenght : (int)
+            Size of squares in the 2D grid
+
+        Returns
+        -------
+        ndarray(:,2)
+            With the maximun of each grid square
+        """
+        
+
+        columns = ["index", "weight"] # Data expected is an np array with columns ["index", "x", "y", "z"]
+        df = pd.DataFrame(data, columns = columns)
+        result = df.groupby('index', as_index=False)['weight'].max()
+        result_dict = dict(zip(result['index'], result['weight']))
+        hist = []
+        for i in range(min_lenght):
+            try:
+                hist.append(result_dict[i])
+            except:
+                hist.append(np.nan)
+        return np.array(hist)
+
+
+    # Computes  and return the indexes of the data if where arranegd in a 2d histogram
+    def get_indexes(self,
+                    data,
+                    bins = 10,
+                    edges = None,
+                    matrix_height = False):
+                    
+
+
+        if edges is not None:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
+        else:
+            xmin = self.v_min
+            ymin = self.v_min
+            xmax = self.v_max
+            ymax = self.v_max
+
+
+        ran = [[xmin,xmax],[ymin,ymax]]
+
+
+        nbin = np.empty(2,np.intp)
+        edges = 2*[None]
+
+        for i in range(2):
+            edges[i] = np.linspace(ran[i][0], ran[i][1], bins +1)
+            nbin[i] = len(edges[i]) + 1
+
+
+        if not matrix_height:
+
+            indexes = (tuple(np.searchsorted(edges[i], data[:,i], side = "right") for i in range(2)))
+        else:
+            indexes = (tuple(np.searchsorted(edges[i], data[:,i], side = "right") for i in range(2)))
+
+            xy = np.ravel_multi_index(indexes, nbin)
+            xy_test = xy.reshape(-1,1)
+
+            #print("last shape", data[:,2].reshape(-1,1).shape, xy_test.shape)
+            xy_test = np.concatenate((xy_test, data[:,2].reshape(-1,1)), axis = 1)
+            hist = self.get_highest(xy_test, nbin.prod())
+
+
+            hist = hist.reshape(nbin)
+            hist = hist.astype(float, casting = "safe")
+            hist[np.isnan(hist)] = 0
+            core = 2*(slice(1,-1),)
+            hist = hist[core]
+            #print("here", hist[20,:])
+            return indexes, hist
+
+        #for i in range(2):
+        #    on_edge = (data[:,i] == edges[i][-1])
+        #    Ncount[i][on_edge] -= 1
+        #print(np.min(Ncount[0]), np.max(Ncount[0]), np.min(Ncount[1]), np.max(Ncount[1]))
+        #print(len(edges[0]), "edges len")
+
+
+
+
+        return indexes
+
+
+
+    @staticmethod
+    def build_resname(resnames_list):
+        resnames_list = list(resnames_list)
+        string = " (resname " + resnames_list[0]
+
+        for resname in resnames_list[1:]:
+            string = string + " or resname " + resname
+
+        string = string + ") "
+        return string
+
+    def build_resname_head(self,resnames_list):
+        resnames_list = list(resnames_list)
+        string = f"( (resname {resnames_list[0]}  and name {self.working_lip[resnames_list[0]]['head']}) "
+
+        for resname in resnames_list[1:]:
+            string += f" or (resname {resnames_list[0]}  and name {self.working_lip[resnames_list[0]]['head']}) "
+
+        string +=  " ) "
+        return string
+
+    @staticmethod
+    def build_name(resnames_list):
+        string = " (name " + resnames_list[0]
+
+        for resname in resnames_list[1:]:
+            string = string + " or name " + resname
+
+        string = string + ") "
+        return string
+
+
+
 
     def surface(self,
                 start = None,
@@ -1095,7 +1260,7 @@ class twod_analysis:
                 
 
 
-        positions = self.memb.positions[:,2]
+        positions = self.memb.positions[:,:2]
         if all:
             xmin = np.min(positions[:,0])
             xmax = np.max(positions[:,0])
@@ -1209,41 +1374,149 @@ class twod_analysis:
                 small_matrix = small_matrix * 0.0001
             self.add_small_matrix(matrix, small_matrix, indexes[0][i], indexes[1][i])
         return matrix
+    
+    @staticmethod
+    def extend_data(data, dimensions, percentage, others = None):
+        xmin = np.min(data[:,0])
+        xmax = np.max(data[:,0])
+        ymin = np.min(data[:,1])
+        ymax = np.max(data[:,1])
+
+
+
+        dist_x = xmax - xmin
+        dist_y = ymax - ymin
+        if len(data[0]) == 2:
+            left_add = data[data[:,0] <= xmin + percentage*dist_x] + [dimensions[0],0]
+            right_add = data[data[:,0] >= xmax - percentage*dist_x] - [dimensions[0],0]
+        else:
+            left_add = data[data[:,0] <= xmin + percentage*dist_x] + [dimensions[0],0,0]
+            right_add = data[data[:,0] >= xmax - percentage*dist_x] - [dimensions[0],0,0]
+
+
+        if others is not None:
+            temp_right = []
+            temp_left = []
+            for i in range(len(others)):
+                temp_left.append(others[i][data[:,0] <= xmin + percentage*dist_x])
+                temp_right.append(others[i][data[:,0] >= xmax - percentage*dist_x])
+
+
+
+
+        data = np.concatenate([data, left_add, right_add], axis = 0)
+
+        if others is not None:
+            for i in range(len(others)):
+                others[i] = np.concatenate([others[i], temp_left[i], temp_right[i]], axis = 0)
+
+        # Extent in y
+        if len(data[0]) == 2:
+            up_add = data[data[:,1] <= ymin + percentage*dist_y] + [0,dimensions[1]]
+            low_add = data[data[:,1] >= ymax - percentage*dist_y] - [0,dimensions[1]]
+        else:
+            up_add = data[data[:,1] <= ymin + percentage*dist_y] + [0,dimensions[1],0]
+            low_add = data[data[:,1] >= ymax - percentage*dist_y] - [0,dimensions[1],0]
+
+
+        if others is not None:
+            temp_up = []
+            temp_low = []
+            for i in range(len(others)):
+                temp_up.append(others[i][data[:,1] <= ymin + percentage*dist_y])
+                temp_low.append(others[i][data[:,1] >= ymax - percentage*dist_y])
+              
+
+
+        data = np.concatenate([data, up_add, low_add], axis = 0)
+        if others is not None:
+            for i in range(len(others)):
+                others[i] = np.concatenate([others[i], temp_up[i], temp_low[i]], axis = 0)
+
+        if others is not None:
+            return data, others
+        return data
+
 
 
     def packing_defects(self,
                         layer = 'top',
                         nbins = 180,
                         height = False,
+                        periodic = False,
+                        edges = None,
+                        area = True,
+                        count = True,
                         ):
-        """_summary_
+        """Compute packing deffects based on packmem: https://doi.org/10.1016/j.bpj.2018.06.025
 
-        Args:
-            start (int, optional): Frame to start. Defaults to None.
-            final (int, optional): Frame to finish. Defaults to None.
-            step (int, optional): Frames to skip. Defaults to None.
-            layer (str, optional): working layer (top/bot). Defaults to 'top'.
-            nbins (int, optional): Number of bins of the xy grid. Defaults to 180.
-            height (bool, optional): Store height matrix (To study deepness of th epacking defects). Defaults to False.
+        Parameters
+        ----------
+        layer : str, optional
+            working layer (top/bot). Defaults to 'top', by default 'top'
+        nbins : int, optional
+            Number of bins of the xy grid, by default 180
+        height : bool, optional
+            Store height matrix (To study deepness of th packing defects), by default False
+        periodic : bool, optional
+            Defines if using periodicity or not. When True, takes into acount periodicity and returns a 2D grid with of the size of the periodic box, by default False
+        vmin : float, optional
+            Store the min value for x and y
+        vmax : float, optional
+            Store the max value for x and y
 
-        Returns:
-            ndarray : If height == Flase: matrix with pcking deffects
-            ndarray, ndarray : If height === True: matrix with pcking deffects, amtrix with height information
+        Returns
+        -------
+        ndarray
+            If height == Flase: matrix with packing deffects
+        ndarray, ndarray
+            If height === True: matrix with packing deffects, amtrix with height information
         """
 
+        if edges is not None:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
+            dx = xmax-xmin
+            dy = ymax-ymin
+            if int(dx) != int(dy):
+                print(dx,dy)
+                print("Distances in x and y must be equal")
+                return
+        else:
+            xmin = self.v_min
+            ymin = self.v_min
+            xmax = self.v_max
+            ymax = self.v_max
+
+
+        
+        
+        grid_size = abs(xmin - xmax)/nbins
+        n_aug = int(4/grid_size)
+        print("augmentation",n_aug, grid_size)
+
+        # Extend the grid 5 Amstrong to azure all the packing defects are correctly taken
+
+        xmin_ex = xmin - n_aug * grid_size
+        xmax_ex = xmax + n_aug * grid_size
+        ymin_ex = ymin - n_aug * grid_size
+        ymax_ex = ymax + n_aug * grid_size
+        #vmin_ex = vmin - n_aug * grid_size
+        #vmax_ex = vmax + n_aug * grid_size
+        nbins_aug = nbins + 2 * n_aug
 
 
 
+        edges = [xmin,xmax,ymin,ymax]
 
 
-        vmin = self.v_min
-        vmax = self.v_max
-        grid_size = abs(vmin - vmax)/nbins
+
 
 
 
         lipid_list = list(self.lipid_list)
-        non_polarity = self.non_polar_dict
 
 
         print("######### Running packing defects function ########## ")
@@ -1264,49 +1537,110 @@ class twod_analysis:
 
 
 
-        #### Loop over trajectory to find the lipids in the requested membrane
+
         pos_data = []
 
+        #### Define radious to be used for the different atoms
         mat_radii_dict = {}
         for atom in self.radii_dict.keys():
             mat_radii_dict[atom] = self.create_circle_array(grid_size, self.radii_dict[atom])
 
 
-        matrix = np.zeros((nbins+2, nbins+2))
+        # Create matrix to be filled
+        matrix = np.zeros((nbins_aug+2, nbins_aug+2))
         if height:
-            matrix_height = np.zeros((nbins+2, nbins+2))
+            matrix_height = np.zeros((nbins_aug, nbins_aug))
         positions = all_p.positions[:,2]
         mean_z = positions.mean()
-
+        dims = self.u.trajectory.ts.dimensions[:2]
         for lipid in self.lipid_list:
 
 
             selection_string = f"byres ((resname {lipid} and name {self.working_lip[lipid]['head']}) and prop z {sign} {mean_z})"
             #print(selection_string)
             layer_at = self.memb.select_atoms(selection_string)
-
-
             pos_ats = layer_at.positions
-            if not height:
-                indexes = self.get_indexes(pos_ats[:,:2], nbins)
-            else:
-                indexes, matrix_temp = self.get_indexes(pos_ats, nbins, matrix_height = True)
-
-                matrix_height = np.maximum(matrix_height.copy(), matrix_temp.copy())
-
             elements = layer_at.elements
             names = layer_at.names
 
-            matrix = self.add_deffects(matrix, indexes,elements, names, lipid, mat_radii_dict)
+            if periodic:
+                #temp = pos_ats.copy()
+                pos_ats, others = self.extend_data(pos_ats, dims, self.periodicity, [elements, names])
+                elements = others[0]
+                names = others[1]
 
+            if not height:
+                indexes = self.get_indexes(pos_ats[:,:2], nbins_aug, edges=[xmin_ex,xmax_ex,ymin_ex,ymax_ex])
+            else:
+                indexes, matrix_temp = self.get_indexes(pos_ats, nbins_aug, edges=[xmin_ex,xmax_ex,ymin_ex,ymax_ex], matrix_height = True)
+                matrix_height = np.maximum(matrix_height.copy(), matrix_temp.copy())
+
+
+            
+            matrix = self.add_deffects(matrix, indexes,elements, names, lipid, mat_radii_dict)
+        #print(f"Shapeeeeeee::::: {matrix.shape}, {matrix_height.shape}, dims {dims}")
+        core1 = 2*(slice(n_aug+1,-(n_aug+1)),)
+        core = 2*(slice(n_aug,-n_aug),)
+        matrix = matrix[core1]
+
+            
+        #print(f"Shapeeeeeee::::: {matrix.shape}, {matrix_height.shape}, dims {dims}")
+
+
+        if periodic:
+            n = round((dims[0]/grid_size))
+            print(n, dims[0]/grid_size, grid_size)
+            xmax = xmin + n*grid_size
+            ymax = ymin + n*grid_size
+            matrix = matrix[:n, :n]
+            if height:
+                matrix_height = matrix_height[:n, :n]
+            edges = [xmin,xmax,ymin,ymax]
+        
+        
+        
+        
+        #print(f"Shapeeeeeee::::: {matrix.shape}, {matrix_height.shape}, dims {dims}")
         deffects = matrix
         deffects = np.where(matrix < 1, matrix, np.nan)
-        deffects = np.where(deffects > 0, deffects, np.nan)
+        #deffects = np.where(deffects > 0, deffects, np.nan)
+        
 
+        return_dict = {
+            "edges" : edges,
+        }
+
+        if area:
+            non_nan = ~np.isnan(deffects)
+            count = np.sum(non_nan)
+            area_v = count*grid_size*grid_size
+            area_tot = (deffects.shape[0])**2 * grid_size*grid_size
+            return_dict["area"] = {"deffects" : area_v,
+                               "total": area_tot}
+        
+        if count:
+            from scipy.ndimage import label
+            binary_matrix = ~np.isnan(deffects)
+            structure = np.array([[1,1,1], [1,1,1], [1,1,1]])
+            labeled_array, num_features = label(binary_matrix, structure = structure)
+            cluster_sizes = np.bincount(labeled_array.ravel())[1:]
+            return_dict["count"] = {"number":num_features, "sizes":cluster_sizes}
+            
+            cluster_sizes  = cluster_sizes[cluster_sizes>10]
+            #plt.hist(cluster_sizes, bins=40)
+            #plt.show()
+
+
+
+        
+        print(return_dict)
         if height:
+            matrix_height = matrix_height[core]
             matrix_height[matrix_height == 0 ] = np.nan
-            return deffects, matrix_height
-        return deffects
+            return deffects, matrix_height, return_dict
+        
+
+        return deffects, return_dict
 
 
 
@@ -1354,8 +1688,13 @@ class twod_analysis:
         print(heads_pos.shape, resnames_pos.shape)
 
         ## Extent data
-        dimensions = self.u.trajectory.ts.dimensions[:3]
+        dimensions = self.u.trajectory.ts.dimensions[:2]
         cons = 0.1
+
+        heads_pos, resnames_pos = self.extend_data(heads_pos, dimensions, cons, others = [resnames_pos])
+        resnames_pos = resnames_pos[0]
+
+        """
         # Extent in x
         left_add = heads_pos[heads_pos[:,0] <= xmin + cons*dist_x] + [dimensions[0],0]
         right_add = heads_pos[heads_pos[:,0] >= xmax - cons*dist_x] - [dimensions[0],0]
@@ -1382,7 +1721,7 @@ class twod_analysis:
         heads_pos = np.concatenate([heads_pos, up_add, low_add], axis = 0)
         resnames_pos = np.concatenate([resnames_pos, up_add_resn, low_add_resn], axis = 0)
         print(heads_pos.shape, resnames_pos.shape)
-
+        """
 
         from scipy.spatial import Voronoi, voronoi_plot_2d
         from scipy.spatial import ConvexHull
