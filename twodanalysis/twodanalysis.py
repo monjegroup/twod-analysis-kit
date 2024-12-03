@@ -1,13 +1,18 @@
 """
 twod_analysis
 =============
-
+Class created mainly to analyze lipid membranes in different ways
 
 Classes
 -------
 
 .. autoclass:: twod_analysis
     :members:
+    :show-inheritance:
+
+
+
+
 """
 
 
@@ -437,7 +442,7 @@ class twod_analysis:
 
     # Get the cos^2(theta) for each carbon in the selection, for sn1
     def individual_order_sn1(self, sel, lipid, n_chain):
-        r"""
+        """
 
         Code to loop over the number of carbons_summary_ in the lipid tail and get a list with the carbon and its
         hydrogens for each carbon in the lipid tail: :math:`[C3i, HiX, HiY, ...]`. This list is passed to get_vectors which
@@ -877,103 +882,7 @@ class twod_analysis:
 
 
 
-    @staticmethod
-    def get_highest(data, min_lenght):
-        """get_highest Code to get the highest value given two columns that are to be ordered in a 2D grid
 
-
-
-        Parameters
-        ----------
-        data : (ndarray(:,2))
-            Array with two columns (column1: map to a 2D grid, column2: values)
-        min_lenght : (int)
-            Size of squares in the 2D grid
-
-        Returns
-        -------
-        ndarray(:,2)
-            With the maximun of each grid square
-        """
-        
-
-        columns = ["index", "weight"] # Data expected is an np array with columns ["index", "x", "y", "z"]
-        df = pd.DataFrame(data, columns = columns)
-        result = df.groupby('index', as_index=False)['weight'].max()
-        result_dict = dict(zip(result['index'], result['weight']))
-        hist = []
-        for i in range(min_lenght):
-            try:
-                hist.append(result_dict[i])
-            except:
-                hist.append(np.nan)
-        return np.array(hist)
-
-
-    # Computes  and return the indexes of the data if where arranegd in a 2d histogram
-    def get_indexes(self,
-                    data,
-                    bins = 10,
-                    edges = None,
-                    matrix_height = False):
-                    
-
-
-        if edges is not None:
-            xmin = edges[0]
-            xmax = edges[1]
-            ymin = edges[2]
-            ymax = edges[3]
-        else:
-            xmin = self.v_min
-            ymin = self.v_min
-            xmax = self.v_max
-            ymax = self.v_max
-
-
-        ran = [[xmin,xmax],[ymin,ymax]]
-
-
-        nbin = np.empty(2,np.intp)
-        edges = 2*[None]
-
-        for i in range(2):
-            edges[i] = np.linspace(ran[i][0], ran[i][1], bins +1)
-            nbin[i] = len(edges[i]) + 1
-
-
-        if not matrix_height:
-
-            indexes = (tuple(np.searchsorted(edges[i], data[:,i], side = "right") for i in range(2)))
-        else:
-            indexes = (tuple(np.searchsorted(edges[i], data[:,i], side = "right") for i in range(2)))
-
-            xy = np.ravel_multi_index(indexes, nbin)
-            xy_test = xy.reshape(-1,1)
-
-            #print("last shape", data[:,2].reshape(-1,1).shape, xy_test.shape)
-            xy_test = np.concatenate((xy_test, data[:,2].reshape(-1,1)), axis = 1)
-            hist = self.get_highest(xy_test, nbin.prod())
-
-
-            hist = hist.reshape(nbin)
-            hist = hist.astype(float, casting = "safe")
-            hist[np.isnan(hist)] = 0
-            core = 2*(slice(1,-1),)
-            hist = hist[core]
-            #print("here", hist[20,:])
-            return indexes, hist
-
-        #for i in range(2):
-        #    on_edge = (data[:,i] == edges[i][-1])
-        #    Ncount[i][on_edge] -= 1
-        #print(np.min(Ncount[0]), np.max(Ncount[0]), np.min(Ncount[1]), np.max(Ncount[1]))
-        #print(len(edges[0]), "edges len")
-
-
-
-
-        return indexes
 
 
 
@@ -1214,9 +1123,6 @@ class twod_analysis:
         np.array, np.array
             Matrix with the thickness, edeges for the matrix
         """
-
-
-
         lipids = list(self.lipid_list)
         lipids.remove("CHL1")
         matrix_up, edges = self.height_matrix(lipids,
@@ -1256,10 +1162,6 @@ class twod_analysis:
         float, float
             minimun and max position in x,y
         """
-
-                
-
-
         positions = self.memb.positions[:,:2]
         if all:
             xmin = np.min(positions[:,0])
@@ -1271,171 +1173,11 @@ class twod_analysis:
         vmax = np.max(positions)
 
         return vmin,vmax
-
-    @staticmethod
-    def create_circle_array(grid_size, radius_A, center=None):
-        """Create a small matrix with a inner circle of the size of radius_A
-
-        Args:
-            grid_size (float): define the grid size to create the optimun grid (Amstrongs)
-            radius_A (float): define the radius for the matrix (amstrongs)
-            center (bool, optional): Bool to set the center of the circle. Defaults to None.
-
-        Returns:
-            np.array : array with a circle of ones
-        """
-
-        n = int(2*radius_A /grid_size) + 1
-        if n % 2 == 0:
-            n += 1
-
-        # Create an n x n array initialized to 1
-        array = np.zeros((n, n))
-
-        # Default the center to the middle of the array if not provided
-        if center is None:
-            center = (n // 2, n // 2)
-
-        # Generate a grid of indices
-        y, x = np.ogrid[:n, :n]
-
-        #   Calculate the distance from each grid point to the center
-        distance_from_center = (x - center[1])**2 + (y - center[0])**2
-
-
-        # Set values to 2 within the circle of the given radius
-        array[distance_from_center <= (radius_A/grid_size)**2] = 1
-
-        return array
-
-    @staticmethod
-    def add_small_matrix(big_matrix, small_matrix, center_i, center_j):
-        """Add smmall matrix to a big matrix
-
-        Args:
-            big_matrix (ndarray(n,n)): big matrix where a small  matrix will be added
-            small_matrix (ndarray(m,m)): small matrix to be added
-            center_i (int): i coordinate
-            center_j (int): j coordunate
-
-        Returns:
-            big_matrix (ndarray(n,n)): big matrix modified
-        """
-
-    # Calculate the top-left corner of the submatrix in big_matrix
-        start_i = center_i - small_matrix.shape[0] // 2
-        start_j = center_j - small_matrix.shape[1] // 2
-        end_i = start_i + small_matrix.shape[0]
-        end_j = start_j + small_matrix.shape[1]
-
-    # Handle boundaries to ensure indices stay within big_matrix
-        big_start_i = max(0, start_i)
-        big_start_j = max(0, start_j)
-        big_end_i = min(big_matrix.shape[0], end_i)
-        big_end_j = min(big_matrix.shape[1], end_j)
-
-    # Calculate the overlapping region for small_matrix
-        small_start_i = big_start_i - start_i
-        small_start_j = big_start_j - start_j
-        small_end_i = small_start_i + (big_end_i - big_start_i)
-        small_end_j = small_start_j + (big_end_j - big_start_j)
-
-    # Add the overlapping region of small_matrix to the big_matrix
-        big_matrix[big_start_i:big_end_i, big_start_j:big_end_j] += small_matrix[small_start_i:small_end_i, small_start_j:small_end_j]
-
-        return big_matrix
-
-    def add_deffects(self,
-                    matrix,
-                    indexes,
-                    elements,
-                    names,
-                    lipid,
-                    mat_radii_dict):
-        """ Code to easily add deffects in the 2d matrix
-        Args:
-            matrix (ndarray(n,n)): Matrix where the deffects are going to be added
-            indexes (ndarray(i,j)): List of indexes i,j in the matrix where the deffects should be added
-            elements (list): type of element (needed to put the right radious)
-            names (list): names of the atoms (needed to map hydrophobic and not hydrophobic atoms)
-            lipid (str): lipid name
-            mat_radii_dict (dict): dictionary with the radii
-
-        Returns:
-            ndarray: matrix matrix filled with the deffects
-        """
-        matrix = matrix
-
-        for i in range(len(indexes[0])):
-
-            small_matrix = mat_radii_dict[elements[i]]
-
-            if names[i] in self.non_polar_dict[lipid]:
-                small_matrix = small_matrix * 0.0001
-            self.add_small_matrix(matrix, small_matrix, indexes[0][i], indexes[1][i])
-        return matrix
     
-    @staticmethod
-    def extend_data(data, dimensions, percentage, others = None):
-        xmin = np.min(data[:,0])
-        xmax = np.max(data[:,0])
-        ymin = np.min(data[:,1])
-        ymax = np.max(data[:,1])
+
+    ################## Pcaking deffects related code ###############
 
 
-
-        dist_x = xmax - xmin
-        dist_y = ymax - ymin
-        if len(data[0]) == 2:
-            left_add = data[data[:,0] <= xmin + percentage*dist_x] + [dimensions[0],0]
-            right_add = data[data[:,0] >= xmax - percentage*dist_x] - [dimensions[0],0]
-        else:
-            left_add = data[data[:,0] <= xmin + percentage*dist_x] + [dimensions[0],0,0]
-            right_add = data[data[:,0] >= xmax - percentage*dist_x] - [dimensions[0],0,0]
-
-
-        if others is not None:
-            temp_right = []
-            temp_left = []
-            for i in range(len(others)):
-                temp_left.append(others[i][data[:,0] <= xmin + percentage*dist_x])
-                temp_right.append(others[i][data[:,0] >= xmax - percentage*dist_x])
-
-
-
-
-        data = np.concatenate([data, left_add, right_add], axis = 0)
-
-        if others is not None:
-            for i in range(len(others)):
-                others[i] = np.concatenate([others[i], temp_left[i], temp_right[i]], axis = 0)
-
-        # Extent in y
-        if len(data[0]) == 2:
-            up_add = data[data[:,1] <= ymin + percentage*dist_y] + [0,dimensions[1]]
-            low_add = data[data[:,1] >= ymax - percentage*dist_y] - [0,dimensions[1]]
-        else:
-            up_add = data[data[:,1] <= ymin + percentage*dist_y] + [0,dimensions[1],0]
-            low_add = data[data[:,1] >= ymax - percentage*dist_y] - [0,dimensions[1],0]
-
-
-        if others is not None:
-            temp_up = []
-            temp_low = []
-            for i in range(len(others)):
-                temp_up.append(others[i][data[:,1] <= ymin + percentage*dist_y])
-                temp_low.append(others[i][data[:,1] >= ymax - percentage*dist_y])
-              
-
-
-        data = np.concatenate([data, up_add, low_add], axis = 0)
-        if others is not None:
-            for i in range(len(others)):
-                others[i] = np.concatenate([others[i], temp_up[i], temp_low[i]], axis = 0)
-
-        if others is not None:
-            return data, others
-        return data
 
 
 
@@ -1495,7 +1237,7 @@ class twod_analysis:
         
         grid_size = abs(xmin - xmax)/nbins
         n_aug = int(4/grid_size)
-        print("augmentation",n_aug, grid_size)
+
 
         # Extend the grid 5 Amstrong to azure all the packing defects are correctly taken
 
@@ -1644,19 +1386,379 @@ class twod_analysis:
 
 
 
-    ####### Code related to area per lipid using voronoi tesselation and delunay triangulations
+
+
+    @staticmethod
+    def create_circle_array(grid_size, radius_A, center=None):
+        """Create a small matrix with a inner circle of the size of radius_A
+
+        Parameters
+        ----------
+        grid_size : float
+            define the grid size to create the optimun grid (Amstrongs)
+        radius_A : float
+            define the radius for the matrix (amstrongs)
+        center : bool, optional
+            Bool to set the center of the circle, by default None
+
+        Returns
+        -------
+        ndarray
+            array with a circle of ones
+        """
+
+
+
+        n = int(2*radius_A /grid_size) + 1
+        if n % 2 == 0:
+            n += 1
+
+        # Create an n x n array initialized to 1
+        array = np.zeros((n, n))
+
+        # Default the center to the middle of the array if not provided
+        if center is None:
+            center = (n // 2, n // 2)
+
+        # Generate a grid of indices
+        y, x = np.ogrid[:n, :n]
+
+        #   Calculate the distance from each grid point to the center
+        distance_from_center = (x - center[1])**2 + (y - center[0])**2
+
+
+        # Set values to 2 within the circle of the given radius
+        array[distance_from_center <= (radius_A/grid_size)**2] = 1
+
+        return array
+
+    @staticmethod
+    def add_small_matrix(big_matrix, small_matrix, center_i, center_j):
+        """Add smmall matrix to a big matrix
+
+        Parameters
+        ----------
+        big_matrix : ndarray(n,n)
+            big matrix where a small  matrix will be added
+        small_matrix : ndarray(m,m)
+            small matrix to be added
+        center_i : int
+             i coordinate
+        center_j : int
+             j coordinate
+
+        Returns
+        -------
+        ndarray(n,n)
+            big matrix modified
+        """
+    # Calculate the top-left corner of the submatrix in big_matrix
+        start_i = center_i - small_matrix.shape[0] // 2
+        start_j = center_j - small_matrix.shape[1] // 2
+        end_i = start_i + small_matrix.shape[0]
+        end_j = start_j + small_matrix.shape[1]
+
+    # Handle boundaries to ensure indices stay within big_matrix
+        big_start_i = max(0, start_i)
+        big_start_j = max(0, start_j)
+        big_end_i = min(big_matrix.shape[0], end_i)
+        big_end_j = min(big_matrix.shape[1], end_j)
+
+    # Calculate the overlapping region for small_matrix
+        small_start_i = big_start_i - start_i
+        small_start_j = big_start_j - start_j
+        small_end_i = small_start_i + (big_end_i - big_start_i)
+        small_end_j = small_start_j + (big_end_j - big_start_j)
+
+    # Add the overlapping region of small_matrix to the big_matrix
+        big_matrix[big_start_i:big_end_i, big_start_j:big_end_j] += small_matrix[small_start_i:small_end_i, small_start_j:small_end_j]
+
+        return big_matrix
+
+    def add_deffects(self,
+                    matrix,
+                    indexes,
+                    elements,
+                    names,
+                    lipid,
+                    mat_radii_dict):
+        """Code to easily add deffects in the 2d matrix
+
+        Parameters
+        ----------
+        matrix : ndarray(n,n)
+            Matrix where the deffects are going to be added
+        indexes : ndarray(i,j)
+            List of indexes i,j in the matrix where the deffects should be added
+        elements : list
+            type of element (needed to put the right radious)
+        names : list
+            names of the atoms (needed to map hydrophobic and not hydrophobic atoms)
+        lipid : str
+            lipid name
+        mat_radii_dict : dict
+            dictionary with the radii
+
+        Returns
+        -------
+        ndarray
+            matrix matrix filled with the deffects
+        """
+
+        matrix = matrix
+
+        for i in range(len(indexes[0])):
+
+            small_matrix = mat_radii_dict[elements[i]]
+
+            if names[i] in self.non_polar_dict[lipid]:
+                small_matrix = small_matrix * 0.0001
+            self.add_small_matrix(matrix, small_matrix, indexes[0][i], indexes[1][i])
+        return matrix
+    
+    @staticmethod
+    def extend_data(data, dimensions, percentage, others = None):
+        """ Function to extent data for periodicity purposes
+
+        Parameters
+        ----------
+        data : ndarray(:,2)
+            data in 2D fashion
+        dimensions : ndarray(2)
+            periodicity dimension (usually gottem from u.ts.dimensions[:2])
+        percentage : float
+            Percentage of data to replicate with periodicity
+        others : list(ndarray(:), ndarray(:),...,ndarray(:)), optional
+            List of other data to replicate with periodicity (ndarrays initially match with data axis 0 dimension), by default None
+
+        Returns
+        -------
+        ndarray
+            Data extended   
+        ndarray, list
+            Data extended, others extended  
+        """
+        xmin = np.min(data[:,0])
+        xmax = np.max(data[:,0])
+        ymin = np.min(data[:,1])
+        ymax = np.max(data[:,1])
+
+
+
+        dist_x = xmax - xmin
+        dist_y = ymax - ymin
+        if len(data[0]) == 2:
+            left_add = data[data[:,0] <= xmin + percentage*dist_x] + [dimensions[0],0]
+            right_add = data[data[:,0] >= xmax - percentage*dist_x] - [dimensions[0],0]
+        else:
+            left_add = data[data[:,0] <= xmin + percentage*dist_x] + [dimensions[0],0,0]
+            right_add = data[data[:,0] >= xmax - percentage*dist_x] - [dimensions[0],0,0]
+
+
+        if others is not None:
+            temp_right = []
+            temp_left = []
+            for i in range(len(others)):
+                temp_left.append(others[i][data[:,0] <= xmin + percentage*dist_x])
+                temp_right.append(others[i][data[:,0] >= xmax - percentage*dist_x])
+
+
+
+
+        data = np.concatenate([data, left_add, right_add], axis = 0)
+
+        if others is not None:
+            for i in range(len(others)):
+                others[i] = np.concatenate([others[i], temp_left[i], temp_right[i]], axis = 0)
+
+        # Extent in y
+        if len(data[0]) == 2:
+            up_add = data[data[:,1] <= ymin + percentage*dist_y] + [0,dimensions[1]]
+            low_add = data[data[:,1] >= ymax - percentage*dist_y] - [0,dimensions[1]]
+        else:
+            up_add = data[data[:,1] <= ymin + percentage*dist_y] + [0,dimensions[1],0]
+            low_add = data[data[:,1] >= ymax - percentage*dist_y] - [0,dimensions[1],0]
+
+
+        if others is not None:
+            temp_up = []
+            temp_low = []
+            for i in range(len(others)):
+                temp_up.append(others[i][data[:,1] <= ymin + percentage*dist_y])
+                temp_low.append(others[i][data[:,1] >= ymax - percentage*dist_y])
+              
+
+
+        data = np.concatenate([data, up_add, low_add], axis = 0)
+        if others is not None:
+            for i in range(len(others)):
+                others[i] = np.concatenate([others[i], temp_up[i], temp_low[i]], axis = 0)
+
+        if others is not None:
+            return data, others
+        return data
+
+
+
+
+    
+
+    @staticmethod
+    def get_highest(data, min_lenght):
+        """ Code to get the highest value given two columns that are to be ordered in a 2D grid
+        Parameters
+        ----------
+        data : (ndarray(:,2))
+            Array with two columns (column1: map to a 2D grid, column2: values)
+        min_lenght : (int)
+            Size of squares in the 2D grid
+
+        Returns
+        -------
+        ndarray(:,2)
+            With the maximun of each grid square
+        """
+        
+
+        columns = ["index", "weight"] # Data expected is an np array with columns ["index", "x", "y", "z"]
+        df = pd.DataFrame(data, columns = columns)
+        result = df.groupby('index', as_index=False)['weight'].max()
+        result_dict = dict(zip(result['index'], result['weight']))
+        hist = []
+        for i in range(min_lenght):
+            try:
+                hist.append(result_dict[i])
+            except:
+                hist.append(np.nan)
+        return np.array(hist)
+
+
+    # Computes  and return the indexes of the data if where arranegd in a 2d histogram
+    def get_indexes(self,
+                    data,
+                    bins = 10,
+                    edges = None,
+                    matrix_height = False):
+        """given data in 2D, the code returns the indexes to locate the data in the 2D grid defined by edges and bins
+
+        Parameters
+        ----------
+        data : ndarray(n,2 o 3)
+            Data in 2D fashion, (3 columns if height = True)
+        bins : int, optional
+            number of bins of the grid, by default 10
+        edges : list, optional
+            Edges in the following way [xmin,xmax,ymin,ymax], by default None
+        matrix_height : bool, optional
+            returns the height matrix (matrix with only the lipids closer to water), by default False
+
+        Returns
+        -------
+        tuple
+            tuple with the indexes 
+        
+        tuple, ndarray(bins,bins)
+            tuple with indexes and 2D data of the highest point
+        """
+                    
+
+
+        if edges is not None:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
+        else:
+            xmin = self.v_min
+            ymin = self.v_min
+            xmax = self.v_max
+            ymax = self.v_max
+
+
+        ran = [[xmin,xmax],[ymin,ymax]]
+
+
+        nbin = np.empty(2,np.intp)
+        edges = 2*[None]
+
+        for i in range(2):
+            edges[i] = np.linspace(ran[i][0], ran[i][1], bins +1)
+            nbin[i] = len(edges[i]) + 1
+
+
+        if not matrix_height:
+
+            indexes = (tuple(np.searchsorted(edges[i], data[:,i], side = "right") for i in range(2)))
+        else:
+            indexes = (tuple(np.searchsorted(edges[i], data[:,i], side = "right") for i in range(2)))
+
+            xy = np.ravel_multi_index(indexes, nbin)
+            xy_test = xy.reshape(-1,1)
+
+            #print("last shape", data[:,2].reshape(-1,1).shape, xy_test.shape)
+            xy_test = np.concatenate((xy_test, data[:,2].reshape(-1,1)), axis = 1)
+            hist = self.get_highest(xy_test, nbin.prod())
+
+
+            hist = hist.reshape(nbin)
+            hist = hist.astype(float, casting = "safe")
+            hist[np.isnan(hist)] = 0
+            core = 2*(slice(1,-1),)
+            hist = hist[core]
+            #print("here", hist[20,:])
+            return indexes, hist
+
+        #for i in range(2):
+        #    on_edge = (data[:,i] == edges[i][-1])
+        #    Ncount[i][on_edge] -= 1
+        #print(np.min(Ncount[0]), np.max(Ncount[0]), np.min(Ncount[1]), np.max(Ncount[1]))
+        #print(len(edges[0]), "edges len")
+
+
+
+
+        return indexes
+    
+
+    ############# End order parameters related code ###############
+
+
+
+    ####### Code related to APL using voronoi tesselation and delunay triangulations
 
     # This part needs scypy to process data
 
     def voronoi_apl(self,
                         layer = 'top',
+                        working_lip = None,
+                        lipid_list = None,
                         ):
+        """Computes the APL for membranes with different lipids
+
+        Parameters
+        ----------
+        layer : str, optional
+            layer to compute the apl, by default 'top'
+        working_lip : dict, optional
+            dictionary mapping lipid and atoms to work for APL, by default None
+        lipid_list : list, optional
+            list of lipids to be considered for APL, by default None
+
+        Returns
+        -------
+        dict
+            dictionary with vertices, areas, and APL
+        """
 
         if layer == "top":
             sign = " > "
         elif layer == "bot":
             sign = " < "
-        lipid_list = list(self.lipid_list)
+
+        if lipid_list is None:
+            lipid_list = list(self.lipid_list)
+        if working_lip is None:
+            working_lip = self.working_lip
         print(self.lipid_list)
 
 
@@ -1674,9 +1776,9 @@ class twod_analysis:
 
         mean_z = positions[:,2].mean()
 
-        selection_string = f"(((resname {lipid_list[0]} and name {self.working_lip[lipid_list[0]]['head']}) and prop z {sign} {mean_z}))"
+        selection_string = f"(((resname {lipid_list[0]} and name {working_lip[lipid_list[0]]['head']}) and prop z {sign} {mean_z}))"
         for lipid in lipid_list[1:]:
-            selection_string += f" or (((resname {lipid} and name {self.working_lip[lipid]['head']}) and prop z {sign} {mean_z}))"
+            selection_string += f" or (((resname {lipid} and name {working_lip[lipid]['head']}) and prop z {sign} {mean_z}))"
 
         print(selection_string)
 
@@ -1694,7 +1796,7 @@ class twod_analysis:
         heads_pos, resnames_pos = self.extend_data(heads_pos, dimensions, cons, others = [resnames_pos])
         resnames_pos = resnames_pos[0]
 
-        """
+        '''
         # Extent in x
         left_add = heads_pos[heads_pos[:,0] <= xmin + cons*dist_x] + [dimensions[0],0]
         right_add = heads_pos[heads_pos[:,0] >= xmax - cons*dist_x] - [dimensions[0],0]
@@ -1721,7 +1823,7 @@ class twod_analysis:
         heads_pos = np.concatenate([heads_pos, up_add, low_add], axis = 0)
         resnames_pos = np.concatenate([resnames_pos, up_add_resn, low_add_resn], axis = 0)
         print(heads_pos.shape, resnames_pos.shape)
-        """
+        '''
 
         from scipy.spatial import Voronoi, voronoi_plot_2d
         from scipy.spatial import ConvexHull
@@ -1795,6 +1897,24 @@ class twod_analysis:
         plt.show()
 
     def map_voronoi(self, voronoi_points, voronoi_areas, nbins, dimensions):
+        """ Function to map voronoi APL to a 2D plane
+
+        Parameters
+        ----------
+        voronoi_points : ndarray(:,2)
+            [x,y] positions of the points to be considered in the voronoi plot
+        voronoi_areas : ndarray(:)
+            Areas correspondng to the points
+        nbins : int
+            number of bins for the grid
+        dimensions : list
+            A list with the lipids of the grid [xmin,xmax,ymin,ymax]
+
+        Returns
+        -------
+        ndarray, edges
+            numpy array (nbins,nbins), adn edges of this array
+        """
         xmin =dimensions[0]
         xmax =dimensions[1]
         ymin =dimensions[2]
@@ -1819,7 +1939,31 @@ class twod_analysis:
 
 
 
-    def grid_apl(self,layer = "top", start = 0, final = -1, step = 1, lipid_list = None, nbins = 180):
+    def grid_apl(self,layer = "top", start = 0, final = -1, step = 1, lipid_list = None, nbins = 180, edges = None):
+        """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
+
+        Parameters
+        ----------
+        layer : str, optional
+            working lipid layer, by default "top"
+        start : int, optional
+            Frame to start, by default 0
+        final : int, optional
+            final frame, by default -1
+        step : int, optional
+            Frames to skip, by default 1
+        lipid_list : list, optional
+            lipids involved in the computation, by default None
+        nbins : int, optional
+            number of bins for the grid, by default 180
+        edges : list, optional
+            A list with the limits of the grid [xmin,xmax,ymin,ymax]
+
+        Returns
+        -------
+        ndarray
+            Array with the averaged 2D APL, edges
+        """
         if lipid_list == None:
             lipid_list = list(self.lipid_list)
         if layer == "top":
@@ -1832,10 +1976,17 @@ class twod_analysis:
         positions = all_p.positions
         mean_z = positions[:,2].mean()
 
-        xmin = self.v_min
-        xmax = self.v_max
-        ymin = self.v_min
-        ymax = self.v_max
+        if edges is None:
+            xmin = self.v_min
+            xmax = self.v_max
+            ymin = self.v_min
+            ymax = self.v_max
+        else:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
+
 
 
         #xmin1 = np.min(positions[:,0])
@@ -1884,9 +2035,36 @@ class twod_analysis:
 
         #plt.plot(indices)
         #plt.show()
-        return final_mat
+        return final_mat, edges
 
-    def windows_apl(self, layer = "top", start = 0, final = -1, step = 1, w_size = 10, lipid_list = None, nbins = 180):
+    def windows_apl(self, layer = "top", start = 0, final = -1, step = 1, w_size = 10, lipid_list = None, nbins = 180, edges = None):
+        """Function to compute APL and map it to a 2D grid in windows of time defined by the user.
+
+        Parameters
+        ----------
+        layer : str, optional
+            Wroking layer, by default "top"
+        start : int, optional
+            Start Frame, by default 0
+        final : int, optional
+            Final frame, by default -1
+        step : int, optional
+            Frames to skip, by default 1
+        w_size : int, optional
+            windows size (number of frames), by default 10
+        lipid_list : list, optional
+            lipids to be included in the analysis, by default None
+        nbins : int, optional
+            nimber of bins in the grid, by default 180
+        edges : list, optional
+            list with the edges of the grid [xmin,xmax,ymin,ymax], by default None
+
+        Returns
+        -------
+        list(ndarrays(nbins,bins)), list
+            list with the windows averages between the start time and the final time, and edges of these matrices
+        """
+
 
         if final == -1:
             final = len(self.u.trajectory)

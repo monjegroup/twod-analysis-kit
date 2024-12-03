@@ -63,6 +63,7 @@ autosummary_generate = True
 autodoc_mock_imports = [
     'twodanalysis.tests'
 ]
+autodoc_member_order = 'bysource'
 napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True
