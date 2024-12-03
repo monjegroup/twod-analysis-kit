@@ -6,7 +6,7 @@ twod_analysis
 Classes
 -------
 
-.. autoclass:: BioPolymer2D_analysis
+.. autoclass:: BioPolymer2D
     :members:
 """
 
@@ -20,7 +20,7 @@ import matplotlib as mpl
 from MDAnalysis.analysis.hydrogenbonds import HydrogenBondAnalysis
 from MDAnalysis.exceptions import SelectionError
 import sys
-class BioPolymer2D_analysis:
+class BioPolymer2D:
     def __init__(self, obj):
         """Initializes the class with either an MDAnalysis Universe or AtomGroup.
 
@@ -282,7 +282,7 @@ class BioPolymer2D_analysis:
         # sys.exit()
 
         pos_centered=pos-np.array([0,to_center[0],to_center[1],0])
-        pos_selected=BioPolymer2D_analysis.FilterMinFrames(pos_centered,zlim,Nframes,control_plots=control_plots)
+        pos_selected=BioPolymer2D.FilterMinFrames(pos_centered,zlim,Nframes,control_plots=control_plots)
 
         print(pos_selected.shape)
 
@@ -561,9 +561,9 @@ class BioPolymer2D_analysis:
         Parameters
         ----------
         zlim : float
-            zlim of BioPolymer2D_analysis.FilterMinFrames(). Only use frames under a zlim threshold, to avoid using frames with desorbed molecule.
+            zlim of BioPolymer2D.FilterMinFrames(). Only use frames under a zlim threshold, to avoid using frames with desorbed molecule.
         Nframes : int
-            Nframes of BioPolymer2D_analysis.FilterMinFrames(). To ensure to have a controled number of frames under zlim threshold.
+            Nframes of BioPolymer2D.FilterMinFrames(). To ensure to have a controled number of frames under zlim threshold.
         inplace : bool, optional
             If True, stores the paths of al contour levels in self.kdeanalysis.paths. Otherwise, it only returns it. By default True
         control_plots : bool, optional
@@ -574,7 +574,7 @@ class BioPolymer2D_analysis:
         list
             List of all paths in all the contour levels.
         """
-        pos_selected=BioPolymer2D_analysis.FilterMinFrames(self.pos,zlim,Nframes,control_plots=control_plots)
+        pos_selected=BioPolymer2D.FilterMinFrames(self.pos,zlim,Nframes,control_plots=control_plots)
         ## Concatenate positions of all residues
         print(pos_selected.shape)
         pos_selected_reshape=np.reshape(pos_selected,(pos_selected.shape[0]*pos_selected.shape[1],pos_selected.shape[2]))
@@ -590,7 +590,7 @@ class BioPolymer2D_analysis:
         Nlvls=len(kde_plot.collections[-1].get_paths())
         print(f"There are {Nlvls} levels in the KDE.")
         for lvl in range(Nlvls):
-            paths=BioPolymer2D_analysis.ListPathsInLevel(kde_plot,lvl,plot_paths=control_plots)
+            paths=BioPolymer2D.ListPathsInLevel(kde_plot,lvl,plot_paths=control_plots)
             if not paths:
                 continue
             # print(np.shape(paths[0]))
@@ -768,7 +768,7 @@ class BioPolymer2D_analysis:
         if not contour_lvls_to_plot:
             contour_lvls_to_plot=range(len(paths_for_contour))
         for lvl in contour_lvls_to_plot:
-            BioPolymer2D_analysis.plotPathsInLevel(paths_for_contour,lvl)
+            BioPolymer2D.plotPathsInLevel(paths_for_contour,lvl)
 
         colors = ['C%s' % i for i in range(10)]  # Define color palette
         num_colors = len(colors)
