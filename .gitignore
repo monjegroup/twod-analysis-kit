@@ -111,6 +111,7 @@ poetry.lock
 
 #Additional ignores
 
+=======
 *.dat
 *.png
 *.gro
@@ -123,3 +124,4 @@ poetry.lock
 *.swp
 *.vmd
 *.gif
+=======
