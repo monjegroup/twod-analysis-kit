@@ -8,6 +8,7 @@ Classes
 
 .. autoclass:: Memb2D
     :members:
+    :undoc-members:
     :show-inheritance:
 
 
@@ -209,7 +210,7 @@ class Memb2D:
 
         Parameters
         ----------
-        lipids : str, optional 
+        lipids : str, optional
             Lipids to show polarity, by default "all"
         """
         aspect_ratio = [1, 1, 1]
@@ -316,7 +317,7 @@ class Memb2D:
         step : int, optional
             frames to skip, by default 1
         method : str, optional
-            method to compute the 2d histogram, by default "numpy" which uses np.histogram2d for each carbon in the lipid tails. 
+            method to compute the 2d histogram, by default "numpy" which uses np.histogram2d for each carbon in the lipid tails.
 
         Returns
         -------
@@ -562,7 +563,7 @@ class Memb2D:
             chains.append(angles)
         chains = np.array(chains) # Expect array of dim (n_chain, n_lipids)
         return chains
-    
+
 
 
     # Computes teh histogram of the average order parameters in each bin
@@ -620,7 +621,7 @@ class Memb2D:
         hist = hist[core]
 
         return hist, edges
-    
+
     # Computes teh histogram of the average order parameters in each bin
     def numpyhistogram2D(self,sample1, weights, n_chain, bins = 10, v_min = None, v_max = None):
         """ Computes the 2D histogram of 2D data with various values taking an average of them
@@ -649,7 +650,7 @@ class Memb2D:
             v_min = np.min(sample1)
         if v_max == None:
             v_max = np.max(sample1)
-        
+
         #print(sample1.shape, weights.shape)
         if type(n_chain) == int:
             n_chain = [n_chain]
@@ -659,7 +660,7 @@ class Memb2D:
 
         count = 0
         mat_chain = []
-        
+
         n_feat = 0
         for chain in n_chain:
             n_feat += chain
@@ -675,12 +676,12 @@ class Memb2D:
             for i in range(chain):
                 temp, xedges, yedges = np.histogram2d(sample1[:,0], sample1[:,1], weights = weights[:,count * n_chain[0]+ i], bins = bins, range = [[v_min, v_max], [v_min, v_max]])
                 matrix += np.abs(temp)
-                
+
             count += 1
             matrix = matrix/(chain*hist)
             matrix[matrix == 0] = np.nan
             mat_chain.append(matrix)
-        
+
         matrix = 0.5*(mat_chain[0] +mat_chain[1])
 
         return matrix, xedges
@@ -695,7 +696,7 @@ class Memb2D:
 
         Parameters
         ----------
-        data : ndarray(n,2 + len(n_chain[0]) or 2 + len(n_chain[0]) +len(n_chain[1])) 
+        data : ndarray(n,2 + len(n_chain[0]) or 2 + len(n_chain[0]) +len(n_chain[1]))
             Array that contains the order parameters data to be averaged.
         min_lenght : int
             size of the data
@@ -744,7 +745,7 @@ class Memb2D:
         result = np.array(result)
         result = result[:,1]
         return result
-    
+
 
     def all_lip_order(self, layer, nbins,
                         v_min = None,
@@ -756,7 +757,7 @@ class Memb2D:
                         plot = False):
         """all_lip_order Find the 2D order parameters for all lipids
 
-     
+
 
         Parameters
         ----------
@@ -818,7 +819,7 @@ class Memb2D:
             plt.close()
 
         return matrices, edges
-    
+
 
     ############## End of order parameters related code ############################3
 
@@ -839,8 +840,8 @@ class Memb2D:
                 result.append([np.nan, np.nan, np.nan])
         result = np.array(result)
         return result
-    
-    
+
+
     # Computes the average vector for each bin, sample are the raw x,y positions and weights are the vectors related to the head
     def pseudohistogram2D(self,sample1, weights, bins = 10, v_min = None, v_max = None):
         if v_min == None:
@@ -927,7 +928,7 @@ class Memb2D:
                 filename = None, include_charge = False):
         """Code to loop over the trajectory and print [x,y,z(referenced to zmean), charge] in a file.
 
-        
+
         Parameters
         ----------
         start : int, optional
@@ -1148,7 +1149,7 @@ class Memb2D:
 
         Parameters
         ----------
-        all : bool, 
+        all : bool,
             If True return the max and min in each axis(x,y), else returns inly a minimun and maximun, by default False
 
         Returns
@@ -1167,7 +1168,7 @@ class Memb2D:
         vmax = np.max(positions)
 
         return vmin,vmax
-    
+
 
     ################## Pcaking deffects related code ###############
 
@@ -1227,8 +1228,8 @@ class Memb2D:
             ymax = self.v_max
 
 
-        
-        
+
+
         grid_size = abs(xmin - xmax)/nbins
         n_aug = int(4/grid_size)
 
@@ -1312,14 +1313,14 @@ class Memb2D:
                 matrix_height = np.maximum(matrix_height.copy(), matrix_temp.copy())
 
 
-            
+
             matrix = self.add_deffects(matrix, indexes,elements, names, lipid, mat_radii_dict)
         #print(f"Shapeeeeeee::::: {matrix.shape}, {matrix_height.shape}, dims {dims}")
         core1 = 2*(slice(n_aug+1,-(n_aug+1)),)
         core = 2*(slice(n_aug,-n_aug),)
         matrix = matrix[core1]
 
-            
+
         #print(f"Shapeeeeeee::::: {matrix.shape}, {matrix_height.shape}, dims {dims}")
 
 
@@ -1332,15 +1333,15 @@ class Memb2D:
             if height:
                 matrix_height = matrix_height[:n, :n]
             edges = [xmin,xmax,ymin,ymax]
-        
-        
-        
-        
+
+
+
+
         #print(f"Shapeeeeeee::::: {matrix.shape}, {matrix_height.shape}, dims {dims}")
         deffects = matrix
         deffects = np.where(matrix < 1, matrix, np.nan)
         #deffects = np.where(deffects > 0, deffects, np.nan)
-        
+
 
         return_dict = {
             "edges" : edges,
@@ -1353,7 +1354,7 @@ class Memb2D:
             area_tot = (deffects.shape[0])**2 * grid_size*grid_size
             return_dict["area"] = {"deffects" : area_v,
                                "total": area_tot}
-        
+
         if count:
             from scipy.ndimage import label
             binary_matrix = ~np.isnan(deffects)
@@ -1361,20 +1362,20 @@ class Memb2D:
             labeled_array, num_features = label(binary_matrix, structure = structure)
             cluster_sizes = np.bincount(labeled_array.ravel())[1:]
             return_dict["count"] = {"number":num_features, "sizes":cluster_sizes}
-            
+
             cluster_sizes  = cluster_sizes[cluster_sizes>10]
             #plt.hist(cluster_sizes, bins=40)
             #plt.show()
 
 
 
-        
+
         print(return_dict)
         if height:
             matrix_height = matrix_height[core]
             matrix_height[matrix_height == 0 ] = np.nan
             return deffects, matrix_height, return_dict
-        
+
 
         return deffects, return_dict
 
@@ -1509,7 +1510,7 @@ class Memb2D:
                 small_matrix = small_matrix * 0.0001
             self.add_small_matrix(matrix, small_matrix, indexes[0][i], indexes[1][i])
         return matrix
-    
+
     @staticmethod
     def extend_data(data, dimensions, percentage, others = None):
         """ Function to extent data for periodicity purposes
@@ -1528,9 +1529,9 @@ class Memb2D:
         Returns
         -------
         ndarray
-            Data extended   
+            Data extended
         ndarray, list
-            Data extended, others extended  
+            Data extended, others extended
         """
         xmin = np.min(data[:,0])
         xmax = np.max(data[:,0])
@@ -1580,7 +1581,7 @@ class Memb2D:
             for i in range(len(others)):
                 temp_up.append(others[i][data[:,1] <= ymin + percentage*dist_y])
                 temp_low.append(others[i][data[:,1] >= ymax - percentage*dist_y])
-              
+
 
 
         data = np.concatenate([data, up_add, low_add], axis = 0)
@@ -1595,7 +1596,7 @@ class Memb2D:
 
 
 
-    
+
 
     @staticmethod
     def get_highest(data, min_lenght):
@@ -1612,7 +1613,7 @@ class Memb2D:
         ndarray(:,2)
             With the maximun of each grid square
         """
-        
+
 
         columns = ["index", "weight"] # Data expected is an np array with columns ["index", "x", "y", "z"]
         df = pd.DataFrame(data, columns = columns)
@@ -1649,12 +1650,12 @@ class Memb2D:
         Returns
         -------
         tuple
-            tuple with the indexes 
-        
+            tuple with the indexes
+
         tuple, ndarray(bins,bins)
             tuple with indexes and 2D data of the highest point
         """
-                    
+
 
 
         if edges is not None:
@@ -1712,7 +1713,7 @@ class Memb2D:
 
 
         return indexes
-    
+
 
     ############# End order parameters related code ###############
 

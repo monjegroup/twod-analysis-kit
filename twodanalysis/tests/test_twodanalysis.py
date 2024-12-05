@@ -6,7 +6,7 @@ Unit and regression test for the twodanalysis package.
 import sys
 import pytest
 import twodanalysis
-
+import BioPolymer2D
 
 def test_twodanalysis_imported():
     """Sample test, will always pass so long as import statement worked"""
