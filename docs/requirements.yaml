@@ -9,6 +9,6 @@ dependencies:
   - pip
 
   - mdanalysis-sphinx-theme >=1.0.1
-  - imageio
+  - imageio>=2.36.0
     # Pip-only installs
   #- pip:
