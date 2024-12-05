@@ -17,7 +17,7 @@
 
    .. autosummary::
    
-      twod_analysis
+      Memb2D
    
    
 
