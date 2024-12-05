@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from scipy.integrate import simps
+
 import time
-from matplotlib.patches import Patch
-import nglview as nv
+
+
 from twodanalysis import Memb2D
 import imageio
 import os
@@ -204,7 +204,7 @@ for ts in membrane.u.trajectory[51:500:2]:
 
     edges = return_dict["edges"]
 
-    
+
 
     area = f" deffects: {return_dict['area']['deffects']}, total {return_dict['area']['total']} "
     area_p = f"percentage : {return_dict['area']['deffects']/return_dict['area']['total']}"
