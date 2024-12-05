@@ -7,7 +7,7 @@ Welcome to 2D Analysis's documentation!
 =========================================================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 5
    :caption: Contents:
 
    getting_started

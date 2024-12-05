@@ -5,5 +5,15 @@ API Documentation
    :toctree: autosummary
    :recursive:
 
-   twodanalysis
+
+.. autoclass:: twodanalysis.twodanalysis.Memb2D
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: twodanalysis.BioPolymer2D.BioPolymer2D
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 

@@ -27,6 +27,7 @@
    :toctree:
    :recursive:
 
+   twodanalysis.BioPolymer2D
    twodanalysis.data
    twodanalysis.twodanalysis
 
