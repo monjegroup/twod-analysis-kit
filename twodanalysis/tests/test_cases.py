@@ -8,7 +8,7 @@ import time
 
 
 from twodanalysis import Memb2D
-import imageio
+#import imageio
 import os
 import time
 
@@ -144,7 +144,7 @@ for key in lipid_polar.keys():
 
 """
 
-
+"""
 #membrane.visualize_polarity()
 
 #print(membrane.non_polar_dict["POPE"])
@@ -244,7 +244,7 @@ plt.plot(data["frame"], data["rolling"])
 plt.show()
 plt.close()
 
-
+"""
 
 
 #### Membrane thickness related code ##########
@@ -293,6 +293,11 @@ plt.show()
 
 #membrane.map_voronoitest(voronoi_dict["vertices"], voronoi_dict["areas"], 100, [membrane.v_min, membrane.v_max, membrane.v_min, membrane.v_max])
 #membrane.map_voronoi(voronoi_dict["points"], voronoi_dict["areas"], 300, [membrane.v_min, membrane.v_max, membrane.v_min, membrane.v_max])
+
+
+
+
+
 '''
 resu = membrane.grid_apl(layer = "top", start = 100, final = 101, step = 1, lipid_list = None)
 print(resu)
@@ -326,3 +331,4 @@ plt.close()
 #plt.plot(list(range(len(lista))),lista)
 #print(indices)
 #plt.show()
+
