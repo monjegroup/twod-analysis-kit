@@ -3,13 +3,13 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from protein2D_analysis import BioPolymer2D_analysis
+from BioPolymer2D import BioPolymer2D
 
 
 trj_path='/home/antonio/Desktop/VIRMAT/Paper_PB_KDE/SIMs/RBD-PBLs_wGlyc_closed_layed/glyc_head/rep1/omicron_10/'
 u=mda.Universe(f"{trj_path}md_0_1.tpr",f"{trj_path}md_short_compact.xtc")
 sel = u.select_atoms("resid 193-200 or protein")
-ag_analysis = BioPolymer2D_analysis(sel)
+ag_analysis = BioPolymer2D(sel)
 ag_analysis.system_name='Omicron PBL1'
 ag_analysis.getPositions()
 # print(ag_analysis.pos.shape)
@@ -19,7 +19,7 @@ Nframes=200
 print('########### TEST GENERAL MODULES #############')
 
 pos=ag_analysis.getPositions(inplace=False)
-pos_selected=BioPolymer2D_analysis.FilterMinFrames(pos,zlim=zlim, Nframes=Nframes, control_plots=False)
+pos_selected=BioPolymer2D.FilterMinFrames(pos,zlim=zlim, Nframes=Nframes, control_plots=False)
 # print(ag_analysis.pos.shape)
 # print(pos_selected)
 print('############# TEST POLAR ANALYSIS ############')
@@ -43,7 +43,7 @@ print(areas)
 print('##### TEST HBONDS PLOTS #####')
 
 sel_for_path = u.select_atoms("resid 193-200")
-ag_for_path = BioPolymer2D_analysis(sel_for_path)
+ag_for_path = BioPolymer2D(sel_for_path)
 ag_for_path.getPositions()
 paths=ag_for_path.getKDEAnalysis(zlim,Nframes)
 ag_analysis.getHbonds('resname DOL','resid 193-200', update_selections=False,trj_plot=False)
