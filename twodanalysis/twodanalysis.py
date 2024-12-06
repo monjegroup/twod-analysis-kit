@@ -185,6 +185,7 @@ class Memb2D:
         self.start = 0
         self.final = 100
         self.step = 1
+        self.verbose = verbose
 
         if verbose:
             print(f"This system contains the following lipids : {self.lipid_list}\n\n")
@@ -907,8 +908,11 @@ class Memb2D:
 
     @staticmethod
     def build_name(resnames_list):
-        string = " (name " + resnames_list[0]
 
+        if isinstance(resnames_list, str):
+            return f"(name {resnames_list})"
+
+        string = " (name " + resnames_list[0]
         for resname in resnames_list[1:]:
             string = string + " or name " + resname
 
@@ -918,11 +922,13 @@ class Memb2D:
 
 
 
+
+
     def surface(self,
                 start = None,
                 final = None,
                 step = None,
-                lipid = "DSPC",
+                lipids = "DSPC",
                 layer = 'top',
                 filename = None, include_charge = False):
         """Code to loop over the trajectory and print [x,y,z(referenced to zmean), charge] in a file.
@@ -936,7 +942,7 @@ class Memb2D:
             Final frame, by default None
         step : int, optional
             Frames to skip, by default None
-        lipid : str, optional
+        lipids : str or list, optional
              Lipid to work, by default "DSPC"
         layer : str, optional
             Layer to work, by default 'top'
@@ -958,16 +964,15 @@ class Memb2D:
             final = self.final
         if step == None:
             step = self.step
-        if filename == None:
-            filename = f"{lipid}_{layer}_{start}_{final}.dat"
+
         lipid_list = self.lipid_list
 
-
-        print("######### Running surface function ########## ")
-        print(f"We will compute the surface files for a membrane with there lipids {lipid_list}")
-        print(f"Currently working on: {lipid}")
-        print(f"Layer: {layer}")
-        print(f"Writing under the name of {filename}")
+        if self.verbose:
+            print("######### Running surface function ########## ")
+            print(f"We will compute the surface files for a membrane with there lipids {lipid_list}")
+            print(f"Currently working on: {lipids}")
+            print(f"Layer: {layer}")
+            print(f"Writing under the name of {filename}")
 
 
         if layer == "top":
@@ -979,6 +984,20 @@ class Memb2D:
         ##### Select all the P atoms to find the middle of the membrane
         all_p = self.all_head
 
+        if isinstance(lipids, list):
+
+            names = f" {self.build_name(self.working_lip[lipids[0]]['head'])}"
+            selection_string = f"(resname {lipids[0]} and {names}) "
+            for lipid in lipids[1:]:
+                selection_string += f" or (resname {lipid} and {self.build_name(self.working_lip[lipid]['head'])}) "
+            if filename == None:
+                filename = f"{lipids[0]}_{layer}_{start}_{final}.dat"
+        else:
+            selection_string = f"(resname {lipids} and {self.build_name(self.working_lip[lipids]['head'])}) "
+            if filename == None:
+                filename = f"{lipids}_{layer}_{start}_{final}.dat"
+
+
 
 
         #### Loop over trajectory to find the lipids in the requested membrane
@@ -989,20 +1008,24 @@ class Memb2D:
 
             # Selects the lipid head and of the working lipid
             if layer == "both":
-                selection_string = f"(resname {lipid} and name {self.working_lip[lipid]['head']})"
+                final_selection_string = selection_string
             else:
-                selection_string = f"(resname {lipid} and name {self.working_lip[lipid]['head']}) and prop z {sign} {str(mean_z)}"
+                #print(selection_string)
+                final_selection_string = f"({selection_string}) and prop z {sign} {str(mean_z)}"
 
             # Find the positions of the P atoms
-            atoms = self.u.select_atoms(selection_string)
+            atoms = self.u.select_atoms(final_selection_string)
 
             ### Get positions
-            atom_pos = atoms.positions
+            atom_pos = atoms.center_of_mass(compound="residues")
+            #print(atom_pos.shape)
+
 
 
             ### Get resids
-            atom_resid = atoms.resids
+            atom_resid = atoms.residues.resids
             atom_resid = atom_resid[:,np.newaxis]
+            #print(atom_resid.shape)
 
             atom_pos = np.concatenate((atom_pos, atom_resid), axis = 1)
             atom_pos[:,2] = np.abs(atom_pos[:,2]-mean_z)
@@ -1022,7 +1045,7 @@ class Memb2D:
         return df_data   # Maybe have to change, it does not make sense to return thi
 
 
-    def height_matrix(self, lipids, layer,start = None, final = None, step = None, nbins = 50, clean = True):
+    def height_matrix(self, lipids, layer, edges = None, start = None, final = None, step = None, nbins = 50, clean = True):
         """ Code to divide the space in a 2D grid and compute the height referenced to zmean
 
         Parameters
@@ -1031,6 +1054,8 @@ class Memb2D:
             Lipids to include in the height analysis
         layer : str
             Working layer for thickness
+        edges : list
+            Edges for the grid
         start : int, optional
             Frame to start analysis, by default None
         final : int, optional
@@ -1049,41 +1074,41 @@ class Memb2D:
         """
 
 
-        if start == None:
+        if start is None:
             start = self.start
-        if final == None:
+        if final is None:
             final = self.final
-        if step == None:
+        if step is None:
             step = self.step
 
 
         print(f"Computing matrix for {layer} in frames {start}-{final}")
         data = []
-        for lipid in lipids:
-            filename = f"{lipid}_{layer}_{start}-{final}.dat"
-            if not clean:
-                try:
-                    df_data = pd.read_csv(f"pd_{filename}")
-                except:
-                    self.surface(lipid = lipid, layer = layer, filename = filename, include_charge = True, start = start, final = final)
-                    df_data = pd.read_csv(f"pd_{filename}")
-            else:
-                self.surface(lipid = lipid, layer = layer, filename = filename, include_charge = True, start = start, final = final)
+
+        filename = f"{lipids[0]}_{layer}_{start}-{final}.dat"
+        if not clean:
+            try:
                 df_data = pd.read_csv(f"pd_{filename}")
+            except:
+                df_data = self.surface(lipids = lipids, layer = layer, filename = filename, include_charge = True, start = start, final = final)
+        else:
+            df_data = self.surface(lipids = lipids, layer = layer, filename = filename, include_charge = True, start = start, final = final)
 
-            data.append(df_data)
 
-        data = pd.concat(data, axis = 0)
+        data = df_data
         #print(data)
-        xmin = data["x"].min()
-        xmax = data["x"].max()
-        ymin = data["y"].min()
-        ymax = data["y"].max()
 
-        xmin = self.v_min
-        xmax = self.v_max
-        ymin = self.v_min
-        ymax = self.v_max
+        if edges is not None:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
+        else:
+            xmin = data["x"].min()
+            xmax = data["x"].max()
+            ymin = data["y"].min()
+            ymax = data["y"].max()
+
 
         H_height, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], weights = data["z"], bins = nbins, range = [[xmin,xmax], [ymin,ymax]])
         H_count, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], bins = nbins, range = [[xmin, xmax], [ymin,ymax]])
@@ -1098,17 +1123,21 @@ class Memb2D:
 
         np.savetxt(f'Height_{layer}_{start}_{final}.dat', H_avg, fmt = '%.2f')
         np.savetxt(f"edges_{layer}_{start}_{final}.dat", x_edges, fmt = "%.2f")
-        return H_avg, x_edges
+        return H_avg, [x_edges[0],x_edges[-1],y_edges[0], y_edges[-1]]
 
 
 
-    def thickness(self, nbins, start = 0, final=-1, step = 1):
+    def thickness(self, nbins, edges = None,lipids = None, start = 0, final=-1, step = 1):
         """Find the thichness mapped in a 2d grid
 
         Parameters
         ----------
         nbins : int
             number of bins for thickness
+        edges : list
+            Edges for the grid
+        lipids : list(str)
+            Lipids to be considered in the thickness computation
         start : int, optional
             Start frame, by default 0
         final : int, optional
@@ -1121,16 +1150,20 @@ class Memb2D:
         np.array, np.array
             Matrix with the thickness, edeges for the matrix
         """
-        lipids = list(self.lipid_list)
-        lipids.remove("CHL1")
+        if lipids is None:
+            lipids = list(self.lipid_list)
+            lipids.remove("CHL1")
+
         matrix_up, edges = self.height_matrix(lipids,
                         "top",
+                        edges = edges,
                         start = start,
                         final = final,
                         step = step,
                         nbins = nbins)
         matrix_bot, edges = self.height_matrix(lipids,
                         "bot",
+                        edges = edges,
                         start = start,
                         final = final,
                         step = step,
