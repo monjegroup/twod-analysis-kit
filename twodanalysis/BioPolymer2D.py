@@ -21,6 +21,9 @@ from scipy.integrate import simpson
 import matplotlib as mpl
 from MDAnalysis.analysis.hydrogenbonds import HydrogenBondAnalysis
 from MDAnalysis.exceptions import SelectionError
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib import colors
+from matplotlib.lines import Line2D
 import sys
 
 
@@ -31,6 +34,18 @@ class BioPolymer2D:
 
 
     def __init__(self, obj):
+        """Class Initialization.
+
+        Parameters
+        ----------
+        obj : AtomGroup or Universe
+            Selection to initialize the class. If initialized with a Universe it will take the whole Universe as AtomGroup. The MDAnalysis Universe and AtomGroup will be accesible to with the `self.universe` and `self.atom_group` class attributes.
+
+        Raises
+        ------
+        TypeError
+            Error raised if class is not initialized with a Universe or AtomGroup
+        """
         if isinstance(obj, mda.Universe):
             self.universe = obj
             self.atom_group = obj.atoms  # Select all atoms
@@ -112,7 +127,7 @@ class BioPolymer2D:
         print("  N selected residues:", len(self.atom_group.residues))
         print("  N selected segments:", len(self.atom_group.segments))
 
-    def getPositions(self,pos_type='COM', inplace=True, select=None):
+    def getPositions(self,pos_type='COM', inplace=True, select=None,getselection=False):
         """Computes positions of selection from self.startT to self.endT with self.stepT steps of frames.
         By default, these parameters are set to compute over the whole trajectory.
 
@@ -133,26 +148,28 @@ class BioPolymer2D:
 
         print('Getting positions from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
 
-        prot=self.atom_group
+        ag=self.atom_group
         if select:
-            prot=self.universe.select_atoms(select)
-        pos=np.zeros((int((self.endF-self.startF)/self.stepF),len(prot.residues),4))
+            ag=self.universe.select_atoms(select)
+        pos=np.zeros((int((self.endF-self.startF)/self.stepF),len(ag.residues),4))
         if pos_type=='all':
-            pos=np.zeros((int((self.endF-self.startF)/self.stepF),len(prot.atoms.positions),4))
+            pos=np.zeros((int((self.endF-self.startF)/self.stepF),len(ag.atoms.positions),4))
 
         j=0
         for ts in self.universe.trajectory[self.startF:self.endF:self.stepF]:
             if pos_type=='COM':
                 pos[j,:,0]=ts.time/1000
-                pos[j,:,1:]=[r.atoms.center_of_mass() for r in prot.residues]
+                pos[j,:,1:]=[r.atoms.center_of_mass() for r in ag.residues]
                 # print('Getting COMs..')
             if pos_type=='all':
                 pos[j,:,0]=ts.time/1000
-                pos[j,:,1:]= prot.atoms.positions
+                pos[j,:,1:]= ag.atoms.positions
             j+=1
         if inplace:
             self.pos=np.array(pos)
             return None
+        elif getselection:
+            return np.array(pos),ag
         else:
             return np.array(pos)
 
@@ -270,7 +287,7 @@ class BioPolymer2D:
             plt.show()
         return pos_masked
 
-    def PolarAnalysis(self,select_res,Nframes,max_hist=None,sort='max',plot=False,control_plots=False, zlim=14,Nbins=1000,resolution=5):
+    def PolarAnalysis(self,select_res,Nframes,max_hist=None,sort=None,plot=False,control_plots=False, zlim=14,Nbins=1000,resolution=5):
         """Makes a Polar Histogram of the positions of the center of mass of select_res residues considering Nframes closest to the surface within the < zlim threshold. self.pos attribute is used to compute the center of mass of the AtomGroup, which will be the referential center of the histograms.
         The colors of the histogram are ordered according to sort parameter.
 
@@ -283,7 +300,7 @@ class BioPolymer2D:
         max_hist : None or float, optional
             Value to normalize the histograms. If None, highest histogram value is used to normalize the histograms., by default None
         sort : str, list, ndarray or None, optional
-            How to sort the histograms in the legend and the coloring. If "max", histograms will be ploted descending from the residue with highest peak in its histogram to the flattest peak. If sort is a list or ndarray, sort is the index positions of the residues to which reorder the histograms. If None, they well be plotted by MDAnalysis default sort (ascending Resid values)., by default 'max'
+            How to sort the histograms in the legend and the coloring. If "max", histograms will be ploted descending from the residue with highest peak in its histogram to the flattest peak. If sort is a list or ndarray, sort is the index positions of the residues to which reorder the histograms. If None, they well be plotted by MDAnalysis default sort (ascending Resid values)., by default None
         plot : bool, optional
             Show the polar plot (True) or only return the data (False), by default False
         control_plots : bool, optional
@@ -480,7 +497,7 @@ class BioPolymer2D:
         Returns
         -------
         np.ndarray
-            3D, perpendicular and parallel radius of gyration values at each frame (self.endF-self.startF frames,3, Natoms)
+            3D, perpendicular and parallel radius of gyration values at each frame (`self.endF`-`self.startF` frames,3, `Natoms`)
         """
         colors=['tab:blue','tab:orange','tab:green']
         rg_arr=np.zeros((len(self.pos),4))
@@ -540,6 +557,32 @@ class BioPolymer2D:
         return rg_ratio
 
     ############# Compute Contour Area #################
+    @staticmethod
+    def makeCmapColor(def_color):
+        RGB_color=colors.to_rgba(def_color)
+        cdict1 = {
+            'red': (
+                (0.0,RGB_color[0]*0.6, RGB_color[0]*0.6),
+                # (0.5, 0.0, 0.1),
+                (1.0, RGB_color[0], RGB_color[0]),
+            ),
+            'green': (
+                (0.0, RGB_color[1]*0.6, RGB_color[1]*0.6),
+                (1.0,RGB_color[1], RGB_color[1]),
+            ),
+            'blue': (
+                (0.0,  RGB_color[2]*0.6, RGB_color[2]*0.6),
+                # (0.5, 0.1, 0.0),
+                (1.0, RGB_color[2], RGB_color[2]),
+            ),
+            'alpha': (
+                (0.0, 0.5, 0.5),
+                # (0.5, 0.1, 0.0),
+                (1.0, 1.0, 1.0),
+            )
+        }
+        cmap_color = LinearSegmentedColormap('Browns', cdict1)
+        return cmap_color
     @staticmethod
     def ListPathsInLevel(kde_plot,contour_level,plot_paths=False):
         """Lists vertices of a path in a contour level of the KDE plot.
@@ -680,6 +723,52 @@ class BioPolymer2D:
             return np.sum(Areas)
         else:
             return Areas
+        
+    def ContourPlotsSelection(self,select_res,Nframes=2000,zlim=15,show=False,legend=False):
+
+        def_colors=["C%i"%(i) for i in range(10)]
+
+        COM=self.atom_group.center_of_mass()
+
+        pos_res_contour, res=self.getPositions(select=select_res,inplace=False,getselection=True)
+        if self.surf_pos is None:
+            pos_res_contour[:,:,3]=pos_res_contour[:,:,3]
+        else:            
+            pos_res_contour[:,:,3]=pos_res_contour[:,:,3]-self.surf_pos[2]
+        print(pos_res_contour.mean(axis=(0,1)))
+        # fig,ax=plt.subplots()   
+        # ListPaths(vertices,codes,plot_paths=True)
+        # print(RBM.residues)
+        # print(pos.shape)
+
+        all_pos_selected=self.FilterMinFrames(pos_res_contour, zlim,Nframes,control_plots=False)
+        print(all_pos_selected.shape)
+        # all_pos_selected_reshaped=np.reshape(all_pos_selected,(all_pos_selected.shape[0]*all_pos_selected.shape[1],4))
+        # print(all_pos_selected_reshaped.shape)
+        Nres=len(all_pos_selected[0])
+        plt.plot(COM[0],COM[1],c='k',marker='o')
+        resnames=[]
+        handles=[]
+        for ires in range(Nres):
+            res_pos=all_pos_selected[:,ires]
+            df0=pd.DataFrame(res_pos, columns=['t','x','y','z'])
+            # kde_plot=sns.kdeplot(df0, x='x',y='y', color = 'black',alpha=1,fill=True)
+            cmap_color=self.makeCmapColor(def_colors[ires])
+            kde_plot=sns.kdeplot(df0, x='x',y='y', fill=True,cmap=cmap_color,)
+            # Create a legend handle manually
+            handles.append(Line2D([0], [0], color=def_colors[ires], lw=4))
+            resnames.append(f"{res.residues[ires].resid}-{res.residues[ires].resname}")
+
+        plt.title(f'Contour Positions {self.system_name}')
+        plt.xlabel(r'X ($\AA$)')
+        plt.ylabel(r'Y ($\AA$)')
+        plt.gca().set_aspect('equal', 'box')
+
+        # Add the custom legend
+        if legend:
+            plt.legend(handles=handles, labels=resnames, loc='upper right')
+        if show:
+            plt.show()
     def getHbonds(self,selection1,selection2, update_selections=True,trj_plot=False, inplace=True ):
         """Computes H-bonds between to selection1 and selection2 of the trajectory using MDAnalysis.analysis.hydrogenbonds.HydrogenBondAnalysis.
 
@@ -852,3 +941,4 @@ class BioPolymer2D:
             plt.plot(x_val,y_val,color=color, alpha=alpha)
         if show:
             plt.show()
+

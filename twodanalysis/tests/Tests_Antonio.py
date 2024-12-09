@@ -3,7 +3,9 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from twodanalysis.BioPolymer2D import BioPolymer2D
+# from twodanalysis import BioPolymer2D
+sys.path.insert(0,'/home/antonio/Desktop/VIRMAT/2Danalysis/twod-analysis-kit/twodanalysis')
+from BioPolymer2D import BioPolymer2D # type: ignore
 
 
 trj_path='/home/antonio/Desktop/VIRMAT/Paper_PB_KDE/SIMs/RBD-PBLs_wGlyc_closed_layed/glyc_head/rep1/omicron_10/'
@@ -36,10 +38,12 @@ print('# ##########TEST CONTOUR PLOTS ################')
 
 paths=ag_analysis.getKDEAnalysis(zlim,Nframes)
 print(ag_analysis.kdeanalysis.kde)
-ag_analysis.plotPathsInLevel(paths,1,show=True)
+ag_analysis.plotPathsInLevel(paths,1,show=False)
 areas=ag_analysis.getAreas(2,getTotal=True)
 print(areas)
-
+ag_analysis.ContourPlotsSelection('resid 198 200 12 8 40 45 111 115 173',Nframes,zlim)
+# plt.legend()
+# plt.show()
 print('##### TEST HBONDS PLOTS #####')
 
 sel_for_path = u.select_atoms("resid 193-200")
