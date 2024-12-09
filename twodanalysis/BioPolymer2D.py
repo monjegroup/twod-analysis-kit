@@ -692,12 +692,14 @@ class BioPolymer2D:
     #     if show:
     #         plt.show()
 
-
-    def getAreas(self,contour_lvl,getTotal=False):
+    @staticmethod
+    def getAreas(paths,contour_lvl,getTotal=False):
         """Computes the area of each path a given contour level. Negative values of area are holes in the contour level. If getTotal=True, computes the area of the whole contour level.
 
         Parameters
         ----------
+        paths : list
+            Paths of all contour levels.         
         contour_lvl : int
             Contour level to compute the area.
         getTotal : bool, optional
@@ -708,12 +710,9 @@ class BioPolymer2D:
         list or float
             A list with the area of each path in the contour level, or the total area of the contour level (if getTotal=True)
         """
-        if not self.kdeanalysis.paths:
-            print("Must compute contour paths first. Please compute getKDEAnalysis method first.")
-            return
 
         Areas=[]
-        paths_in_lvl=self.kdeanalysis.paths[contour_lvl]
+        paths_in_lvl=paths[contour_lvl]
         for i_paths in range(len(paths_in_lvl)):
             x_values,y_values=paths_in_lvl[i_paths].T
             area_outline = simpson(y_values[::-1], x=x_values[::-1])
@@ -724,7 +723,8 @@ class BioPolymer2D:
         else:
             return Areas
         
-    def ContourPlotsSelection(self,select_res,Nframes=2000,zlim=15,show=False,legend=False):
+        
+    def KDEAnalysisSelection(self,select_res,Nframes=2000,zlim=15,show=False,legend=False):
 
         def_colors=["C%i"%(i) for i in range(10)]
 
@@ -749,6 +749,7 @@ class BioPolymer2D:
         plt.plot(COM[0],COM[1],c='k',marker='o')
         resnames=[]
         handles=[]
+        paths_arr_arr=[]
         for ires in range(Nres):
             res_pos=all_pos_selected[:,ires]
             df0=pd.DataFrame(res_pos, columns=['t','x','y','z'])
@@ -758,6 +759,17 @@ class BioPolymer2D:
             # Create a legend handle manually
             handles.append(Line2D([0], [0], color=def_colors[ires], lw=4))
             resnames.append(f"{res.residues[ires].resid}-{res.residues[ires].resname}")
+            paths_arr=[]
+            Nlvls=len(kde_plot.collections[-1].get_paths())
+            # print(f"There are {Nlvls} levels in the KDE.")
+            for lvl in range(Nlvls):
+                paths=self.ListPathsInLevel(kde_plot,lvl,plot_paths=False)
+                if not paths:
+                    continue
+                # print(np.shape(paths[0]))
+                # print(np.shape(paths[1]))
+                paths_arr.append(paths)
+            paths_arr_arr.append(paths_arr)
 
         plt.title(f'Contour Positions {self.system_name}')
         plt.xlabel(r'X ($\AA$)')
@@ -769,6 +781,7 @@ class BioPolymer2D:
             plt.legend(handles=handles, labels=resnames, loc='upper right')
         if show:
             plt.show()
+        return paths_arr_arr, res
     def getHbonds(self,selection1,selection2, update_selections=True,trj_plot=False, inplace=True ):
         """Computes H-bonds between to selection1 and selection2 of the trajectory using MDAnalysis.analysis.hydrogenbonds.HydrogenBondAnalysis.
 
