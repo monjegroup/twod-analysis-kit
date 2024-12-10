@@ -213,41 +213,6 @@ class BioPolymer2D:
         else:
             return np.array(com)
 
-
-    # def FilterMinFrames(self, zlim,Nframes,control_plots=False):
-    #     """
-    #     Selects a set of Nframes in which the AtomGroup is closer to the surface and bellow a zlim threshold distance to the surface.
-
-    #     Args:
-    #         zlim (float): Distance (in angstroms) threshold limit in which the AtomGroup is considered adsorped to the surface.
-    #         Nframes (int): Nframes closest to the surface within the frames where the AtomGroup is < zlim.
-    #         control_plots (bool, optional): If control plots are to be shown. Defaults to False.
-
-    #     Returns:
-    #         np.ndarray (Nframes,Nresidues or Natoms,4 <t,x,y,z>): Numpy array with the AtomGroup positions in self.pos that are below zlim and closest to the surface.
-    #     """
-
-    #     pos=self.pos
-    #     ##Take the mean of all selected residues
-    #     mean_z_top=pos[:,:,3].mean(axis=1)
-    #     print(mean_z_top.shape)
-    #     # Select frames where the mean of selected residues is < zlim
-    #     # to garanty that same frames are used for all residues.
-    #     zMask= mean_z_top < zlim
-    #     pos_masked=pos[zMask]
-    #     print('There are', len(pos_masked),' frames < %i A in Z'%zlim)
-    #     print('Taking', Nframes, 'closest frames to surface...')
-    #     pos_masked=pos_masked[np.argsort(pos_masked[:,:,3].mean(axis=1),axis=0)][:Nframes]
-    #     # print(pos_masked[:5:,0,0],'pos_masked shuffled')
-
-    #     if control_plots:
-    #         ires=[0,1] ## If want to change defaut residue to make control plots, change here
-    #         print(f"Doing control plot with residue {self.atom_group.residues[ires]}")
-    #         plt.plot(pos[:,ires,0],pos[:,ires,3],)
-    #         plt.plot(pos_masked[:,ires,0],pos_masked[:,ires,3],'.',ms=2)
-    #         plt.show()
-    #     return pos_masked
-
     @staticmethod
     def FilterMinFrames(pos, zlim,Nframes,control_plots=False):
         """Selects a set of Nframes in which the AtomGroup is closer to the surface and bellow a zlim threshold distance to the surface.
@@ -727,7 +692,27 @@ class BioPolymer2D:
             return Areas
         
         
-    def KDEAnalysisSelection(self,select_res,Nframes=2000,zlim=15,show=False,legend=False):
+    def KDEAnalysisSelection(self,select_res,Nframes=1000,zlim=15,show=False,legend=False):
+        """KDE Contours for a set of selected residues. This computes the paths of all the contour levels of each residue.
+
+        Parameters
+        ----------
+        select_res : str
+            MDAnalaysis-like selection of residues to compute their KDE Contour paths
+        Nframes : int, optional
+            Number of frames to use. This fills value of :code:`self.FilterMinFrames`, by default 1000
+        zlim : float, optional
+            Height limit to consider as adsorted frames. This fills value of :code:`self.FilterMinFrames`, by default 15
+        show : bool, optional
+            Where or not to show plot. Convinient to use False if you want modify the default plot, by default False
+        legend : bool, optional
+            Whether or not to make the default legend, by default False
+
+        Returns
+        -------
+        (list(list)), AtomGroup
+            Returns a list with the contour levels paths of each selected residue, and selected AtomGroup. The list of contour levels paths and the reisudes in the AtomGroup are ordered consistently.
+        """
 
         def_colors=["C%i"%(i) for i in range(10)]
 
@@ -887,6 +872,8 @@ class BioPolymer2D:
             Residues are plotted ranked by residues with most contact to least. This parameters indicates how many residues to plot of these ranked residues, e.g. top=5 wil plot the 5 residues with most Hbonds during the simulations. By default -1, plots all the residues with H-bonds.
         contour_lvls_to_plot : list, optional
             Contour Levels to show in plot, by default None
+        contour_lvls_to_plot : str or list, optional
+            Residue names to be filtered out of the plot and the output table.
         print_table : bool, optional
             Whether or not to print the pandas.DataFrame with the data shown in figure, by default True
 
