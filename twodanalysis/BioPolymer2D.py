@@ -138,7 +138,9 @@ class BioPolymer2D:
         inplace : bool, optional
            If True, position values are assigned to the self.pos attribute and None is returned. If False, positions are returned, by default True
         select : None or str, optional
-             If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None., by default None
+            If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None., by default None
+        getselection : bool, optional
+            Whether or not to return the selected MDAnalysis AtomGroup as output.
 
         Returns
         -------
@@ -157,6 +159,7 @@ class BioPolymer2D:
 
         j=0
         for ts in self.universe.trajectory[self.startF:self.endF:self.stepF]:
+        # for ts in self.universe.trajectory[self.startF:self.endF:self.stepF]:
             if pos_type=='COM':
                 pos[j,:,0]=ts.time/1000
                 pos[j,:,1:]=[r.atoms.center_of_mass() for r in ag.residues]
@@ -518,7 +521,7 @@ class BioPolymer2D:
             plt.legend()
             plt.xlabel('Time (ns)')
             plt.ylabel('Radius of gyration (Angs)')
-            plt.show()
+            # plt.show()
         return rg_arr
 
     def RgPerpvsRgsPar(self,rgs,color, marker='s',plot=True,show=False):
@@ -873,7 +876,7 @@ class BioPolymer2D:
             return df_final.sort_values('Count', ascending=False)
         else:
             return df_final
-    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, print_table=True): ### Add a Residue Filter option
+    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, filter=None, print_table=True): ### Add a Residue Filter option
         """Makes a figure showing the center of mass of the residues with H-bonds. Figure shows a contour plot as a reference of position of the whole molecule. Legend of the Figure shows the percentage of time in which there were Hbonds during the simulation of the plotted residues.
 
         Parameters
@@ -894,6 +897,12 @@ class BioPolymer2D:
         """
 
         df=self.HbondsPerResidues(sorted=False)
+        df_resname=df['ResNames']
+        if filter is not None:
+            if isinstance(filter, list):
+                df = df[~df_resname.isin(filter)]
+            else:
+                df = df[df_resname != filter]
         max_val=df['Count'].max()
         str_resids=' '.join(np.array(df['ResIDs'],dtype=str))
         print(str_resids)
