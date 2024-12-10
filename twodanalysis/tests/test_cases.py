@@ -16,14 +16,14 @@ import time
 
 top = "dopcchol_Charmm.pdb"
 traj = "dopcchol_Charmm.pdb"
-tpr = "veamos.tpr"
+
 
 top = "../../../../centered_prot.gro"
 traj = "../../../../centered_prot.xtc"
 #tpr = "../../../../veamos.tpr"
-
-top = "membrane.gro"
-traj = "membrane.xtc"
+tpr = "../data/veamos.tpr"
+top = "../data/membrane.gro"
+traj = "../data/membrane_new.xtc"
 
 # Creating the class
 
@@ -89,18 +89,18 @@ layer = "top"
 """
 nbins = 50
 mat_top, edges = membrane.all_lip_order("top", nbins,
-                        start = 60,
+                        start = 0,
                         final = 100,
                         step = 1)#
 
 
 mat_bot, edges = membrane.all_lip_order("bot", nbins,
-                        start = 60,
+                        start = 0,
                         final = 100,
                         step = 1)
 
 mat_both, edges = membrane.all_lip_order("both", nbins,
-                        start = 60,
+                        start = 0,
                         final = 100,
                         step = 1)
 
