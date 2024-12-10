@@ -21,6 +21,9 @@ from scipy.integrate import simpson
 import matplotlib as mpl
 from MDAnalysis.analysis.hydrogenbonds import HydrogenBondAnalysis
 from MDAnalysis.exceptions import SelectionError
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib import colors
+from matplotlib.lines import Line2D
 import sys
 
 
@@ -31,6 +34,18 @@ class BioPolymer2D:
 
 
     def __init__(self, obj):
+        """Class Initialization.
+
+        Parameters
+        ----------
+        obj : AtomGroup or Universe
+            Selection to initialize the class. If initialized with a Universe it will take the whole Universe as AtomGroup. The MDAnalysis Universe and AtomGroup will be accesible to with the `self.universe` and `self.atom_group` class attributes.
+
+        Raises
+        ------
+        TypeError
+            Error raised if class is not initialized with a Universe or AtomGroup
+        """
         if isinstance(obj, mda.Universe):
             self.universe = obj
             self.atom_group = obj.atoms  # Select all atoms
@@ -112,7 +127,7 @@ class BioPolymer2D:
         print("  N selected residues:", len(self.atom_group.residues))
         print("  N selected segments:", len(self.atom_group.segments))
 
-    def getPositions(self,pos_type='COM', inplace=True, select=None):
+    def getPositions(self,pos_type='COM', inplace=True, select=None,getselection=False):
         """Computes positions of selection from self.startT to self.endT with self.stepT steps of frames.
         By default, these parameters are set to compute over the whole trajectory.
 
@@ -123,7 +138,9 @@ class BioPolymer2D:
         inplace : bool, optional
            If True, position values are assigned to the self.pos attribute and None is returned. If False, positions are returned, by default True
         select : None or str, optional
-             If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None., by default None
+            If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None., by default None
+        getselection : bool, optional
+            Whether or not to return the selected MDAnalysis AtomGroup as output.
 
         Returns
         -------
@@ -133,26 +150,29 @@ class BioPolymer2D:
 
         print('Getting positions from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
 
-        prot=self.atom_group
+        ag=self.atom_group
         if select:
-            prot=self.universe.select_atoms(select)
-        pos=np.zeros((int((self.endF-self.startF)/self.stepF),len(prot.residues),4))
+            ag=self.universe.select_atoms(select)
+        pos=np.zeros((int((self.endF-self.startF)/self.stepF),len(ag.residues),4))
         if pos_type=='all':
-            pos=np.zeros((int((self.endF-self.startF)/self.stepF),len(prot.atoms.positions),4))
+            pos=np.zeros((int((self.endF-self.startF)/self.stepF),len(ag.atoms.positions),4))
 
         j=0
         for ts in self.universe.trajectory[self.startF:self.endF:self.stepF]:
+        # for ts in self.universe.trajectory[self.startF:self.endF:self.stepF]:
             if pos_type=='COM':
                 pos[j,:,0]=ts.time/1000
-                pos[j,:,1:]=[r.atoms.center_of_mass() for r in prot.residues]
+                pos[j,:,1:]=[r.atoms.center_of_mass() for r in ag.residues]
                 # print('Getting COMs..')
             if pos_type=='all':
                 pos[j,:,0]=ts.time/1000
-                pos[j,:,1:]= prot.atoms.positions
+                pos[j,:,1:]= ag.atoms.positions
             j+=1
         if inplace:
             self.pos=np.array(pos)
             return None
+        elif getselection:
+            return np.array(pos),ag
         else:
             return np.array(pos)
 
@@ -192,41 +212,6 @@ class BioPolymer2D:
             return None
         else:
             return np.array(com)
-
-
-    # def FilterMinFrames(self, zlim,Nframes,control_plots=False):
-    #     """
-    #     Selects a set of Nframes in which the AtomGroup is closer to the surface and bellow a zlim threshold distance to the surface.
-
-    #     Args:
-    #         zlim (float): Distance (in angstroms) threshold limit in which the AtomGroup is considered adsorped to the surface.
-    #         Nframes (int): Nframes closest to the surface within the frames where the AtomGroup is < zlim.
-    #         control_plots (bool, optional): If control plots are to be shown. Defaults to False.
-
-    #     Returns:
-    #         np.ndarray (Nframes,Nresidues or Natoms,4 <t,x,y,z>): Numpy array with the AtomGroup positions in self.pos that are below zlim and closest to the surface.
-    #     """
-
-    #     pos=self.pos
-    #     ##Take the mean of all selected residues
-    #     mean_z_top=pos[:,:,3].mean(axis=1)
-    #     print(mean_z_top.shape)
-    #     # Select frames where the mean of selected residues is < zlim
-    #     # to garanty that same frames are used for all residues.
-    #     zMask= mean_z_top < zlim
-    #     pos_masked=pos[zMask]
-    #     print('There are', len(pos_masked),' frames < %i A in Z'%zlim)
-    #     print('Taking', Nframes, 'closest frames to surface...')
-    #     pos_masked=pos_masked[np.argsort(pos_masked[:,:,3].mean(axis=1),axis=0)][:Nframes]
-    #     # print(pos_masked[:5:,0,0],'pos_masked shuffled')
-
-    #     if control_plots:
-    #         ires=[0,1] ## If want to change defaut residue to make control plots, change here
-    #         print(f"Doing control plot with residue {self.atom_group.residues[ires]}")
-    #         plt.plot(pos[:,ires,0],pos[:,ires,3],)
-    #         plt.plot(pos_masked[:,ires,0],pos_masked[:,ires,3],'.',ms=2)
-    #         plt.show()
-    #     return pos_masked
 
     @staticmethod
     def FilterMinFrames(pos, zlim,Nframes,control_plots=False):
@@ -270,7 +255,7 @@ class BioPolymer2D:
             plt.show()
         return pos_masked
 
-    def PolarAnalysis(self,select_res,Nframes,max_hist=None,sort='max',plot=False,control_plots=False, zlim=14,Nbins=1000,resolution=5):
+    def PolarAnalysis(self,select_res,Nframes,max_hist=None,sort=None,plot=False,control_plots=False, zlim=14,Nbins=1000,resolution=5):
         """Makes a Polar Histogram of the positions of the center of mass of select_res residues considering Nframes closest to the surface within the < zlim threshold. self.pos attribute is used to compute the center of mass of the AtomGroup, which will be the referential center of the histograms.
         The colors of the histogram are ordered according to sort parameter.
 
@@ -283,7 +268,7 @@ class BioPolymer2D:
         max_hist : None or float, optional
             Value to normalize the histograms. If None, highest histogram value is used to normalize the histograms., by default None
         sort : str, list, ndarray or None, optional
-            How to sort the histograms in the legend and the coloring. If "max", histograms will be ploted descending from the residue with highest peak in its histogram to the flattest peak. If sort is a list or ndarray, sort is the index positions of the residues to which reorder the histograms. If None, they well be plotted by MDAnalysis default sort (ascending Resid values)., by default 'max'
+            How to sort the histograms in the legend and the coloring. If "max", histograms will be ploted descending from the residue with highest peak in its histogram to the flattest peak. If sort is a list or ndarray, sort is the index positions of the residues to which reorder the histograms. If None, they well be plotted by MDAnalysis default sort (ascending Resid values)., by default None
         plot : bool, optional
             Show the polar plot (True) or only return the data (False), by default False
         control_plots : bool, optional
@@ -480,7 +465,7 @@ class BioPolymer2D:
         Returns
         -------
         np.ndarray
-            3D, perpendicular and parallel radius of gyration values at each frame (self.endF-self.startF frames,3, Natoms)
+            3D, perpendicular and parallel radius of gyration values at each frame (`self.endF`-`self.startF` frames,3, `Natoms`)
         """
         colors=['tab:blue','tab:orange','tab:green']
         rg_arr=np.zeros((len(self.pos),4))
@@ -501,7 +486,7 @@ class BioPolymer2D:
             plt.legend()
             plt.xlabel('Time (ns)')
             plt.ylabel('Radius of gyration (Angs)')
-            plt.show()
+            # plt.show()
         return rg_arr
 
     def RgPerpvsRgsPar(self,rgs,color, marker='s',plot=True,show=False):
@@ -540,6 +525,32 @@ class BioPolymer2D:
         return rg_ratio
 
     ############# Compute Contour Area #################
+    @staticmethod
+    def makeCmapColor(def_color):
+        RGB_color=colors.to_rgba(def_color)
+        cdict1 = {
+            'red': (
+                (0.0,RGB_color[0]*0.6, RGB_color[0]*0.6),
+                # (0.5, 0.0, 0.1),
+                (1.0, RGB_color[0], RGB_color[0]),
+            ),
+            'green': (
+                (0.0, RGB_color[1]*0.6, RGB_color[1]*0.6),
+                (1.0,RGB_color[1], RGB_color[1]),
+            ),
+            'blue': (
+                (0.0,  RGB_color[2]*0.6, RGB_color[2]*0.6),
+                # (0.5, 0.1, 0.0),
+                (1.0, RGB_color[2], RGB_color[2]),
+            ),
+            'alpha': (
+                (0.0, 0.5, 0.5),
+                # (0.5, 0.1, 0.0),
+                (1.0, 1.0, 1.0),
+            )
+        }
+        cmap_color = LinearSegmentedColormap('Browns', cdict1)
+        return cmap_color
     @staticmethod
     def ListPathsInLevel(kde_plot,contour_level,plot_paths=False):
         """Lists vertices of a path in a contour level of the KDE plot.
@@ -649,12 +660,14 @@ class BioPolymer2D:
     #     if show:
     #         plt.show()
 
-
-    def getAreas(self,contour_lvl,getTotal=False):
+    @staticmethod
+    def getAreas(paths,contour_lvl,getTotal=False):
         """Computes the area of each path a given contour level. Negative values of area are holes in the contour level. If getTotal=True, computes the area of the whole contour level.
 
         Parameters
         ----------
+        paths : list
+            Paths of all contour levels.         
         contour_lvl : int
             Contour level to compute the area.
         getTotal : bool, optional
@@ -665,12 +678,9 @@ class BioPolymer2D:
         list or float
             A list with the area of each path in the contour level, or the total area of the contour level (if getTotal=True)
         """
-        if not self.kdeanalysis.paths:
-            print("Must compute contour paths first. Please compute getKDEAnalysis method first.")
-            return
 
         Areas=[]
-        paths_in_lvl=self.kdeanalysis.paths[contour_lvl]
+        paths_in_lvl=paths[contour_lvl]
         for i_paths in range(len(paths_in_lvl)):
             x_values,y_values=paths_in_lvl[i_paths].T
             area_outline = simpson(y_values[::-1], x=x_values[::-1])
@@ -680,6 +690,86 @@ class BioPolymer2D:
             return np.sum(Areas)
         else:
             return Areas
+        
+        
+    def KDEAnalysisSelection(self,select_res,Nframes=1000,zlim=15,show=False,legend=False):
+        """KDE Contours for a set of selected residues. This computes the paths of all the contour levels of each residue.
+
+        Parameters
+        ----------
+        select_res : str
+            MDAnalaysis-like selection of residues to compute their KDE Contour paths
+        Nframes : int, optional
+            Number of frames to use. This fills value of :code:`self.FilterMinFrames`, by default 1000
+        zlim : float, optional
+            Height limit to consider as adsorted frames. This fills value of :code:`self.FilterMinFrames`, by default 15
+        show : bool, optional
+            Where or not to show plot. Convinient to use False if you want modify the default plot, by default False
+        legend : bool, optional
+            Whether or not to make the default legend, by default False
+
+        Returns
+        -------
+        (list(list)), AtomGroup
+            Returns a list with the contour levels paths of each selected residue, and selected AtomGroup. The list of contour levels paths and the reisudes in the AtomGroup are ordered consistently.
+        """
+
+        def_colors=["C%i"%(i) for i in range(10)]
+
+        COM=self.atom_group.center_of_mass()
+
+        pos_res_contour, res=self.getPositions(select=select_res,inplace=False,getselection=True)
+        if self.surf_pos is None:
+            pos_res_contour[:,:,3]=pos_res_contour[:,:,3]
+        else:            
+            pos_res_contour[:,:,3]=pos_res_contour[:,:,3]-self.surf_pos[2]
+        print(pos_res_contour.mean(axis=(0,1)))
+        # fig,ax=plt.subplots()   
+        # ListPaths(vertices,codes,plot_paths=True)
+        # print(RBM.residues)
+        # print(pos.shape)
+
+        all_pos_selected=self.FilterMinFrames(pos_res_contour, zlim,Nframes,control_plots=False)
+        print(all_pos_selected.shape)
+        # all_pos_selected_reshaped=np.reshape(all_pos_selected,(all_pos_selected.shape[0]*all_pos_selected.shape[1],4))
+        # print(all_pos_selected_reshaped.shape)
+        Nres=len(all_pos_selected[0])
+        plt.plot(COM[0],COM[1],c='k',marker='o')
+        resnames=[]
+        handles=[]
+        paths_arr_arr=[]
+        for ires in range(Nres):
+            res_pos=all_pos_selected[:,ires]
+            df0=pd.DataFrame(res_pos, columns=['t','x','y','z'])
+            # kde_plot=sns.kdeplot(df0, x='x',y='y', color = 'black',alpha=1,fill=True)
+            cmap_color=self.makeCmapColor(def_colors[ires])
+            kde_plot=sns.kdeplot(df0, x='x',y='y', fill=True,cmap=cmap_color,)
+            # Create a legend handle manually
+            handles.append(Line2D([0], [0], color=def_colors[ires], lw=4))
+            resnames.append(f"{res.residues[ires].resid}-{res.residues[ires].resname}")
+            paths_arr=[]
+            Nlvls=len(kde_plot.collections[-1].get_paths())
+            # print(f"There are {Nlvls} levels in the KDE.")
+            for lvl in range(Nlvls):
+                paths=self.ListPathsInLevel(kde_plot,lvl,plot_paths=False)
+                if not paths:
+                    continue
+                # print(np.shape(paths[0]))
+                # print(np.shape(paths[1]))
+                paths_arr.append(paths)
+            paths_arr_arr.append(paths_arr)
+
+        plt.title(f'Contour Positions {self.system_name}')
+        plt.xlabel(r'X ($\AA$)')
+        plt.ylabel(r'Y ($\AA$)')
+        plt.gca().set_aspect('equal', 'box')
+
+        # Add the custom legend
+        if legend:
+            plt.legend(handles=handles, labels=resnames, loc='upper right')
+        if show:
+            plt.show()
+        return paths_arr_arr, res
     def getHbonds(self,selection1,selection2, update_selections=True,trj_plot=False, inplace=True ):
         """Computes H-bonds between to selection1 and selection2 of the trajectory using MDAnalysis.analysis.hydrogenbonds.HydrogenBondAnalysis.
 
@@ -771,7 +861,7 @@ class BioPolymer2D:
             return df_final.sort_values('Count', ascending=False)
         else:
             return df_final
-    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, print_table=True): ### Add a Residue Filter option
+    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, filter=None, print_table=True): ### Add a Residue Filter option
         """Makes a figure showing the center of mass of the residues with H-bonds. Figure shows a contour plot as a reference of position of the whole molecule. Legend of the Figure shows the percentage of time in which there were Hbonds during the simulation of the plotted residues.
 
         Parameters
@@ -782,6 +872,8 @@ class BioPolymer2D:
             Residues are plotted ranked by residues with most contact to least. This parameters indicates how many residues to plot of these ranked residues, e.g. top=5 wil plot the 5 residues with most Hbonds during the simulations. By default -1, plots all the residues with H-bonds.
         contour_lvls_to_plot : list, optional
             Contour Levels to show in plot, by default None
+        contour_lvls_to_plot : str or list, optional
+            Residue names to be filtered out of the plot and the output table.
         print_table : bool, optional
             Whether or not to print the pandas.DataFrame with the data shown in figure, by default True
 
@@ -792,6 +884,12 @@ class BioPolymer2D:
         """
 
         df=self.HbondsPerResidues(sorted=False)
+        df_resname=df['ResNames']
+        if filter is not None:
+            if isinstance(filter, list):
+                df = df[~df_resname.isin(filter)]
+            else:
+                df = df[df_resname != filter]
         max_val=df['Count'].max()
         str_resids=' '.join(np.array(df['ResIDs'],dtype=str))
         print(str_resids)
@@ -852,3 +950,4 @@ class BioPolymer2D:
             plt.plot(x_val,y_val,color=color, alpha=alpha)
         if show:
             plt.show()
+
