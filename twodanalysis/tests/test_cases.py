@@ -27,9 +27,9 @@ traj = "membrane.xtc"
 
 # Creating the class
 
-membrane = Memb2D(top,
-                         traj,
-                        tpr=tpr,
+universe = mda.Universe(tpr, traj)
+
+membrane = Memb2D(universe,
                         verbose = True,
                         add_radii = True)
 
