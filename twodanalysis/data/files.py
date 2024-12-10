@@ -17,3 +17,5 @@ import importlib.resources
 data_directory = importlib.resources.files("twodanalysis") / "data"
 
 MDANALYSIS_LOGO = data_directory / "mda.txt"
+MEMBRANE_XTC = data_directory / "membrane_new.xtc"
+MEMBRANE_TPR = data_directory / "veamos.tpr"

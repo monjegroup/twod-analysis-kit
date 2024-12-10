@@ -31,8 +31,7 @@ class Memb2D:
 
     def __init__(
                 self,
-                top,
-                traj,
+                obj,
                 lipid_list = None,
                 tpr = None,
                 info = False,
@@ -76,14 +75,20 @@ class Memb2D:
 
 
         # Read trajectory depending if tpr is provided or not
-        if tpr:
-            self.u = mda.Universe(tpr, traj)
+
+        if isinstance(obj, mda.Universe):
+            self.u = obj
+        elif isinstance(obj,mda.core.groups.AtomGroup):
+            self.u = obj.u
         else:
-            self.u = mda.Universe(top, traj)
+            raise TypeError("Input must be an MDAnalysis Universe or AtomGroup")
+
+
+
 
         # Select elements in the membrane (in principle only lipids)
         if not lipid_list: # Select only elements of the membrane
-            self.memb = self.u.select_atoms("all and not protein and not (resname URA or resname GUA or resname ADE or resname CYT)")
+            self.memb = self.u.select_atoms("all and not protein and not (resname URA or resname GUA or resname ADE or resname CYT or resname THY)")
             self.lipid_list = set(self.memb.residues.resnames)
         else:
             self.memb = self.u.select_atoms(f"{self.build_resname(list(lipid_list))}")

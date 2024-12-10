@@ -118,7 +118,6 @@ membrane.gro
 membrane.xtc
 *.npz
 *.lock
-veamos.tpr
 #*.pdb
 *.ipynb
 *.swp
