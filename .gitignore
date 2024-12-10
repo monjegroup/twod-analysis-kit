@@ -114,12 +114,12 @@ poetry.lock
 =======
 *.dat
 *.png
-*.gro
-*.xtc
+#*.gro
+#*.xtc
 *.npz
 *.lock
-*.tpr
-*.pdb
+#*.tpr
+#*.pdb
 *.ipynb
 *.swp
 *.vmd
