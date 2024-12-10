@@ -20,10 +20,10 @@ tpr = "veamos.tpr"
 
 top = "../../../../centered_prot.gro"
 traj = "../../../../centered_prot.xtc"
-tpr = "../../../../veamos.tpr"
+#tpr = "../../../../veamos.tpr"
 
-#top = "membrane.gro"
-#traj = "membrane.xtc"
+top = "membrane.gro"
+traj = "membrane.xtc"
 
 # Creating the class
 
@@ -87,7 +87,7 @@ for layer in layers:
 
 layer = "top"
 """
-"""
+nbins = 50
 mat_top, edges = membrane.all_lip_order("top", nbins,
                         start = 60,
                         final = 100,
@@ -104,13 +104,13 @@ mat_both, edges = membrane.all_lip_order("both", nbins,
                         final = 100,
                         step = 1)
 
-plt.imshow(mat_top, cmap = "Spectral")
+plt.imshow(mat_top,extent=edges, cmap = "Spectral")
 plt.show()
-plt.imshow(mat_bot, cmap = "Spectral")
+plt.imshow(mat_bot, extent=edges,cmap = "Spectral")
 plt.show()
-plt.imshow(mat_both, cmap = "Spectral")
+plt.imshow(mat_both,extent=edges, cmap = "Spectral")
 plt.show()
-"""
+
 
 
 ##### Packing deffects related ######
