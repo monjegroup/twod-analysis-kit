@@ -284,8 +284,7 @@ class Memb2D:
 
     def order_histogram(self, lipid, layer, n_grid,
                         n_chain,
-                        v_min = None,
-                        v_max = None,
+                        edges = None,
                         all_head = None,
                         start = None,
                         final = None,
@@ -325,11 +324,11 @@ class Memb2D:
             matrix containind the 2D SCD and the edges in the following disposition [v_min,v_max,v_min,_vmax] (Can be used to plot directly with extent)
         """
 
-        if all_head == None:
+        if all_head is None:
             all_head = self.all_head
-        if start == None:
+        if start is None:
             start = self.start
-        if final == None:
+        if final is None:
             final = self.final
 
         if layer == "top":
@@ -378,9 +377,9 @@ class Memb2D:
         v_max = self.v_max
 
         if method == "numpy":
-            H, edges = self.numpyhistogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = n_grid, v_min = v_min, v_max = v_max)
+            H, edges = self.numpyhistogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = n_grid, edges = edges)
         else:
-            H, edges = self.histogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = n_grid, v_min = v_min, v_max = v_max)
+            H, edges = self.histogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = n_grid, edges = edges)
         plt.imshow(H,cmap="Spectral")
         plt.colorbar()
         plt.close()
@@ -567,7 +566,7 @@ class Memb2D:
 
 
     # Computes teh histogram of the average order parameters in each bin
-    def histogram2D(self,sample1, weights, n_chain, bins = 10, v_min = None, v_max = None):
+    def histogram2D(self,sample1, weights, n_chain, bins = 10, edges = None):
         """ Computes the 2D histogram of 2D data with various values taking an average of them
 
         Parameters
@@ -580,27 +579,22 @@ class Memb2D:
             Number of carbons in each chain, e.g, 16 or [16,16] for both chains
         bins : int, optional
             Number of bins to split the space, by default 10
-        v_min : float, optional
-            Min value of the 2D grid, by default None
-        v_max : float, optional
-            Max value of the 2D grid, by default None
+        edges : list(float)
+            Edges for the 2D grid
 
         Returns
         -------
-        np.array, np.array
+        np.array, list
             matrix containining the averaged 2D histogram, edges corresponding to te matrix
         """
-        if v_min == None:
-            v_min = np.min(sample1)
-        if v_max == None:
-            v_max = np.max(sample1)
-
+        if edges is None:
+            limits = [[edges[0],edges[1]], [edges[2], edges[3]]]
         #print(v_min, v_max)
         nbin = np.empty(2,np.intp)
         edges = 2*[None]
 
         for i in range(2):
-            edges[i] = np.linspace(v_min, v_max, bins +1)
+            edges[i] = np.linspace(limits[i][0], limits[i][1], bins +1)
             nbin[i] = len(edges[i]) + 1
 
         Ncount = (tuple(np.searchsorted(edges[i], sample1[:,i], side = "right") for i in range(2)))
@@ -623,7 +617,7 @@ class Memb2D:
         return hist, edges
 
     # Computes teh histogram of the average order parameters in each bin
-    def numpyhistogram2D(self,sample1, weights, n_chain, bins = 10, v_min = None, v_max = None):
+    def numpyhistogram2D(self,sample1, weights, n_chain, bins = 10, edges = None):
         """ Computes the 2D histogram of 2D data with various values taking an average of them
 
         Parameters
@@ -636,26 +630,29 @@ class Memb2D:
             Number of carbons in each chain, e.g, 16 or [16,16] for both chains
         bins : int, optional
             Number of bins to split the space, by default 10
-        v_min : float, optional
-            Min value of the 2D grid, by default None
-        v_max : float, optional
-            Max value of the 2D grid, by default None
-
+        edges : list(float)
+            Edges for the grid [xmin,xmax,ymin,ymax]
         Returns
         -------
         np.array, np.array
             matrix containining the averaged 2D histogram, edges corresponding to te matrix
         """
-        if v_min == None:
-            v_min = np.min(sample1)
-        if v_max == None:
-            v_max = np.max(sample1)
+        if edges is None:
+            xmin = self.v_min
+            xmax = self.v_max
+            ymin = self.v_min
+            ymax = self.v_max
+        else:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
 
         #print(sample1.shape, weights.shape)
         if type(n_chain) == int:
             n_chain = [n_chain]
 
-        hist, xedges,yedges = np.histogram2d(sample1[:,0], sample1[:,1], bins = bins, range = [[v_min, v_max], [v_min, v_max]])
+        hist, xedges,yedges = np.histogram2d(sample1[:,0], sample1[:,1], bins = bins, range = [[xmin, xmax], [ymin, ymax]])
         hist[hist == 0] = 1
 
         count = 0
@@ -674,9 +671,8 @@ class Memb2D:
         for chain in n_chain:
             matrix = np.zeros(hist.shape)
             for i in range(chain):
-                temp, xedges, yedges = np.histogram2d(sample1[:,0], sample1[:,1], weights = weights[:,count * n_chain[0]+ i], bins = bins, range = [[v_min, v_max], [v_min, v_max]])
+                temp, xedges, yedges = np.histogram2d(sample1[:,0], sample1[:,1], weights = weights[:,count * n_chain[0]+ i], bins = bins, range = [[xmin, xmax], [ymin, ymax]])
                 matrix += np.abs(temp)
-
             count += 1
             matrix = matrix/(chain*hist)
             matrix[matrix == 0] = np.nan
@@ -684,7 +680,7 @@ class Memb2D:
 
         matrix = 0.5*(mat_chain[0] +mat_chain[1])
 
-        return matrix, xedges
+        return matrix, [xedges[0],xedges[-1], yedges[0], yedges[-1]]
 
 
 
@@ -748,8 +744,7 @@ class Memb2D:
 
 
     def all_lip_order(self, layer, nbins,
-                        v_min = None,
-                        v_max = None,
+                        edges = None,
                         all_head = None,
                         start = None,
                         final = None,
@@ -765,10 +760,8 @@ class Memb2D:
             Layer, can be top, bot, both
         nbins : (int)
             number of bins
-        v_min : _(float, optional), optional
-            min value for the grid, by default None
-        v_max : (float, optional), optional
-            max value for the grid, by default None
+        edges : list(float)
+            Edges for the grid in the shape [xmin,xmax,ymin,ymax]
         all_head : (mda selection, optional), optional
             heads to be considered, by default None
         start : (int, optional), optional
@@ -794,14 +787,15 @@ class Memb2D:
         lipid_list.remove("CHL1")
         lipids = self.chain_info
 
-        v_min = self.v_min
-        v_max = self.v_max
+
+
+
+
 
         matrices = []
         for key in lipid_list:
             print(key)
-            H, edges = self.order_histogram(key, layer, nbins, lipids[key],v_min = v_min,
-                        v_max = v_max,
+            H, edges = self.order_histogram(key, layer, nbins, lipids[key],edges,
                         all_head = all_head,
                         start = start,
                         final = final,
