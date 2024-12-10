@@ -15,31 +15,25 @@ from twodanalysis.data.files import MEMBRANE_TPR, MEMBRANE_XTC
 
 
 
-top = "dopcchol_Charmm.pdb"
-traj = "dopcchol_Charmm.pdb"
 
 
-top = "../../../../centered_prot.gro"
-traj = "../../../../centered_prot.xtc"
-#tpr = "../../../../veamos.tpr"
 tpr = MEMBRANE_TPR
-top = "../data/membrane.gro"
 traj = MEMBRANE_XTC
 
 # Creating the class
 
-universe = mda.Universe(tpr, traj)
-
-membrane = Memb2D(universe,
-                        verbose = True,
-                        add_radii = True)
+@pytest.fixture
+def universe():
+    return mda.Universe(tpr, traj)
 
 
 
 
 
-lipid_list = list(membrane.lipid_list)
-first_lipids = membrane.first_lipids
+
+
+#lipid_list = list(membrane.lipid_list)
+#first_lipids = membrane.first_lipids
 
 
 
@@ -89,28 +83,26 @@ for layer in layers:
 layer = "top"
 """
 nbins = 50
-mat_top, edges = membrane.all_lip_order("top", nbins,
+def test_all_order(universe):
+
+    membrane = Memb2D(universe,
+                        verbose = True,
+                        add_radii = True)
+
+    mat_top, edges = membrane.all_lip_order("top", nbins,
                         start = 0,
                         final = 100,
                         step = 1)#
 
 
-mat_bot, edges = membrane.all_lip_order("bot", nbins,
-                        start = 0,
-                        final = 100,
-                        step = 1)
+    assert isinstance(mat_top, np.ndarray)
 
-mat_both, edges = membrane.all_lip_order("both", nbins,
-                        start = 0,
-                        final = 100,
-                        step = 1)
-
-plt.imshow(mat_top,extent=edges, cmap = "Spectral")
-plt.show()
-plt.imshow(mat_bot, extent=edges,cmap = "Spectral")
-plt.show()
-plt.imshow(mat_both,extent=edges, cmap = "Spectral")
-plt.show()
+#plt.imshow(mat_top,extent=edges, cmap = "Spectral")
+#plt.show()
+#plt.imshow(mat_bot, extent=edges,cmap = "Spectral")
+#plt.show()
+#plt.imshow(mat_both,extent=edges, cmap = "Spectral")
+#plt.show()
 
 
 
