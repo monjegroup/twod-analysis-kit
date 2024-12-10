@@ -11,6 +11,7 @@ from twodanalysis import Memb2D
 #import imageio
 import os
 import time
+from twodanalysis.data.files import MEMBRANE_TPR, MEMBRANE_XTC
 
 
 
@@ -21,9 +22,9 @@ traj = "dopcchol_Charmm.pdb"
 top = "../../../../centered_prot.gro"
 traj = "../../../../centered_prot.xtc"
 #tpr = "../../../../veamos.tpr"
-tpr = "../data/veamos.tpr"
+tpr = MEMBRANE_TPR
 top = "../data/membrane.gro"
-traj = "../data/membrane_new.xtc"
+traj = MEMBRANE_XTC
 
 # Creating the class
 
