@@ -4,12 +4,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from twodanalysis import BioPolymer2D
+from twodanalysis.data.files import MD_NOWATER_TPR, MD_TRAJ
+
 # sys.path.insert(0,'/home/antonio/Desktop/VIRMAT/2Danalysis/twod-analysis-kit/twodanalysis')
 # from BioPolymer2D import BioPolymer2D # type: ignore
 # import os
 # print(os.getcwd())
-trj_path='../trajectories/BioPolymer2D/'
-u=mda.Universe(f"{trj_path}md_nowater.tpr",f"{trj_path}trajout.xtc")
+
+u=mda.Universe(MD_NOWATER_TPR,MD_TRAJ)
 # u=mda.Universe(f"{trj_path}md_0_1.tpr",f"{trj_path}md_short_compact.xtc")
 sel = u.select_atoms("resid 193-200 or protein")
 ag_analysis = BioPolymer2D(sel)
