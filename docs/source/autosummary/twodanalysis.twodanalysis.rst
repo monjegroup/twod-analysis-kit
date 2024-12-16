@@ -4,26 +4,9 @@
 .. automodule:: twodanalysis.twodanalysis
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
    .. rubric:: Classes
 
    .. autosummary::
    
       Memb2D
    
-   
-
-   
-   
-   
-
-
-

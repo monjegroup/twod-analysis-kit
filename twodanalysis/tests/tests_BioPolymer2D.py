@@ -5,21 +5,18 @@ import numpy as np
 import pandas as pd
 from twodanalysis import BioPolymer2D
 from twodanalysis.data.files import MD_NOWATER_TPR, MD_TRAJ
+import pytest
 
-# sys.path.insert(0,'/home/antonio/Desktop/VIRMAT/2Danalysis/twod-analysis-kit/twodanalysis')
-# from BioPolymer2D import BioPolymer2D # type: ignore
-# import os
-# print(os.getcwd())
+
 
 u=mda.Universe(MD_NOWATER_TPR,MD_TRAJ)
-# u=mda.Universe(f"{trj_path}md_0_1.tpr",f"{trj_path}md_short_compact.xtc")
+
 sel = u.select_atoms("resid 193-200 or protein")
 ag_analysis = BioPolymer2D(sel)
 ag_analysis.system_name='Omicron PBL1'
 # ag_analysis.startT=100
 ag_analysis.getPositions()
-print()
-# print(ag_analysis.pos.shape)
+
 zlim=60
 Nframes=200
 
@@ -58,7 +55,7 @@ ag_for_path.getPositions()
 paths=ag_for_path.getKDEAnalysis(zlim,Nframes)
 ag_analysis.getHbonds('resname DOL','resid 193-200', update_selections=False,trj_plot=False)
 ag_analysis.plotHbondsPerResidues(paths,contour_lvls_to_plot=[0,5,8],top=5, print_table=True,filter=['DOL'])
-# ag_analysis.plotHbondsPerResidues(paths,contour_lvls_to_plot=None, print_table=True)
+
 
 
 
