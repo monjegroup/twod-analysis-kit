@@ -223,7 +223,7 @@ class Memb2D:
         if lipids == "all":
             lipids = self.lipid_list
         else:
-            if isinstance(lipids, list):
+            if isinstance(lipids, str):
                 lipids = [lipids]
         #Guess bonds if needed
         try:
@@ -1357,10 +1357,11 @@ class Memb2D:
 
         if periodic:
             n = round((dims[0]/grid_size))
-            print(n, dims[0]/grid_size, grid_size)
+            #print(n, dims[0]/grid_size, grid_size)
             xmax = xmin + n*grid_size
             ymax = ymin + n*grid_size
             matrix = matrix[:n, :n]
+
             if height:
                 matrix_height = matrix_height[:n, :n]
             edges = [xmin,xmax,ymin,ymax]
@@ -1382,7 +1383,9 @@ class Memb2D:
             non_nan = ~np.isnan(deffects)
             count = np.sum(non_nan)
             area_v = count*grid_size*grid_size
-            area_tot = (deffects.shape[0])**2 * grid_size*grid_size
+
+            area_tot = (deffects.shape[0])**2 * grid_size * grid_size
+
             return_dict["area"] = {"deffects" : area_v,
                                "total": area_tot}
 
@@ -1401,7 +1404,7 @@ class Memb2D:
 
 
 
-        print(return_dict)
+        #print(return_dict)
         if height:
             matrix_height = matrix_height[core]
             matrix_height[matrix_height == 0 ] = np.nan
