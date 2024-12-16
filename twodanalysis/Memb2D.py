@@ -1215,6 +1215,7 @@ class Memb2D:
                         edges = None,
                         area = True,
                         count = True,
+                        verbose = True,
                         ):
         """Compute packing defects based on packmem: https://doi.org/10.1016/j.bpj.2018.06.025
 
@@ -1287,8 +1288,10 @@ class Memb2D:
         lipid_list = list(self.lipid_list)
 
 
-        print("######### Running packing defects function ########## ")
-        print(f"We will compute packing defects for a membrane with lipids {lipid_list}")
+        if verbose:
+            print((f'######### Running packing defects function ########## \
+                  \nWe will compute packing defects for a membrane with lipids {lipid_list}'),
+                  end = "\r")
 
 
 
@@ -1757,6 +1760,7 @@ class Memb2D:
                                 final = -1,
                                 step = 1,
                                 area_size = True,
+                                verbose = True,
                                 ):
         """ Run packing defects from `start` to `final` and stores data
           about area of defects, total area, number of defects,
@@ -1796,7 +1800,10 @@ class Memb2D:
                              periodic = periodic,
                              edges = edges,
                              area =True,
-                             count = True)
+                             count = True,
+                             verbose = False)
+            if verbose:
+                print(f"Runing packing defects on frame {ts.frame}", end="\r")
             results.append([packing_dict["area"]["defects"],
                              packing_dict["area"]["total"],
                              packing_dict["count"]["number"],
