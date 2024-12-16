@@ -1201,7 +1201,7 @@ class Memb2D:
         return vmin,vmax
 
 
-    ################## Pcaking deffects related code ###############
+    ################## Pcaking defects related code ###############
 
 
 
@@ -1216,7 +1216,7 @@ class Memb2D:
                         area = True,
                         count = True,
                         ):
-        """Compute packing deffects based on packmem: https://doi.org/10.1016/j.bpj.2018.06.025
+        """Compute packing defects based on packmem: https://doi.org/10.1016/j.bpj.2018.06.025
 
         Parameters
         ----------
@@ -1236,9 +1236,9 @@ class Memb2D:
         Returns
         -------
         ndarray
-            If height == Flase: matrix with packing deffects
+            If height == Flase: matrix with packing defects
         ndarray, ndarray
-            If height === True: matrix with packing deffects, amtrix with height information
+            If height === True: matrix with packing defects, amtrix with height information
         """
 
         if edges is not None:
@@ -1345,7 +1345,7 @@ class Memb2D:
 
 
 
-            matrix = self.add_deffects(matrix, indexes,elements, names, lipid, mat_radii_dict)
+            matrix = self.add_defects(matrix, indexes,elements, names, lipid, mat_radii_dict)
         #print(f"Shapeeeeeee::::: {matrix.shape}, {matrix_height.shape}, dims {dims}")
         core1 = 2*(slice(n_aug+1,-(n_aug+1)),)
         core = 2*(slice(n_aug,-n_aug),)
@@ -1370,9 +1370,9 @@ class Memb2D:
 
 
         #print(f"Shapeeeeeee::::: {matrix.shape}, {matrix_height.shape}, dims {dims}")
-        deffects = matrix
-        deffects = np.where(matrix < 1, matrix, np.nan)
-        #deffects = np.where(deffects > 0, deffects, np.nan)
+        defects = matrix
+        defects = np.where(matrix < 1, matrix, np.nan)
+        #defects = np.where(defects > 0, defects, np.nan)
 
 
         return_dict = {
@@ -1380,24 +1380,24 @@ class Memb2D:
         }
 
         if area:
-            non_nan = ~np.isnan(deffects)
+            non_nan = ~np.isnan(defects)
             count = np.sum(non_nan)
             area_v = count*grid_size*grid_size
 
-            area_tot = (deffects.shape[0])**2 * grid_size * grid_size
+            area_tot = (defects.shape[0])**2 * grid_size * grid_size
 
-            return_dict["area"] = {"deffects" : area_v,
+            return_dict["area"] = {"defects" : area_v,
                                "total": area_tot}
 
         if count:
             from scipy.ndimage import label
-            binary_matrix = ~np.isnan(deffects)
+            binary_matrix = ~np.isnan(defects)
             structure = np.array([[1,1,1], [1,1,1], [1,1,1]])
             labeled_array, num_features = label(binary_matrix, structure = structure)
             cluster_sizes = np.bincount(labeled_array.ravel())[1:]
             return_dict["count"] = {"number":num_features, "sizes":cluster_sizes}
+            return_dict["grid_size"] = grid_size
 
-            cluster_sizes  = cluster_sizes[cluster_sizes>10]
             #plt.hist(cluster_sizes, bins=40)
             #plt.show()
 
@@ -1408,10 +1408,10 @@ class Memb2D:
         if height:
             matrix_height = matrix_height[core]
             matrix_height[matrix_height == 0 ] = np.nan
-            return deffects, matrix_height, return_dict
+            return defects, matrix_height, return_dict
 
 
-        return deffects, return_dict
+        return defects, return_dict
 
 
 
@@ -1504,21 +1504,21 @@ class Memb2D:
 
         return big_matrix
 
-    def add_deffects(self,
+    def add_defects(self,
                     matrix,
                     indexes,
                     elements,
                     names,
                     lipid,
                     mat_radii_dict):
-        """Code to easily add deffects in the 2d matrix
+        """Code to easily add defects in the 2d matrix
 
         Parameters
         ----------
         matrix : ndarray(n,n)
-            Matrix where the deffects are going to be added
+            Matrix where the defects are going to be added
         indexes : ndarray(i,j)
-            List of indexes i,j in the matrix where the deffects should be added
+            List of indexes i,j in the matrix where the defects should be added
         elements : list
             type of element (needed to put the right radious)
         names : list
@@ -1531,7 +1531,7 @@ class Memb2D:
         Returns
         -------
         ndarray
-            matrix matrix filled with the deffects
+            matrix matrix filled with the defects
         """
 
         matrix = matrix
@@ -1747,6 +1747,78 @@ class Memb2D:
 
 
         return indexes
+
+    def packing_defects_stats(self,
+                                nbins = 180,
+                                layer = "top",
+                                edges = None,
+                                periodic = False,
+                                start = 0,
+                                final = -1,
+                                step = 1,
+                                area_size = True,
+                                ):
+        """ Run packing defects from `start` to `final` and stores data
+          about area of defects, total area, number of defects,
+          and size of defects
+
+        Parameters
+        ----------
+        nbins : int, optional
+            number of bins to consider, by default 180
+        layer : str, optional
+            layer to consider, can be top, bot, by default "top"
+        edges : list(float), optional
+            Edges in the shape [xmin,xmax,ymin,ymax], by default None
+        periodic : bool, optional
+            Consider or not periodicity, by default False
+        start : int, optional
+            stat frame, by default 0
+        final : int, optional
+            final frame, by default -1
+        step : int, optional
+            frames to skip, by default 1
+        area_size : bool, optional
+            If true return the areas of the different defects, by default True
+
+        Returns
+        -------
+        pd.DataFrame, np.array
+            pandas dataframe with the area information of packing defects over time and informationabout the size of the packing defects
+        """
+
+        results = list()
+        sizes = list()
+        for ts in self.u.trajectory[start:final:step]:
+            _, packing_dict = self.packing_defects(layer = layer,
+                             nbins = nbins,
+                             height = False,
+                             periodic = periodic,
+                             edges = edges,
+                             area =True,
+                             count = True)
+            results.append([packing_dict["area"]["defects"],
+                             packing_dict["area"]["total"],
+                             packing_dict["count"]["number"],
+                             ])
+            if area_size:
+                sizes.append(packing_dict["count"]["sizes"]*(packing_dict["grid_size"]*packing_dict["grid_size"]))
+            else:
+                sizes.append(packing_dict["count"]["sizes"])
+
+        results = pd.DataFrame(results, columns = ["defects_area", "total_area", "n_defects"])
+
+        sizes = np.concatenate(sizes, axis = 0)
+
+        return results, sizes
+
+
+
+
+
+
+
+
 
 
     ############# End order parameters related code ###############
