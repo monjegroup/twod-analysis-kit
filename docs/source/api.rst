@@ -2,11 +2,11 @@ API Documentation
 =================
 
 .. autosummary::
-   :toctree: autosummary    
+   :toctree: autosummary
    :recursive:
 
 
-.. autoclass:: twodanalysis.twodanalysis.Memb2D
+.. autoclass:: twodanalysis.Memb2D.Memb2D
    :members:
    :undoc-members:
    :show-inheritance:
