@@ -406,7 +406,7 @@ class BioPolymer2D:
             plt.ylim((0,2))
             # plt.title('Polar Histogram RBD-%s %s variant'%('PBL', plabels[ivar]))
             plt.tight_layout()
-            plt.show()
+            # plt.show()
         #     ax.set_theta_zero_location('N')
         return hist_arr,ordered_selected_pos
 
@@ -861,7 +861,7 @@ class BioPolymer2D:
             return df_final.sort_values('Count', ascending=False)
         else:
             return df_final
-    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, filter=None, print_table=True): ### Add a Residue Filter option
+    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, filter=None, print_table=True,show=False):
         """Makes a figure showing the center of mass of the residues with H-bonds. Figure shows a contour plot as a reference of position of the whole molecule. Legend of the Figure shows the percentage of time in which there were Hbonds during the simulation of the plotted residues.
 
         Parameters
@@ -875,7 +875,9 @@ class BioPolymer2D:
         contour_lvls_to_plot : str or list, optional
             Residue names to be filtered out of the plot and the output table.
         print_table : bool, optional
-            Whether or not to print the pandas.DataFrame with the data shown in figure, by default True
+            Whether or not to print the pandas.DataFrame table with the data shown in figure, by default True
+        show : bool, optional
+            Whether or not to show the figure. Convinient to use False if want to do further tunning the plot. By default False
 
         Returns
         -------
@@ -924,7 +926,8 @@ class BioPolymer2D:
         plt.tight_layout()
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5),#prop={'size':22},
                     title="ResID-ResName(Hbond %)",)#title_fontsize=20)
-        plt.show()
+        if show:
+            plt.show()
         return sorted_df
 
     @staticmethod
