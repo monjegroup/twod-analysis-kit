@@ -16,6 +16,7 @@
       ~BioPolymer2D.FilterMinFrames
       ~BioPolymer2D.HbondsPerResidues
       ~BioPolymer2D.INFO
+      ~BioPolymer2D.KDEAnalysisSelection
       ~BioPolymer2D.ListPathsInLevel
       ~BioPolymer2D.PolarAnalysis
       ~BioPolymer2D.RgPerpvsRgsPar
@@ -27,6 +28,7 @@
       ~BioPolymer2D.getKDEAnalysis
       ~BioPolymer2D.getPositions
       ~BioPolymer2D.getRgs2D
+      ~BioPolymer2D.makeCmapColor
       ~BioPolymer2D.plotHbondsPerResidues
       ~BioPolymer2D.plotPathsInLevel
    
