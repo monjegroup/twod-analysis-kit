@@ -33,8 +33,6 @@ class Memb2D:
                 self,
                 obj,
                 lipid_list = None,
-                tpr = None,
-                info = False,
                 guess_chain_l = True,
                 chain_info = None,
                 v_min = None,
@@ -183,7 +181,7 @@ class Memb2D:
 
 
         self.all_head = self.u.select_atoms(self.build_resname(self.lipid_list) + " and name P")
-        if v_min == None and v_max == None:
+        if v_min is None and v_max is None:
             positions = self.all_head.positions[:,:2]
             self.v_min = np.min(positions)
             self.v_max = np.max(positions)
@@ -201,10 +199,10 @@ class Memb2D:
 
     # Method to print dictionaries
     @staticmethod
-    def print_dict(dict):
+    def print_dict(dictio):
         string = ""
-        for key in dict.keys():
-            string += f"{key} : {dict[key]}\n"
+        for key in dictio.keys():
+            string += f"{key} : {dictio[key]}\n"
         return string
 
 
@@ -1865,6 +1863,7 @@ class Memb2D:
 
         if lipid_list is None:
             lipid_list = list(self.lipid_list)
+
         if working_lip is None:
             working_lip = self.working_lip
         print(self.lipid_list)
@@ -1895,7 +1894,7 @@ class Memb2D:
         heads_pos = heads.positions[:,:2]
         resnames_pos = heads.resnames
         orig_len = len(heads_pos)
-        print(heads_pos.shape, resnames_pos.shape)
+        print("Here first shapes", heads_pos.shape, resnames_pos.shape)
 
         ## Extent data
         dimensions = self.u.trajectory.ts.dimensions[:2]
@@ -1903,44 +1902,17 @@ class Memb2D:
 
         heads_pos, resnames_pos = self.extend_data(heads_pos, dimensions, cons, others = [resnames_pos])
         resnames_pos = resnames_pos[0]
-
-        '''
-        # Extent in x
-        left_add = heads_pos[heads_pos[:,0] <= xmin + cons*dist_x] + [dimensions[0],0]
-        right_add = heads_pos[heads_pos[:,0] >= xmax - cons*dist_x] - [dimensions[0],0]
-
-
-        left_add_resn = resnames_pos[heads_pos[:,0] <= xmin + cons*dist_x]
-        right_add_resn = resnames_pos[heads_pos[:,0] >= xmax - cons*dist_x]
-
-
-        heads_pos = np.concatenate([heads_pos, left_add, right_add], axis = 0)
-        resnames_pos = np.concatenate([resnames_pos, left_add_resn, right_add_resn], axis = 0)
-
-        print(heads_pos.shape, resnames_pos.shape)
-        # Extent in y
-        up_add = heads_pos[heads_pos[:,1] <= ymin + cons*dist_y] + [0,dimensions[0]]
-        low_add = heads_pos[heads_pos[:,1] >= ymax - cons   *dist_y] - [0,dimensions[0]]
-
-
-        up_add_resn = resnames_pos[heads_pos[:,1] <= ymin + cons*dist_y]
-        low_add_resn = resnames_pos[heads_pos[:,1] >= ymax - cons*dist_y]
-
-        print(up_add.shape, low_add.shape, up_add_resn.shape, low_add_resn.shape, heads_pos.shape, resnames_pos.shape)
-
-        heads_pos = np.concatenate([heads_pos, up_add, low_add], axis = 0)
-        resnames_pos = np.concatenate([resnames_pos, up_add_resn, low_add_resn], axis = 0)
-        print(heads_pos.shape, resnames_pos.shape)
-        '''
-
         from scipy.spatial import Voronoi, voronoi_plot_2d
         from scipy.spatial import ConvexHull
 
         voronoi_dict = {"vertices":list(),
-                        "points":heads_pos[:orig_len],
+                        "points":heads_pos,
                         "areas":list(),
                         "resnames":resnames_pos,
+                        "orig_len":orig_len
                          }
+
+
         voronoi = Voronoi(heads_pos)
         vertices = voronoi.vertices
 
@@ -1950,16 +1922,24 @@ class Memb2D:
             result_dict[lipid] = list()
 
         #for i, region in enumerate(voronoi.point_region[:orig_len]):
+        update_points = list()
         for i, region in enumerate(voronoi.point_region):
+            #print(i, region, len(voronoi.point_region), len(voronoi_dict["resnames"]))
             if -1 in voronoi.regions[region]:
+                #print("here")
                 continue
+
             vertex = vertices[voronoi.regions[region]]
             hull = ConvexHull(vertex)
             area = hull.volume
             voronoi_dict["areas"].append(area)
-            result_dict[voronoi_dict["resnames"][i]].append(area)
+            update_points.append(voronoi_dict["points"][i])
+            if i < orig_len:
+                result_dict[voronoi_dict["resnames"][i]].append(area)
 
             voronoi_dict["vertices"].append(vertex)
+        voronoi_dict["points"] = np.array(update_points)
+        print(len(voronoi_dict["areas"]))
 
         for lipid in resnames:
             result_dict[lipid] = np.mean(np.array(result_dict[lipid]))
@@ -2004,7 +1984,7 @@ class Memb2D:
         plt.imshow(grid, cmap = "Spectral")
         plt.show()
 
-    def map_voronoi(self, voronoi_points, voronoi_areas, nbins, dimensions):
+    def map_voronoi(self, voronoi_points, voronoi_areas, nbins, edges):
         """ Function to map voronoi APL to a 2D plane
 
         Parameters
@@ -2015,7 +1995,7 @@ class Memb2D:
             Areas correspondng to the points
         nbins : int
             number of bins for the grid
-        dimensions : list
+        edges : list
             A list with the lipids of the grid [xmin,xmax,ymin,ymax]
 
         Returns
@@ -2023,10 +2003,10 @@ class Memb2D:
         ndarray, edges
             numpy array (nbins,nbins), adn edges of this array
         """
-        xmin =dimensions[0]
-        xmax =dimensions[1]
-        ymin =dimensions[2]
-        ymax =dimensions[3]
+        xmin =edges[0]
+        xmax =edges[1]
+        ymin =edges[2]
+        ymax =edges[3]
 
         xcoords = np.linspace(xmin, xmax, nbins)
         ycoords = np.linspace(ymin, ymax, nbins)
@@ -2034,6 +2014,7 @@ class Memb2D:
         xx, yy = np.meshgrid(xcoords, ycoords)
         grid_points = np.vstack([xx.ravel(), yy.ravel()]).T
         points = voronoi_points
+
 
         distances = np.linalg.norm(grid_points[:,None, :]- points[None,:,:], axis = 2)
 
@@ -2043,7 +2024,7 @@ class Memb2D:
         voronoi_areas = np.array(voronoi_areas)
         grid = voronoi_areas[closest_seed_indices].reshape(nbins, nbins)
 
-        return grid, dimensions
+        return grid, edges
 
 
 
