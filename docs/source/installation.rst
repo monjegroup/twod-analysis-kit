@@ -28,13 +28,20 @@ Installation from github
 
 The following two lines download our repository and go into the directory twdanalysis
 
-.. code-block::
+.. code-block:: console
 
     git clone https://github.com/monjegroup/twod-analysis-kit.git
     cd twod-analysis-kit
 
-Now in the folder, install dependencies and twodanalysis current version via pip command
+Now, once in the directory, install the development and documentation dependencies:
 
 .. code-block:: console
 
-   pip install -e . # Now in the folder, install our software
+    conda env update --name twod-analysis-kit --file devtools/conda-envs/test_env.yaml
+    conda env update --name twod-analysis-kit --file docs/requirements.yaml
+
+Finally, build dependencies and twodanalysis current version via pip command
+
+.. code-block:: console
+
+   pip install -e .
