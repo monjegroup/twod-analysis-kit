@@ -137,16 +137,16 @@ for key in lipid_polar.keys():
 
 """
 # Data for RNA membrane
-traj = "membrane.xtc"
-tpr = "../data/veamos.tpr"
-universe = mda.Universe(tpr, traj)
-membrane = Memb2D(universe,
-                        verbose = True,
-                        add_radii = True)
+#traj = "membrane.xtc"
+#tpr = "../data/veamos.tpr"
+#universe = mda.Universe(tpr, traj)
+#membrane = Memb2D(universe,
+#                        verbose = True,
+#                        add_radii = True)
 
-defects, defects_dict = membrane.packing_defects(layer = "top", nbins = 200, periodic=True)
+#defects, defects_dict = membrane.packing_defects(layer = "top", nbins = 200, periodic=True)
 
-print(membrane.print_dict(defects_dict))
+#print(membrane.print_dict(defects_dict))
 
 # Plot defects
 #plt.imshow(defects, cmap = "viridis")
@@ -277,7 +277,7 @@ plt.close()
 
 ###### Code to test apl ######
 
-
+"""
 voronoi_dict = membrane.voronoi_apl(layer = "top")
 
 
@@ -357,4 +357,5 @@ plt.close()
 #plt.plot(list(range(len(lista))),lista)
 #print(indices)
 #plt.show()
+"""
 
