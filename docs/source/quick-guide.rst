@@ -127,3 +127,95 @@ the lipids looks as follows
  .. image:: image1aa.png
 
 
+Packing defects
+^^^^^^^^^^^^^^^
+
+Packing defects is metric to evaluate the exposure of the hydrophobic core. It changes with membrane composition and
+also when proteins interact with the membrane. The computation of packing defects with packmemb implies extracting pdb files
+from the trajectories and then procesing them, which is time comsuming. Here we present an easy way to compute packing defects by
+only providing the trajectory and the topology file. Also, our code outperforms packmemb, doing the computations faster.
+
+The packing defects code is the following:
+
+.. code-block:: python
+
+    # Compute deffects for the first frame
+    defects, defects_dict = membrane.packing_defects(layer = "top",         # layer to compute packing defects
+                                                    edges=[10,170,10,170],  # edges for output
+                                                    nbins = 400,            # number of bins
+                                                    )
+
+
+
+
+.. code-block:: python
+
+    # Plot defects
+    %matplotlib inline
+    plt.imshow(defects, cmap = "viridis", extent = defects_dict["edges"])
+    plt.xlabel("x  $[\AA]$")
+    plt.ylabel("y  $[\AA]$")
+    plt.show()
+
+.. image:: packing_defects.png
+
+
+
+For various frames to get statistics
+
+.. code-block:: python
+
+    data_df, numpy_sizes = membrane.packing_defects_stats(nbins = 400,
+                                                      layer = "top",
+                                                      periodic = True,
+                                                      start = 0,
+                                                      final = -1,
+                                                      step=1)
+
+
+.. image:: sizedefetc.png
+
+
+Area perlipid
+^^^^^^^^^^^^^
+
+We include the posibility of get Voronoi APL. For one frame can be obtained as follows:
+
+.. code:: python
+
+    voronoi_dict = membrane.voronoi_apl(layer = "top")
+
+
+This return a dictionary that contains the areas per each lipid in the top bilayer
+
+We can further map this voronoi to a twod grid and plot it
+
+.. code:: python
+
+    xmin = membrane.v_min
+    xmax = membrane.v_max
+    ymin = membrane.v_min
+    ymax = membrane.v_max
+    apl, edges = membrane.map_voronoi(voronoi_dict["points"], voronoi_dict["areas"], 180, [xmin, xmax, ymin, ymax])
+
+    plt.imshow(apl, extent = edges, cmap = "Spectral")
+    plt.xlabel("$x [\AA]$")
+    plt.ylabel("$y [\AA]$")
+    plt.colorbar()
+
+.. image:: apl.png
+
+
+For multiples frames:
+
+.. code:: python
+
+    resu, edges = membrane.grid_apl(layer = "top", start = 10, final = 100, step = 1, lipid_list = None)
+
+    plt.imshow(resu, extent = edges, cmap = "Spectral")
+    plt.xlabel("$x [\AA]$")
+    plt.ylabel("$y [\AA]$")
+    plt.colorbar()
+
+.. image:: multiple_apl.png
+
