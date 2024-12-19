@@ -14,3 +14,6 @@ python:
 
 conda:
   environment: docs/requirements.yaml
+
+branches:
+  - main  # If the default branch is `main`
