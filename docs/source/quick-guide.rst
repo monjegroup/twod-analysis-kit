@@ -76,19 +76,17 @@ you can also choose which layer the analysis will run (top, bot, both). Follows 
 
 .. code-block:: python
 
-    scd_top, edges = membrane.thickness( "top",       # top layer
-                                        50,           # nbins
-                                        start = 61,   # Initial frame
-                                        final = 110,  # Final Frame
-                                        step = 1,     # Frames to skip
-                                        )
+    scd_top, edges = membrane.all_lip_order("top",
+                                                50,
+                                                start = 61,
+                                                final=110,
+                                                step = 1)
+    scd_bot, edges = membrane.all_lip_order("bot",
+                                                50,
+                                                start = 61,
+                                                final=110,
+                                                step = 1)
 
-    scd_bot, edges = membrane.thickness( "bot",       # bot layer
-                                        50,           # nbins
-                                        start = 61,   # Initial frame
-                                        final = 110,  # Final Frame
-                                        step = 1,     # Frames to skip
-                                        )
 
 Now we can plot the results
 
