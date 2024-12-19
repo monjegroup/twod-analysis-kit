@@ -8,8 +8,6 @@ build:
     python: "mambaforge-4.10"
 
 
-branches:
-  - main  # If the default branch is `main`
 
 
 python:
