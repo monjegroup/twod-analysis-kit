@@ -37,8 +37,8 @@ Now, once in the directory, install the development and documentation dependenci
 
 .. code-block:: console
 
-    conda env update --name twod-analysis-kit --file devtools/conda-envs/test_env.yaml
-    conda env update --name twod-analysis-kit --file docs/requirements.yaml
+    conda env update --name twod --file devtools/conda-envs/test_env.yaml
+    conda env update --name twod --file docs/requirements.yaml
 
 Finally, build dependencies and twodanalysis current version via pip command
 
