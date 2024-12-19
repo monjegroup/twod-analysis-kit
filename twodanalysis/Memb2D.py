@@ -140,15 +140,14 @@ class Memb2D:
                                 "CHL1" : {"head" :"O3", "charge" : 0},
                                 "DODMA" : {"head" :"N1", "charge" : -0.21},
                                 "DSPC" : {"head" :"P", "charge" : 1.1},
-                                "POPE" : {"head" :"P", "charge" : 1.1},
-                                "DOPS" : {"head" :"P", "charge" : 0.1},
-                                "POPS" : {"head" :"P", "charge" : 0.1},
-                                "DSPE" : {"head" :"P", "charge" : 1.3},
-                                "DOPC" : {"head" :"P", "charge" : 1.3},
-                                "DOPE" : {"head" :"P", "charge" : 1.3},
-                                "POPI15" : {"head" :"P", "charge" : 1.3},
-                                "POPI24" : {"head" :"P", "charge" : 1.3},
                             } #List of known lipids and lipids head people usually use to work
+
+
+        for lipid in self.lipid_list:
+            test_lips = self.working_lip.keys()
+            if lipid not in test_lips:
+                self.working_lip[lipid] = {"head" : "P", "charge" : 0}
+
 
         self.chain_info = chain_info
 
