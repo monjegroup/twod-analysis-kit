@@ -7,6 +7,11 @@ build:
   tools:
     python: "mambaforge-4.10"
 
+
+branches:
+  - main  # If the default branch is `main`
+
+
 python:
   install:
     - method: pip
@@ -14,6 +19,3 @@ python:
 
 conda:
   environment: docs/requirements.yaml
-
-branches:
-  - main  # If the default branch is `main`
