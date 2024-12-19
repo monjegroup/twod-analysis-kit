@@ -10,6 +10,8 @@ dependencies:
 
   - mdanalysis-sphinx-theme >=1.0.1
   - imageio>=2.36.0
+  - pandas
+  - seaborn
   - nglview
     # Pip-only installs
   - pip:
