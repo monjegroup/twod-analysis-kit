@@ -25,6 +25,7 @@ Import the class, and mdanalysis
 All this analysis have in common the definition of a class that must be done with a universe
 
 .. code-block:: python
+
     tpr = "membrane.tpr" # Replace this with you own membrane tpr or gro file
     xtc = "membrane.xtc" # Replace this with you xtc fila
 
