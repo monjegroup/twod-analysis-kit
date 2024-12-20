@@ -794,7 +794,9 @@ class Memb2D:
 
 
         lipid_list = list(self.lipid_list)
-        lipid_list.remove("CHL1")
+        if "CHL1" in lipid_list:
+            lipid_list.remove("CHL1")
+
         lipids = self.chain_info
 
 
@@ -826,65 +828,6 @@ class Memb2D:
 
 
     ############## End of order parameters related code ############################3
-
-    """
-    # Method to average vector to pseudovector program
-    @staticmethod
-    def average_vector(data, min_lenght):
-        columns = ["index", "x", "y", "z"] # Data expected is an np array with columns ["index", "x", "y", "z"]
-        df = pd.DataFrame(data, columns = columns)
-        result = []
-        for i in range(min_lenght):
-            temp = df[df["index"] == i]
-            if len(temp) > 0 :
-                bin_vect = temp[columns[1:]]
-                bin_vect = bin_vect.mean()
-                result.append(bin_vect.to_list())
-            else:
-                result.append([np.nan, np.nan, np.nan])
-        result = np.array(result)
-        return result
-
-
-    # Computes the average vector for each bin, sample are the raw x,y positions and weights are the vectors related to the head
-    def pseudohistogram2D(self,sample1, weights, bins = 10, v_min = None, v_max = None):
-        if v_min == None:
-            v_min = np.min(sample1)
-        if v_max == None:
-            v_max = np.max(sample1)
-
-        #print(v_min, v_max)
-        nbin = np.empty(2,np.intp)
-        edges = 2*[None]
-
-        for i in range(2):
-            edges[i] = np.linspace(v_min, v_max, bins +1)
-            nbin[i] = len(edges[i]) + 1
-
-        Ncount = (tuple(np.searchsorted(edges[i], sample1[:,i], side = "right") for i in range(2)))
-
-        for i in range(2):
-            on_edge = (sample1[:,i] == edges[i][-1])
-            Ncount[i][on_edge] -= 1
-
-
-        xy = np.ravel_multi_index(Ncount, nbin)
-        xy_test = xy.reshape(-1,1)
-
-        xy_test = np.concatenate((xy_test, weights), axis = 1)
-        hist = self.average_vector(xy_test, nbin.prod())
-        nbin = (nbin[0], nbin[1], 3)
-        hist = hist.reshape(nbin)
-        hist = hist.astype(float, casting = "safe")
-        core = 2*(slice(1,-1),)
-        hist = hist[core]
-
-        return hist, edges
-
-    """
-
-
-
 
 
 
@@ -1156,7 +1099,8 @@ class Memb2D:
         """
         if lipids is None:
             lipids = list(self.lipid_list)
-            lipids.remove("CHL1")
+            if "CHL1" in lipids:
+                lipids.remove("CHL1")
 
         matrix_up, edges = self.height_matrix(lipids,
                         "top",
