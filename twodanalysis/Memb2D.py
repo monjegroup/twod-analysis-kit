@@ -73,7 +73,6 @@ class Memb2D:
 
 
         # Read trajectory depending if tpr is provided or not
-
         if isinstance(obj, mda.Universe):
             self.u = obj
         elif isinstance(obj,mda.core.groups.AtomGroup):
@@ -86,7 +85,10 @@ class Memb2D:
 
         # Select elements in the membrane (in principle only lipids)
         if not lipid_list: # Select only elements of the membrane
-            self.memb = self.u.select_atoms("all and not protein and not (resname URA or resname GUA or resname ADE or resname CYT or resname THY)")
+            self.memb = self.u.select_atoms("all and not protein and not\
+                                             (resname URA or resname GUA\
+                                             or resname ADE or resname CYT\
+                                             or resname THY)")
             self.lipid_list = set(self.memb.residues.resnames)
         else:
             self.memb = self.u.select_atoms(f"{self.build_resname(list(lipid_list))}")
@@ -100,11 +102,12 @@ class Memb2D:
         # Set radius sizes of different elements
         self.radii_dict = 0
         if add_radii:
-            self.radii_dict = {"H": 0.7,
-                            "N": 1.85,
-                            "C": 2.06,
-                            "P": 2.15,
-                            "O": 1.65,
+            self.radii_dict = {"H": 1.1,
+                            "N": 1.55,
+                            "C": 1.7,
+                            "P": 1.8,
+                            "O": 1.52,
+                            "S" : 1.8,
                             }
 
 
@@ -122,20 +125,6 @@ class Memb2D:
             self.u.add_TopologyAttr("radii")
             self.memb.radii = radii_array
 
-            # May use to build a different way to select polar atoms
-            #polar_motif = "N HN1 HN2 HN3 C12 H12A C13 O13A O13B C11 H11A H11B"
-            #polar_PS = "N HN1 HN2 HN3 C12 H12A C13 O13A O13B C11 H11A H11B"
-            #polar_PI = "C12 H2 O2 HO2 C13 H3 O3 HO3 C14 H4 O4 HO4 C15 H5 O5 HO5 C16 H6 O6 HO6 C11 H1"
-            #polar_PA = "H12 "
-            #polar_PC = "N C12 C13 C14 C15 H12A H12B H13A H13B H13C H14A H14B H14C H15A H15B H15C C11 H11A H11B"
-            #polar_PE = "N HN1 HN2 HN3 C12 H12A H12B C11 H11A H11B"
-            #polar_CHL = "O3 H3'"
-
-
-            #polar_chains = [polar_motif, polar_PS, polar_PI, polar_PA, polar_PC, polar_PE]
-            #polar_atoms = [chain.split() for chain in polar_atoms]
-            #dspc = self.memb.select_atoms("(resname DSPC and not (name C3* or name H*X or name H*Y or name C2* or name H*R or name H*S)) or (resname DSPC and(name C3 or name HX or name HY or name C2 or name HR or name HS))")
-            #print(set(dspc.atoms.names))
 
 
 
@@ -160,7 +149,7 @@ class Memb2D:
         self.chain_info = chain_info
 
 
-        if guess_chain_l: # Guess the chain lenght of lipids. Chain sn2 start with C2 and chain sn1 start with C3
+        if guess_chain_l: # Guess the chain length of lipids. Chain sn2 start with C2 and chain sn1 start with C3
             self.chain_info = {}
             self.non_polar_dict = {}
             self.first_lipids = {}
@@ -199,8 +188,9 @@ class Memb2D:
 
         if verbose:
             print(f"This system contains the following lipids : {self.lipid_list}\n\n")
-            print(f"The chain lenght is : \n{self.print_dict(self.chain_info)}\n")
-            print(f"We will use the following heads and charges for the following lipids. If the lipid is not here we will use P as head as default \n{self.print_dict(self.working_lip)}\n")
+            print(f"The chain length is : \n{self.print_dict(self.chain_info)}\n")
+            print(f"We will use the following heads and charges for the following lipids.\
+                   If the lipid is not here we will use P as head as default \n{self.print_dict(self.working_lip)}\n")
             print("Note: To compute the middle of the membrane we use only P heads\n\n")
             print(f"The default start frame is {self.start}, final {self.final}, step {self.step}\n\n")
 
@@ -356,7 +346,7 @@ class Memb2D:
         matrix = [] # this will store a matrix of the shape (2+n_chain,
         for ts in self.u.trajectory[start:final:step]:
             z = all_head.positions[:,2]
-            z_mean = z.mean() # get middel of the membrane
+            z_mean = z.mean() # get middle of the membrane
 
             #Pick atoms in the layer
             if layer == "both":
@@ -406,7 +396,7 @@ class Memb2D:
     def get_individual(lista
                     ):
         r"""This function gets a list with a specific carbon (e.g. C34 or C22)
-        and its respective hidrogens (e.g. H4X, H4Y). It computes the vectors
+        and its respective hydrogen (e.g. H4X, H4Y). It computes the vectors
         that connect the carbons and the hydrogens and computes the :math:`cos(\theta)^2`, where :math:`\theta` is
         the angle between each vector and the z-axis. Finally, this function returns a vector with the individual (per lipid)
         :math:`\braket{cos(\theta)^2}`, where the mean is computed over the hydrogens of each carbon.
@@ -414,8 +404,8 @@ class Memb2D:
         Parameters
         ----------
         lista : list
-            Vector of the shape :math:`[C*i, HiX,HiY, HiZ]`, the minimun len is 2 (when the carbon
-            only have one hydrogen) and the maximun is 4 (when there is three hydrogens)
+            Vector of the shape :math:`[C*i, HiX,HiY, HiZ]`, the minimum len is 2 (when the carbon
+            only have one hydrogen) and the maximum is 4 (when there is three hydrogens)
             Note: If there is N lipids, there will be N carbons :math:`C*i`, and the i represents
             the position of the carbon in the lipid tail.
 
@@ -556,11 +546,11 @@ class Memb2D:
                             f"name H{i+2}S and not name HS",
                             f"name H{i+2}T and not name HT"
                         ]
-            if lipid == "POPE" or lipid == "POPS" or lipid == "POPI15" or lipid == "POPI24":
-                if selections[0] == "name C29":
-                    selections[1] = "name H91"
-                if selections[0] == "name C210":
-                    selections[1] = "name H101"
+            #if lipid == "POPE" or lipid == "POPS" or lipid == "POPI15" or lipid == "POPI24":
+            #    if selections[0] == "name C29":
+            #        selections[1] = "name H91"
+            #    if selections[0] == "name C210":
+            #        selections[1] = "name H101"
             # Define a list to store atoms
             lista = []
 
@@ -568,6 +558,16 @@ class Memb2D:
                 atoms = sel.select_atoms(selection)
                 if atoms.n_atoms != 0:
                     lista.append(atoms)
+            if len(lista) == 1:
+
+                one_atom = f"name H{i+2}1"
+
+                atoms = sel.select_atoms(one_atom)
+                if atoms.n_atoms != 0:
+                    lista.append(atoms)
+            if len(lista) == 1:
+                raise "Something went wrong guessing the atoms in lipid tail"
+
             angles = self.get_individual(lista)
             chains.append(angles)
         chains = np.array(chains) # Expect array of dim (n_chain, n_lipids)
