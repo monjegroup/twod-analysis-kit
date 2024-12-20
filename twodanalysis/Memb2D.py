@@ -109,7 +109,15 @@ class Memb2D:
 
 
             # Add radii as a topology attribute for Mdanalysis
-            string_array = self.memb.elements
+            try:
+                string_array = self.memb.elements
+            except:
+                guessed_elements = mda.topology.guessers.guess_types(self.u.atoms.names)
+                self.u.add_TopologyAttr("elements", guessed_elements)
+                string_array = self.memb.elements
+
+
+
             radii_array = np.array([self.radii_dict[element] for element in string_array])
             self.u.add_TopologyAttr("radii")
             self.memb.radii = radii_array
@@ -140,7 +148,7 @@ class Memb2D:
                                 "CHL1" : {"head" :"O3", "charge" : 0},
                                 "DODMA" : {"head" :"N1", "charge" : -0.21},
                                 "DSPC" : {"head" :"P", "charge" : 1.1},
-                            } #List of known lipids and lipids head people usually use to work
+                            }
 
 
         for lipid in self.lipid_list:
