@@ -412,7 +412,7 @@ class BioPolymer2D:
 
     ######## Radii of Gyration 2D Analysis ###################
 
-    def computeRG2D(self, masses, total_mass=None):
+    def computeRG2D(self, masses, total_mass):
         r"""Computes parallel, perpendicular and 3D radius of gyration in 1 frame.
 
         .. math:: R_{\textrm{g}\parallel}= \sqrt{ \frac{1}{m_T}\sum_{i} m_{i}\left[ (x_i-x_{\textrm{CM}})^2+(y_i-y_{\text{CM}})^2\right]}
@@ -427,7 +427,7 @@ class BioPolymer2D:
         masses : np.ndarray (Natoms)
             Mass vallues of each atom.
         total_mass : float, optional
-            Sum of these masses. By default None
+            Sum of these masses
 
         Returns
         -------
