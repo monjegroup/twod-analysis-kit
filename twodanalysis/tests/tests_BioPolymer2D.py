@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 from twodanalysis import BioPolymer2D
 from twodanalysis.data.files import MD_NOWATER_TPR, MD_TRAJ
-import pytest
 
 
 
