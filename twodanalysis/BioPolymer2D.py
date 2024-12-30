@@ -684,8 +684,8 @@ class BioPolymer2D:
         for i_paths in range(len(paths_in_lvl)):
             x_values,y_values=paths_in_lvl[i_paths].T
             area_outline = simpson(y_values[::-1], x=x_values[::-1])
-            print("Area of the outline %s:"%i_paths,np.abs(area_outline))
-            Areas.append(np.abs(area_outline))
+            print("Area of the outline %s:"%i_paths,area_outline)
+            Areas.append(area_outline)
         if getTotal:
             return np.sum(Areas)
         else:
@@ -770,6 +770,7 @@ class BioPolymer2D:
         if show:
             plt.show()
         return paths_arr_arr, res
+
     def getHbonds(self,selection1,selection2, update_selections=True,trj_plot=False, inplace=True ):
         """Computes H-bonds between to selection1 and selection2 of the trajectory using MDAnalysis.analysis.hydrogenbonds.HydrogenBondAnalysis.
 

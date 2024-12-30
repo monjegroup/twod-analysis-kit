@@ -49,7 +49,24 @@ def test_RgPerpvsRgsPar(obj,rgs,color, marker='s',plot=False,show=False):
     assert isinstance(rg_ratio,(float))
 
 
-
+def test_ListPathsInLevel(obj,contour_level):
+    kde_plot=obj.kdeanalysis.kde
+    paths=obj.ListPathsInLevel(kde_plot,contour_level,plot_paths=False)
+    assert isinstance(paths,list)
+def test_getKDEAnalysis(obj,zlim,Nframes):
+    paths_arr=obj.getKDEAnalysis(zlim,Nframes,inplace=True,control_plots=False)
+    assert isinstance(obj.kdeanalysis.paths,list) and paths_arr==obj.kdeanalysis.paths
+def test_getAreas(obj,contour_lvl,getTotal):
+    A=obj.getAreas(obj.kdeanalysis.paths,contour_lvl,getTotal)
+    print(type(A))
+    if getTotal:
+        assert isinstance(A,float)
+    else:
+        assert isinstance(A,list) and len(A)==len(obj.kdeanalysis.paths[contour_lvl])
+    
+def test_KDEAnalysisSelection(obj,select_res):
+    path_arr_arr,res=obj.KDEAnalysisSelection(select_res,Nframes=1000,zlim=15,show=False,legend=False)
+    assert isinstance(path_arr_arr,list) and isinstance(res,np.ndarray) and len(res.residues)== len()
 
 u=mda.Universe(MD_NOWATER_TPR,MD_TRAJ) 
 
@@ -76,14 +93,19 @@ rgs=ag.getRgs2D(plot=False)
 test_RgPerpvsRgsPar(ag,rgs, color='green')
 
 
-# print('# ##########TEST CONTOUR PLOTS ################')
 
-# paths=ag_analysis.getKDEAnalysis(zlim,Nframes)
-# print(ag_analysis.kdeanalysis.kde)
-# ag_analysis.plotPathsInLevel(paths,1,show=False)
+
+print('# ##########TEST CONTOUR PLOTS ################')
+
+paths=test_getKDEAnalysis(ag,zlim,Nframes)
+test_ListPathsInLevel(ag,contour_level=5)
+print(len(ag.kdeanalysis.paths))
+test_getAreas(ag,contour_lvl=5,getTotal=False)
+test_getAreas(ag,contour_lvl=5,getTotal=True)
+# ag.plotPathsInLevel(paths,1,show=False)
 # areas=BioPolymer2D.getAreas(paths,2,getTotal=True)
 # print(areas)
-# ag_analysis.KDEAnalysisSelection('resid 198 200 12 8 40 45 111 115 173',Nframes,zlim)
+# ag.KDEAnalysisSelection('resid 198 200 12 8 40 45 111 115 173',Nframes,zlim)
 # # plt.legend()
 # plt.show()
 # print('##### TEST HBONDS PLOTS #####')
@@ -92,8 +114,8 @@ test_RgPerpvsRgsPar(ag,rgs, color='green')
 # ag_for_path = BioPolymer2D(sel_for_path)
 # ag_for_path.getPositions()
 # paths=ag_for_path.getKDEAnalysis(zlim,Nframes)
-# ag_analysis.getHbonds('resname DOL','resid 193-200', update_selections=False,trj_plot=False)
-# ag_analysis.plotHbondsPerResidues(paths,contour_lvls_to_plot=[0,5,8],top=5, print_table=True,filter=['DOL'])
+# ag.getHbonds('resname DOL','resid 193-200', update_selections=False,trj_plot=False)
+# ag.plotHbondsPerResidues(paths,contour_lvls_to_plot=[0,5,8],top=5, print_table=True,filter=['DOL'])
 
 
 
