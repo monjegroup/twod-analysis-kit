@@ -15,7 +15,8 @@ def test_getPositions(obj,pos_type='COM', inplace=True, select=None,getselection
     if inplace:
         assert pos is None and isinstance(obj.pos, (list, np.ndarray))
     elif getselection is True:
-        assert isinstance(pos, (list, np.ndarray)), isinstance(obj.atom_group, MDAnalysis.AtomGroup)  # type: ignore
+        assert isinstance(pos, (list, np.ndarray)), isinstance(obj.atom_group,
+                                                                MDAnalysis.AtomGroup)  # type: ignore
     else:
         assert isinstance(pos, (list, np.ndarray))
 
@@ -30,7 +31,8 @@ def test_FilterMinFrames(obj, pos, zlim,Nframes,control_plots=False):
     selected_pos=obj.FilterMinFrames(pos, zlim,Nframes,control_plots)
     assert isinstance(selected_pos, (list, np.ndarray))
 
-def test_PolarAnalysis(obj,select_res,Nframes,max_hist=None,sort=None,plot=False,control_plots=False, zlim=14,Nbins=1000,resolution=5):
+def test_PolarAnalysis(obj,select_res,Nframes,max_hist=None,sort=None,
+                       plot=False,control_plots=False, zlim=14,Nbins=1000,resolution=5):
     hist,ordered_selected_pos=obj.PolarAnalysis(select_res,Nframes,max_hist,sort,plot,control_plots, zlim,Nbins,resolution)
     assert isinstance(hist, (list, np.ndarray)) and np.shape(hist)==(np.shape(ordered_selected_pos)[1],2,Nbins-1) and isinstance(ordered_selected_pos, (list, np.ndarray))
 
@@ -44,7 +46,8 @@ def test_computeRG2D(obj):
 def test_getRgs2D(obj):
     rgs=obj.getRgs2D()
     assert np.shape(rgs)==(obj.universe.trajectory[-1].frame,4)
-def test_RgPerpvsRgsPar(obj,rgs,color, marker='s',plot=False,show=False):
+def test_RgPerpvsRgsPar(obj,color, marker='s',plot=False,show=False):
+    rgs=obj.getRgs2D(plot=False)
     rg_ratio=obj.RgPerpvsRgsPar(rgs,color, marker,plot,show)
     assert isinstance(rg_ratio,(float))
 
@@ -64,9 +67,10 @@ def test_getAreas(obj,contour_lvl,getTotal):
     else:
         assert isinstance(A,list) and len(A)==len(obj.kdeanalysis.paths[contour_lvl])
     
-def test_KDEAnalysisSelection(obj,select_res):
+def test_KDEAnalysisSelection(obj):
+    select_res='resname LYS'
     path_arr_arr,res=obj.KDEAnalysisSelection(select_res,Nframes=1000,zlim=15,show=False,legend=False)
-    assert isinstance(path_arr_arr,list) and isinstance(res,np.ndarray) and len(res.residues)== len()
+    assert isinstance(path_arr_arr,list) and isinstance(res,np.ndarray) and len(res.residues)== len(path_arr_arr)
 
 u=mda.Universe(MD_NOWATER_TPR,MD_TRAJ) 
 
@@ -87,21 +91,21 @@ print('############# TEST RADII OF GYRATION ANALYSIS ########')
 test_computeRG2D(ag)
 test_getRgs2D(ag)
 
-rgs=ag.getRgs2D(plot=False)
 # plt.show()
 # # print(rgs.shape)
-test_RgPerpvsRgsPar(ag,rgs, color='green')
+test_RgPerpvsRgsPar(ag, color='green')
 
 
 
 
 print('# ##########TEST CONTOUR PLOTS ################')
 
-paths=test_getKDEAnalysis(ag,zlim,Nframes)
+test_getKDEAnalysis(ag,zlim,Nframes)
 test_ListPathsInLevel(ag,contour_level=5)
 print(len(ag.kdeanalysis.paths))
 test_getAreas(ag,contour_lvl=5,getTotal=False)
 test_getAreas(ag,contour_lvl=5,getTotal=True)
+test_KDEAnalysisSelection(ag)
 # ag.plotPathsInLevel(paths,1,show=False)
 # areas=BioPolymer2D.getAreas(paths,2,getTotal=True)
 # print(areas)
