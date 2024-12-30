@@ -15,6 +15,7 @@ MDAnalysis AtomGroup or Universe), and our class.
 .. code-block:: python
 
     import MDAnalysis as mda
+    import matplotlib.pyplot as plt
     from twodanalysis import BioPolymer2D
 
 
@@ -41,200 +42,127 @@ attribute. Especially convinient if working with more than object at the same ti
     ag_analysis.system_name='Omicron PBL1'
     ag_analysis.INFO()
 
-In general, we would also like to compute the positions of the residues in our object. Compute:
+In general, we would also like to compute the positions of the residues in our object. This will store position values of each frame on 
+the ``pos`` attribute. Compute:
 
 .. code-block:: python
 
     ag_analysis.getPositions()
 
-If you want to consider only a time section of your whole trajectory set the attributes ``startT``, ``endT``, and ``stepT`` before computing ``getPositions``,e.g.
+If you want to consider only a time section of your whole trajectory set the attributes ``startT``, ``endT``, and ``stepT`` before 
+computing ``getPositions``,e.g.
+
 .. code-block:: python
+    
     ag_analysis.startT=100
     ag_analysis.endT=200
     ag_analysis.stepT=0.4
     ag_analysis.INFO()
+    ag_analysis.getPositions()
+
 
 ``INFO`` to confirm that  ``startT``, ``endT``, and ``stepT`` have been overwriten.
 
 Polar histogram analysis
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-This code requires the number of bins, the edges, and the time interval that you want to use. Other options
-are also available, check the documentation for mor information.
+Since we are interested in only sampling the adsorption, ``PolarAnalysis`` method filters the frames in which the object is not 
+adsorbed using a ``zlim`` and ``Nframes`` parameters. Frames in which the center of mass of the object  is lower than ``zlim`` to the surface,
+are considered adsorbed.
+
+Now, in general, the number of adsorbed frames will vary for different trajectories, and we would like to compare between trajectories. To this matter,
+``Nframes`` paramater will set the number of frames we want to take from the total adsorbed frames, take the ``Nframes`` most adsorbed.
+
+Then, we compute the  ``PolarAnalysis``, setting these parameters,
 
 .. code-block:: python
 
-    mat_thi, edges = membrane.thickness(50,           # nbins
-                                        start = 61,   # Initial frame
-                                        final = 110,  # Final Frame
-                                        step = 1,     # Frames to skip
-                                        )
-
-The output is a matrix :math:`nbins\times nbins` and the edges in the form :math:`[xmin,xmax,ymin,ymax]`.
-
-We can visualize with `plt.imshow`
-
- .. code-block:: python
-
-    import matplotlib.pyplot as plt
-
-    plt.imshow(mat_thi, extent=edges, cmap="Spectral")
-    plt.xlabel("x $\AA$")
-    plt.ylabel("y $\AA$")
-    plt.title("Membrane thichness from frames 61-110")
-    cbar = plt.colorbar()
-    cbar.set_label('Thickness $\AA$')
-
- .. image:: thickness.png
-
-
-Membrane order parameters
-^^^^^^^^^^^^^^^^^^^^^^
-
-The computation of order parameters is as easy as the computation of thickness. In this case
-you can also choose which layer the analysis will run (top, bot, both). Follows an example of running order parameters
-
-.. code-block:: python
-
-    scd_top, edges = membrane.all_lip_order("top",
-                                                50,
-                                                start = 61,
-                                                final=110,
-                                                step = 1)
-    scd_bot, edges = membrane.all_lip_order("bot",
-                                                50,
-                                                start = 61,
-                                                final=110,
-                                                step = 1)
-
-
-Now we can plot the results
-
-
- .. code-block:: python
-
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
-    # Plot
-    fig, ax = plt.subplots(1,2, sharex = True, sharey = True)
-    first = ax[0].imshow(scd_top, extent=edges, cmap="Spectral")
-    ax[0].set_xlabel("x $\AA$")
-    ax[0].set_ylabel("y $\AA$")
-    ax[0].set_title("Top layer")
-    divider1 = make_axes_locatable(ax[0])
-    cax1 = divider1.append_axes("right", size="5%", pad=0.05)
-    cbar = fig.colorbar(first, cax = cax1)
-    # Point to a low ordered region
-    ax[0].add_patch(patches.Rectangle((48, 98), 20,20, linewidth = 1, edgecolor = "black", facecolor = "none"))
-    # High ordered region
-    ax[0].add_patch(patches.Rectangle((90, 120), 20,20, linewidth = 1, edgecolor = "black", facecolor = "none"))
-
-
-
-    second = ax[1].imshow(scd_bot, extent=edges, cmap="Spectral")
-    ax[1].set_xlabel("x $\AA$")
-    ax[1].set_title("Bot layer")
-    divider2 = make_axes_locatable(ax[1])
-    cax2 = divider2.append_axes("right", size="5%", pad=0.05)
-    cbar = fig.colorbar(second, cax = cax2)
-    cbar.set_label('|SCD| $\AA$')
-
- .. image:: scd.png
-
-Here we highligted regions where the order parameters are low (red region) and high (blue region). From this region
-the lipids looks as follows
-
- .. image:: image1aa.png
-
-
-Packing defects
-^^^^^^^^^^^^^^^
-
-Packing defects is metric to evaluate the exposure of the hydrophobic core. It changes with membrane composition and
-also when proteins interact with the membrane. The computation of packing defects with packmemb implies extracting pdb files
-from the trajectories and then procesing them, which is time comsuming. Here we present an easy way to compute packing defects by
-only providing the trajectory and the topology file. Also, our code outperforms packmemb, doing the computations faster.
-
-The packing defects code is the following:
-
-.. code-block:: python
-
-    # Compute deffects for the first frame
-    defects, defects_dict = membrane.packing_defects(layer = "top",         # layer to compute packing defects
-                                                    edges=[10,170,10,170],  # edges for output
-                                                    nbins = 400,            # number of bins
-                                                    )
-
-
-
-
-.. code-block:: python
-
-    # Plot defects
-    %matplotlib inline
-    plt.imshow(defects, cmap = "viridis", extent = defects_dict["edges"])
-    plt.xlabel("x  $[\AA]$")
-    plt.ylabel("y  $[\AA]$")
+    select_res='resid 198 200 12 8 40 45 111 115 173'
+    zlim=15
+    Nframes=900
+    hist_arr,pos_hist=ag_analysis.PolarAnalysis(select_res,Nframes, 
+                                                zlim=zlim,control_plots=False,plot=True)
     plt.show()
 
-.. image:: packing_defects.png
+If we only want to compute the histogram, set ``plot=False``. ``control_plots`` is to visualize the diferent steps of the PolarAnalysis calculations.
+Titles and further figure costumization can be added to the plot using standard ``matplotlib.pyplot`` methods before ``plt.show()``.
 
+.. note::
+    Typically, the surface in the trajectory will no be set in ``z=0``. We suggest overwriting the ``surf_pos`` attribute with the position of the 
+    surface (<x,y,z>) before computing the ``PolarAnalysis`` method. Only the z value will be used. 
+    
+    .. code-block:: python
 
+        surface_selection='resname DOL and name O1 and prop z > 16'
+        surface_pos=ag_analysis.getPositions(select=surface_selection, inplace=False)
+        ag_analysis.surf_pos=surface_pos
 
-For various frames to get statistics
+    With the ``inplace=False`` it will not overwrite the ``pos`` attribute of the object, but only return it.
+    
+Kernel Density Estimation (KDE) contours
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In general, we would like to have a reference of the position of the whole biopolymer to have insight ont the flexible regions. Therefore, 
+we first compute the KDE of whole molecule, and then compute the KDE of selected residues:
 
 .. code-block:: python
 
-    data_df, numpy_sizes = membrane.packing_defects_stats(nbins = 400,
-                                                      layer = "top",
-                                                      periodic = True,
-                                                      start = 0,
-                                                      final = -1,
-                                                      step=1)
+    paths=biopol.getKDEAnalysis(zlim,Nframes,)
+    biopol.plotPathsInLevel(paths,0,show=False)
+    all_residues_paths,residues_in_contour=biopol.KDEAnalysisSelection('resid 198 200 12 8 40 45 111 115 173',Nframes,zlim,show=False,legend=True)
+    plt.show()
+
+.. note:: Setting the same ``zlim`` and ``Nframes`` paramater values for ``PolarAnalysis`` , ``getKDEAnalysis`` and ``KDEAnalysisSelection`` is suggested.
+
+We now can compute the Areas of the paths computed by ``KDEAnalysisSelection`` with the ``getAreas`` attribute as follows:
 
 
-.. image:: sizedefetc.png
+.. code-block:: python
+
+    data=[]
+    for p in range(len(all_residues_paths)):
+        areas=BioPolymer2D.getAreas(all_residues_paths[p],0,getTotal=True)
+        data.append([residues_in_contour.residues[p].resid,residues_in_contour.residues[p].resname,areas])
+    df=pd.DataFrame(data=data, columns=["ResIDs", "Resnames", "Area (angs^2)"])
+    df
+
+``df`` will show a table with the areas of the outer contour levels (level 0 in ``getAreas`` , is outer).
 
 
-Area perlipid
-^^^^^^^^^^^^^
+Parallel and perpendicular radii of gyrations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We include the posibility of get Voronoi APL. For one frame can be obtained as follows:
+The parallel and perpendicular radii of gyration gives structural information during the adsorption,
 
-.. code:: python
+* :math:`R_{g\parallel}`: Gives information on how the biopolymer is expanded by the sides (parallel to the surface). 
 
-    voronoi_dict = membrane.voronoi_apl(layer = "top")
+* :math:`R_{g\perp}` : Gives information on how the biopolymer is streched or flattened.
 
+.. figure:: TOC12_Final.png
+   :alt: Example of radii of gyration correlation
+   :width: 100%
+   :align: center
 
-This return a dictionary that contains the areas per each lipid in the top bilayer
-
-We can further map this voronoi to a twod grid and plot it
-
-.. code:: python
-
-    xmin = membrane.v_min
-    xmax = membrane.v_max
-    ymin = membrane.v_min
-    ymax = membrane.v_max
-    apl, edges = membrane.map_voronoi(voronoi_dict["points"], voronoi_dict["areas"], 180, [xmin, xmax, ymin, ymax])
-
-    plt.imshow(apl, extent = edges, cmap = "Spectral")
-    plt.xlabel("$x [\AA]$")
-    plt.ylabel("$y [\AA]$")
-    plt.colorbar()
-
-.. image:: apl.png
+   **Figure 1:** Example of radii of gyration correlation figures that can be made with method on the left and a schematic 
+   representacion of the parallel and perpendicular radii of gyrations on the right. Figure taken from the TOC figure of `Bosch et\.al`_ (2024).
 
 
-For multiples frames:
+To notice significant results, we need to select a region that is in contact with the surface as our object, e.g.
 
-.. code:: python
+.. code-block:: python
 
-    resu, edges = membrane.grid_apl(layer = "top", start = 10, final = 100, step = 1, lipid_list = None)
+    sel_in_Contact=u.select_atoms('resid 4-15 or resid 34-45 or resid 104-117 or resid 170-176') # Select region in contact with surface
+    Contact_region = BioPolymer2D(sel_in_Contact) # Initialize object
+    Contact_region.system_name='Contact Omicron PBL1'# Set system name
+    Contact_region.getPositions() # Compute positions
+    ratio=Contact_region.RgPerpvsRgsPar(rgs, 'tab:green',show=False) # Make RgPerp vs Rg parallel plot
+    
+The output will be similar to Figure 1 (left), with only one system instead of six. The ``ratio`` will give
+the :math:`\langle R_{g\perp}^2 \rangle /\langle R_{g\parallel}^2 \rangle` ratio, which is relevant on charactertizing the adsorption of polymers (CITE 2 PAPERS).
 
-    plt.imshow(resu, extent = edges, cmap = "Spectral")
-    plt.xlabel("$x [\AA]$")
-    plt.ylabel("$y [\AA]$")
-    plt.colorbar()
 
-.. image:: multiple_apl.png
+Hydrogen bonds per residues
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+
+.. _Bosch et\.al: https://pubs.acs.org/doi/10.1021/acs.jcim.4c00460
