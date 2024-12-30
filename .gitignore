@@ -113,7 +113,7 @@ poetry.lock
 
 =======
 *.dat
-*.png
+#*.png
 membrane.gro
 membrane.xtc
 *.npz

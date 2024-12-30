@@ -33,8 +33,6 @@ class Memb2D:
                 self,
                 obj,
                 lipid_list = None,
-                tpr = None,
-                info = False,
                 guess_chain_l = True,
                 chain_info = None,
                 v_min = None,
@@ -75,7 +73,6 @@ class Memb2D:
 
 
         # Read trajectory depending if tpr is provided or not
-
         if isinstance(obj, mda.Universe):
             self.u = obj
         elif isinstance(obj,mda.core.groups.AtomGroup):
@@ -88,7 +85,10 @@ class Memb2D:
 
         # Select elements in the membrane (in principle only lipids)
         if not lipid_list: # Select only elements of the membrane
-            self.memb = self.u.select_atoms("all and not protein and not (resname URA or resname GUA or resname ADE or resname CYT or resname THY)")
+            self.memb = self.u.select_atoms("all and not protein and not\
+                                             (resname URA or resname GUA\
+                                             or resname ADE or resname CYT\
+                                             or resname THY)")
             self.lipid_list = set(self.memb.residues.resnames)
         else:
             self.memb = self.u.select_atoms(f"{self.build_resname(list(lipid_list))}")
@@ -102,34 +102,29 @@ class Memb2D:
         # Set radius sizes of different elements
         self.radii_dict = 0
         if add_radii:
-            self.radii_dict = {"H": 0.7,
-                            "N": 1.85,
-                            "C": 2.06,
-                            "P": 2.15,
-                            "O": 1.65,
+            self.radii_dict = {"H": 1.1,
+                            "N": 1.55,
+                            "C": 1.7,
+                            "P": 1.8,
+                            "O": 1.52,
+                            "S" : 1.8,
                             }
 
 
             # Add radii as a topology attribute for Mdanalysis
-            string_array = self.memb.elements
+            try:
+                string_array = self.memb.elements
+            except:
+                guessed_elements = mda.topology.guessers.guess_types(self.u.atoms.names)
+                self.u.add_TopologyAttr("elements", guessed_elements)
+                string_array = self.memb.elements
+
+
+
             radii_array = np.array([self.radii_dict[element] for element in string_array])
             self.u.add_TopologyAttr("radii")
             self.memb.radii = radii_array
 
-            # May use to build a different way to select polar atoms
-            #polar_motif = "N HN1 HN2 HN3 C12 H12A C13 O13A O13B C11 H11A H11B"
-            #polar_PS = "N HN1 HN2 HN3 C12 H12A C13 O13A O13B C11 H11A H11B"
-            #polar_PI = "C12 H2 O2 HO2 C13 H3 O3 HO3 C14 H4 O4 HO4 C15 H5 O5 HO5 C16 H6 O6 HO6 C11 H1"
-            #polar_PA = "H12 "
-            #polar_PC = "N C12 C13 C14 C15 H12A H12B H13A H13B H13C H14A H14B H14C H15A H15B H15C C11 H11A H11B"
-            #polar_PE = "N HN1 HN2 HN3 C12 H12A H12B C11 H11A H11B"
-            #polar_CHL = "O3 H3'"
-
-
-            #polar_chains = [polar_motif, polar_PS, polar_PI, polar_PA, polar_PC, polar_PE]
-            #polar_atoms = [chain.split() for chain in polar_atoms]
-            #dspc = self.memb.select_atoms("(resname DSPC and not (name C3* or name H*X or name H*Y or name C2* or name H*R or name H*S)) or (resname DSPC and(name C3 or name HX or name HY or name C2 or name HR or name HS))")
-            #print(set(dspc.atoms.names))
 
 
 
@@ -142,20 +137,19 @@ class Memb2D:
                                 "CHL1" : {"head" :"O3", "charge" : 0},
                                 "DODMA" : {"head" :"N1", "charge" : -0.21},
                                 "DSPC" : {"head" :"P", "charge" : 1.1},
-                                "POPE" : {"head" :"P", "charge" : 1.1},
-                                "DOPS" : {"head" :"P", "charge" : 0.1},
-                                "POPS" : {"head" :"P", "charge" : 0.1},
-                                "DSPE" : {"head" :"P", "charge" : 1.3},
-                                "DOPC" : {"head" :"P", "charge" : 1.3},
-                                "DOPE" : {"head" :"P", "charge" : 1.3},
-                                "POPI15" : {"head" :"P", "charge" : 1.3},
-                                "POPI24" : {"head" :"P", "charge" : 1.3},
-                            } #List of known lipids and lipids head people usually use to work
+                            }
+
+
+        for lipid in self.lipid_list:
+            test_lips = self.working_lip.keys()
+            if lipid not in test_lips:
+                self.working_lip[lipid] = {"head" : "P", "charge" : 0}
+
 
         self.chain_info = chain_info
 
 
-        if guess_chain_l: # Guess the chain lenght of lipids. Chain sn2 start with C2 and chain sn1 start with C3
+        if guess_chain_l: # Guess the chain length of lipids. Chain sn2 start with C2 and chain sn1 start with C3
             self.chain_info = {}
             self.non_polar_dict = {}
             self.first_lipids = {}
@@ -183,7 +177,7 @@ class Memb2D:
 
 
         self.all_head = self.u.select_atoms(self.build_resname(self.lipid_list) + " and name P")
-        if v_min == None and v_max == None:
+        if v_min is None and v_max is None:
             positions = self.all_head.positions[:,:2]
             self.v_min = np.min(positions)
             self.v_max = np.max(positions)
@@ -194,17 +188,18 @@ class Memb2D:
 
         if verbose:
             print(f"This system contains the following lipids : {self.lipid_list}\n\n")
-            print(f"The chain lenght is : \n{self.print_dict(self.chain_info)}\n")
-            print(f"We will use the following heads and charges for the following lipids. If the lipid is not here we will use P as head as default \n{self.print_dict(self.working_lip)}\n")
+            print(f"The chain length is : \n{self.print_dict(self.chain_info)}\n")
+            print(f"We will use the following heads and charges for the following lipids.\
+                   If the lipid is not here we will use P as head as default \n{self.print_dict(self.working_lip)}\n")
             print("Note: To compute the middle of the membrane we use only P heads\n\n")
             print(f"The default start frame is {self.start}, final {self.final}, step {self.step}\n\n")
 
     # Method to print dictionaries
     @staticmethod
-    def print_dict(dict):
+    def print_dict(dictio):
         string = ""
-        for key in dict.keys():
-            string += f"{key} : {dict[key]}\n"
+        for key in dictio.keys():
+            string += f"{key} : {dictio[key]}\n"
         return string
 
 
@@ -223,7 +218,7 @@ class Memb2D:
         if lipids == "all":
             lipids = self.lipid_list
         else:
-            if isinstance(lipids, list):
+            if isinstance(lipids, str):
                 lipids = [lipids]
         #Guess bonds if needed
         try:
@@ -351,7 +346,7 @@ class Memb2D:
         matrix = [] # this will store a matrix of the shape (2+n_chain,
         for ts in self.u.trajectory[start:final:step]:
             z = all_head.positions[:,2]
-            z_mean = z.mean() # get middel of the membrane
+            z_mean = z.mean() # get middle of the membrane
 
             #Pick atoms in the layer
             if layer == "both":
@@ -401,7 +396,7 @@ class Memb2D:
     def get_individual(lista
                     ):
         r"""This function gets a list with a specific carbon (e.g. C34 or C22)
-        and its respective hidrogens (e.g. H4X, H4Y). It computes the vectors
+        and its respective hydrogen (e.g. H4X, H4Y). It computes the vectors
         that connect the carbons and the hydrogens and computes the :math:`cos(\theta)^2`, where :math:`\theta` is
         the angle between each vector and the z-axis. Finally, this function returns a vector with the individual (per lipid)
         :math:`\braket{cos(\theta)^2}`, where the mean is computed over the hydrogens of each carbon.
@@ -409,8 +404,8 @@ class Memb2D:
         Parameters
         ----------
         lista : list
-            Vector of the shape :math:`[C*i, HiX,HiY, HiZ]`, the minimun len is 2 (when the carbon
-            only have one hydrogen) and the maximun is 4 (when there is three hydrogens)
+            Vector of the shape :math:`[C*i, HiX,HiY, HiZ]`, the minimum len is 2 (when the carbon
+            only have one hydrogen) and the maximum is 4 (when there is three hydrogens)
             Note: If there is N lipids, there will be N carbons :math:`C*i`, and the i represents
             the position of the carbon in the lipid tail.
 
@@ -551,11 +546,11 @@ class Memb2D:
                             f"name H{i+2}S and not name HS",
                             f"name H{i+2}T and not name HT"
                         ]
-            if lipid == "POPE" or lipid == "POPS" or lipid == "POPI15" or lipid == "POPI24":
-                if selections[0] == "name C29":
-                    selections[1] = "name H91"
-                if selections[0] == "name C210":
-                    selections[1] = "name H101"
+            #if lipid == "POPE" or lipid == "POPS" or lipid == "POPI15" or lipid == "POPI24":
+            #    if selections[0] == "name C29":
+            #        selections[1] = "name H91"
+            #    if selections[0] == "name C210":
+            #        selections[1] = "name H101"
             # Define a list to store atoms
             lista = []
 
@@ -563,6 +558,16 @@ class Memb2D:
                 atoms = sel.select_atoms(selection)
                 if atoms.n_atoms != 0:
                     lista.append(atoms)
+            if len(lista) == 1:
+
+                one_atom = f"name H{i+2}1"
+
+                atoms = sel.select_atoms(one_atom)
+                if atoms.n_atoms != 0:
+                    lista.append(atoms)
+            if len(lista) == 1:
+                raise "Something went wrong guessing the atoms in lipid tail"
+
             angles = self.get_individual(lista)
             chains.append(angles)
         chains = np.array(chains) # Expect array of dim (n_chain, n_lipids)
@@ -789,7 +794,9 @@ class Memb2D:
 
 
         lipid_list = list(self.lipid_list)
-        lipid_list.remove("CHL1")
+        if "CHL1" in lipid_list:
+            lipid_list.remove("CHL1")
+
         lipids = self.chain_info
 
 
@@ -821,65 +828,6 @@ class Memb2D:
 
 
     ############## End of order parameters related code ############################3
-
-    """
-    # Method to average vector to pseudovector program
-    @staticmethod
-    def average_vector(data, min_lenght):
-        columns = ["index", "x", "y", "z"] # Data expected is an np array with columns ["index", "x", "y", "z"]
-        df = pd.DataFrame(data, columns = columns)
-        result = []
-        for i in range(min_lenght):
-            temp = df[df["index"] == i]
-            if len(temp) > 0 :
-                bin_vect = temp[columns[1:]]
-                bin_vect = bin_vect.mean()
-                result.append(bin_vect.to_list())
-            else:
-                result.append([np.nan, np.nan, np.nan])
-        result = np.array(result)
-        return result
-
-
-    # Computes the average vector for each bin, sample are the raw x,y positions and weights are the vectors related to the head
-    def pseudohistogram2D(self,sample1, weights, bins = 10, v_min = None, v_max = None):
-        if v_min == None:
-            v_min = np.min(sample1)
-        if v_max == None:
-            v_max = np.max(sample1)
-
-        #print(v_min, v_max)
-        nbin = np.empty(2,np.intp)
-        edges = 2*[None]
-
-        for i in range(2):
-            edges[i] = np.linspace(v_min, v_max, bins +1)
-            nbin[i] = len(edges[i]) + 1
-
-        Ncount = (tuple(np.searchsorted(edges[i], sample1[:,i], side = "right") for i in range(2)))
-
-        for i in range(2):
-            on_edge = (sample1[:,i] == edges[i][-1])
-            Ncount[i][on_edge] -= 1
-
-
-        xy = np.ravel_multi_index(Ncount, nbin)
-        xy_test = xy.reshape(-1,1)
-
-        xy_test = np.concatenate((xy_test, weights), axis = 1)
-        hist = self.average_vector(xy_test, nbin.prod())
-        nbin = (nbin[0], nbin[1], 3)
-        hist = hist.reshape(nbin)
-        hist = hist.astype(float, casting = "safe")
-        core = 2*(slice(1,-1),)
-        hist = hist[core]
-
-        return hist, edges
-
-    """
-
-
-
 
 
 
@@ -1151,7 +1099,8 @@ class Memb2D:
         """
         if lipids is None:
             lipids = list(self.lipid_list)
-            lipids.remove("CHL1")
+            if "CHL1" in lipids:
+                lipids.remove("CHL1")
 
         matrix_up, edges = self.height_matrix(lipids,
                         "top",
@@ -1201,7 +1150,7 @@ class Memb2D:
         return vmin,vmax
 
 
-    ################## Pcaking deffects related code ###############
+    ################## Pcaking defects related code ###############
 
 
 
@@ -1215,8 +1164,9 @@ class Memb2D:
                         edges = None,
                         area = True,
                         count = True,
+                        verbose = True,
                         ):
-        """Compute packing deffects based on packmem: https://doi.org/10.1016/j.bpj.2018.06.025
+        """Compute packing defects based on packmem: https://doi.org/10.1016/j.bpj.2018.06.025
 
         Parameters
         ----------
@@ -1236,9 +1186,9 @@ class Memb2D:
         Returns
         -------
         ndarray
-            If height == Flase: matrix with packing deffects
+            If height == Flase: matrix with packing defects
         ndarray, ndarray
-            If height === True: matrix with packing deffects, amtrix with height information
+            If height === True: matrix with packing defects, amtrix with height information
         """
 
         if edges is not None:
@@ -1287,8 +1237,10 @@ class Memb2D:
         lipid_list = list(self.lipid_list)
 
 
-        print("######### Running packing defects function ########## ")
-        print(f"We will compute packing defects for a membrane with lipids {lipid_list}")
+        if verbose:
+            print((f'######### Running packing defects function ########## \
+                  \nWe will compute packing defects for a membrane with lipids {lipid_list}'),
+                  end = "\r")
 
 
 
@@ -1345,7 +1297,7 @@ class Memb2D:
 
 
 
-            matrix = self.add_deffects(matrix, indexes,elements, names, lipid, mat_radii_dict)
+            matrix = self.add_defects(matrix, indexes,elements, names, lipid, mat_radii_dict)
         #print(f"Shapeeeeeee::::: {matrix.shape}, {matrix_height.shape}, dims {dims}")
         core1 = 2*(slice(n_aug+1,-(n_aug+1)),)
         core = 2*(slice(n_aug,-n_aug),)
@@ -1357,10 +1309,11 @@ class Memb2D:
 
         if periodic:
             n = round((dims[0]/grid_size))
-            print(n, dims[0]/grid_size, grid_size)
+            #print(n, dims[0]/grid_size, grid_size)
             xmax = xmin + n*grid_size
             ymax = ymin + n*grid_size
             matrix = matrix[:n, :n]
+
             if height:
                 matrix_height = matrix_height[:n, :n]
             edges = [xmin,xmax,ymin,ymax]
@@ -1369,9 +1322,9 @@ class Memb2D:
 
 
         #print(f"Shapeeeeeee::::: {matrix.shape}, {matrix_height.shape}, dims {dims}")
-        deffects = matrix
-        deffects = np.where(matrix < 1, matrix, np.nan)
-        #deffects = np.where(deffects > 0, deffects, np.nan)
+        defects = matrix
+        defects = np.where(matrix < 1, matrix, np.nan)
+        #defects = np.where(defects > 0, defects, np.nan)
 
 
         return_dict = {
@@ -1379,36 +1332,38 @@ class Memb2D:
         }
 
         if area:
-            non_nan = ~np.isnan(deffects)
+            non_nan = ~np.isnan(defects)
             count = np.sum(non_nan)
             area_v = count*grid_size*grid_size
-            area_tot = (deffects.shape[0])**2 * grid_size*grid_size
-            return_dict["area"] = {"deffects" : area_v,
+
+            area_tot = (defects.shape[0])**2 * grid_size * grid_size
+
+            return_dict["area"] = {"defects" : area_v,
                                "total": area_tot}
 
         if count:
             from scipy.ndimage import label
-            binary_matrix = ~np.isnan(deffects)
+            binary_matrix = ~np.isnan(defects)
             structure = np.array([[1,1,1], [1,1,1], [1,1,1]])
             labeled_array, num_features = label(binary_matrix, structure = structure)
             cluster_sizes = np.bincount(labeled_array.ravel())[1:]
             return_dict["count"] = {"number":num_features, "sizes":cluster_sizes}
+            return_dict["grid_size"] = grid_size
 
-            cluster_sizes  = cluster_sizes[cluster_sizes>10]
             #plt.hist(cluster_sizes, bins=40)
             #plt.show()
 
 
 
 
-        print(return_dict)
+        #print(return_dict)
         if height:
             matrix_height = matrix_height[core]
             matrix_height[matrix_height == 0 ] = np.nan
-            return deffects, matrix_height, return_dict
+            return defects, matrix_height, return_dict
 
 
-        return deffects, return_dict
+        return defects, return_dict
 
 
 
@@ -1501,21 +1456,21 @@ class Memb2D:
 
         return big_matrix
 
-    def add_deffects(self,
+    def add_defects(self,
                     matrix,
                     indexes,
                     elements,
                     names,
                     lipid,
                     mat_radii_dict):
-        """Code to easily add deffects in the 2d matrix
+        """Code to easily add defects in the 2d matrix
 
         Parameters
         ----------
         matrix : ndarray(n,n)
-            Matrix where the deffects are going to be added
+            Matrix where the defects are going to be added
         indexes : ndarray(i,j)
-            List of indexes i,j in the matrix where the deffects should be added
+            List of indexes i,j in the matrix where the defects should be added
         elements : list
             type of element (needed to put the right radious)
         names : list
@@ -1528,7 +1483,7 @@ class Memb2D:
         Returns
         -------
         ndarray
-            matrix matrix filled with the deffects
+            matrix matrix filled with the defects
         """
 
         matrix = matrix
@@ -1745,6 +1700,82 @@ class Memb2D:
 
         return indexes
 
+    def packing_defects_stats(self,
+                                nbins = 180,
+                                layer = "top",
+                                edges = None,
+                                periodic = False,
+                                start = 0,
+                                final = -1,
+                                step = 1,
+                                area_size = True,
+                                verbose = True,
+                                ):
+        """ Run packing defects from `start` to `final` and stores data
+          about area of defects, total area, number of defects,
+          and size of defects
+
+        Parameters
+        ----------
+        nbins : int, optional
+            number of bins to consider, by default 180
+        layer : str, optional
+            layer to consider, can be top, bot, by default "top"
+        edges : list(float), optional
+            Edges in the shape [xmin,xmax,ymin,ymax], by default None
+        periodic : bool, optional
+            Consider or not periodicity, by default False
+        start : int, optional
+            stat frame, by default 0
+        final : int, optional
+            final frame, by default -1
+        step : int, optional
+            frames to skip, by default 1
+        area_size : bool, optional
+            If true return the areas of the different defects, by default True
+
+        Returns
+        -------
+        pd.DataFrame, np.array
+            pandas dataframe with the area information of packing defects over time and informationabout the size of the packing defects
+        """
+
+        results = list()
+        sizes = list()
+        for ts in self.u.trajectory[start:final:step]:
+            _, packing_dict = self.packing_defects(layer = layer,
+                             nbins = nbins,
+                             height = False,
+                             periodic = periodic,
+                             edges = edges,
+                             area =True,
+                             count = True,
+                             verbose = False)
+            if verbose:
+                print(f"Runing packing defects on frame {ts.frame}", end="\r")
+            results.append([packing_dict["area"]["defects"],
+                             packing_dict["area"]["total"],
+                             packing_dict["count"]["number"],
+                             ])
+            if area_size:
+                sizes.append(packing_dict["count"]["sizes"]*(packing_dict["grid_size"]*packing_dict["grid_size"]))
+            else:
+                sizes.append(packing_dict["count"]["sizes"])
+
+        results = pd.DataFrame(results, columns = ["defects_area", "total_area", "n_defects"])
+
+        sizes = np.concatenate(sizes, axis = 0)
+
+        return results, sizes
+
+
+
+
+
+
+
+
+
 
     ############# End order parameters related code ###############
 
@@ -1783,6 +1814,7 @@ class Memb2D:
 
         if lipid_list is None:
             lipid_list = list(self.lipid_list)
+
         if working_lip is None:
             working_lip = self.working_lip
         print(self.lipid_list)
@@ -1813,7 +1845,7 @@ class Memb2D:
         heads_pos = heads.positions[:,:2]
         resnames_pos = heads.resnames
         orig_len = len(heads_pos)
-        print(heads_pos.shape, resnames_pos.shape)
+        print("Here first shapes", heads_pos.shape, resnames_pos.shape)
 
         ## Extent data
         dimensions = self.u.trajectory.ts.dimensions[:2]
@@ -1821,44 +1853,17 @@ class Memb2D:
 
         heads_pos, resnames_pos = self.extend_data(heads_pos, dimensions, cons, others = [resnames_pos])
         resnames_pos = resnames_pos[0]
-
-        '''
-        # Extent in x
-        left_add = heads_pos[heads_pos[:,0] <= xmin + cons*dist_x] + [dimensions[0],0]
-        right_add = heads_pos[heads_pos[:,0] >= xmax - cons*dist_x] - [dimensions[0],0]
-
-
-        left_add_resn = resnames_pos[heads_pos[:,0] <= xmin + cons*dist_x]
-        right_add_resn = resnames_pos[heads_pos[:,0] >= xmax - cons*dist_x]
-
-
-        heads_pos = np.concatenate([heads_pos, left_add, right_add], axis = 0)
-        resnames_pos = np.concatenate([resnames_pos, left_add_resn, right_add_resn], axis = 0)
-
-        print(heads_pos.shape, resnames_pos.shape)
-        # Extent in y
-        up_add = heads_pos[heads_pos[:,1] <= ymin + cons*dist_y] + [0,dimensions[0]]
-        low_add = heads_pos[heads_pos[:,1] >= ymax - cons   *dist_y] - [0,dimensions[0]]
-
-
-        up_add_resn = resnames_pos[heads_pos[:,1] <= ymin + cons*dist_y]
-        low_add_resn = resnames_pos[heads_pos[:,1] >= ymax - cons*dist_y]
-
-        print(up_add.shape, low_add.shape, up_add_resn.shape, low_add_resn.shape, heads_pos.shape, resnames_pos.shape)
-
-        heads_pos = np.concatenate([heads_pos, up_add, low_add], axis = 0)
-        resnames_pos = np.concatenate([resnames_pos, up_add_resn, low_add_resn], axis = 0)
-        print(heads_pos.shape, resnames_pos.shape)
-        '''
-
         from scipy.spatial import Voronoi, voronoi_plot_2d
         from scipy.spatial import ConvexHull
 
         voronoi_dict = {"vertices":list(),
-                        "points":heads_pos[:orig_len],
+                        "points":heads_pos,
                         "areas":list(),
                         "resnames":resnames_pos,
+                        "orig_len":orig_len
                          }
+
+
         voronoi = Voronoi(heads_pos)
         vertices = voronoi.vertices
 
@@ -1868,16 +1873,24 @@ class Memb2D:
             result_dict[lipid] = list()
 
         #for i, region in enumerate(voronoi.point_region[:orig_len]):
+        update_points = list()
         for i, region in enumerate(voronoi.point_region):
+            #print(i, region, len(voronoi.point_region), len(voronoi_dict["resnames"]))
             if -1 in voronoi.regions[region]:
+                #print("here")
                 continue
+
             vertex = vertices[voronoi.regions[region]]
             hull = ConvexHull(vertex)
             area = hull.volume
             voronoi_dict["areas"].append(area)
-            result_dict[voronoi_dict["resnames"][i]].append(area)
+            update_points.append(voronoi_dict["points"][i])
+            if i < orig_len:
+                result_dict[voronoi_dict["resnames"][i]].append(area)
 
             voronoi_dict["vertices"].append(vertex)
+        voronoi_dict["points"] = np.array(update_points)
+        print(len(voronoi_dict["areas"]))
 
         for lipid in resnames:
             result_dict[lipid] = np.mean(np.array(result_dict[lipid]))
@@ -1922,7 +1935,7 @@ class Memb2D:
         plt.imshow(grid, cmap = "Spectral")
         plt.show()
 
-    def map_voronoi(self, voronoi_points, voronoi_areas, nbins, dimensions):
+    def map_voronoi(self, voronoi_points, voronoi_areas, nbins, edges):
         """ Function to map voronoi APL to a 2D plane
 
         Parameters
@@ -1933,7 +1946,7 @@ class Memb2D:
             Areas correspondng to the points
         nbins : int
             number of bins for the grid
-        dimensions : list
+        edges : list
             A list with the lipids of the grid [xmin,xmax,ymin,ymax]
 
         Returns
@@ -1941,10 +1954,10 @@ class Memb2D:
         ndarray, edges
             numpy array (nbins,nbins), adn edges of this array
         """
-        xmin =dimensions[0]
-        xmax =dimensions[1]
-        ymin =dimensions[2]
-        ymax =dimensions[3]
+        xmin =edges[0]
+        xmax =edges[1]
+        ymin =edges[2]
+        ymax =edges[3]
 
         xcoords = np.linspace(xmin, xmax, nbins)
         ycoords = np.linspace(ymin, ymax, nbins)
@@ -1952,6 +1965,7 @@ class Memb2D:
         xx, yy = np.meshgrid(xcoords, ycoords)
         grid_points = np.vstack([xx.ravel(), yy.ravel()]).T
         points = voronoi_points
+
 
         distances = np.linalg.norm(grid_points[:,None, :]- points[None,:,:], axis = 2)
 
@@ -1961,7 +1975,7 @@ class Memb2D:
         voronoi_areas = np.array(voronoi_areas)
         grid = voronoi_areas[closest_seed_indices].reshape(nbins, nbins)
 
-        return grid, dimensions
+        return grid, edges
 
 
 
