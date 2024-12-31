@@ -35,8 +35,7 @@ class Memb2D:
                 lipid_list = None,
                 guess_chain_l = True,
                 chain_info = None,
-                v_min = None,
-                v_max = None,
+                edges = None,
                 add_radii = False,
                 verbose = False,
             ):
@@ -60,10 +59,8 @@ class Memb2D:
             _description_, by default True
         chain_info : _type_, optional
             _description_, by default None
-        v_min : _type_, optional
-            _description_, by default None
-        v_max : _type_, optional
-            _description_, by default None
+        edges : list(str), optional
+            edges in the for [xmin,xmax,ymin,ymax]
         add_radii : bool, optional
             _description_, by default False
         verbose : bool, optional
@@ -84,7 +81,7 @@ class Memb2D:
 
 
         # Select elements in the membrane (in principle only lipids)
-        if not lipid_list: # Select only elements of the membrane
+        if lipid_list is None: # Select only elements of the membrane
             self.memb = self.u.select_atoms("all and not protein and not\
                                              (resname URA or resname GUA\
                                              or resname ADE or resname CYT\
@@ -94,7 +91,7 @@ class Memb2D:
             self.memb = self.u.select_atoms(f"{self.build_resname(list(lipid_list))}")
 
 
-        # Set ercentage for periodicity
+        # Set percentage for periodicity
 
         self.periodicity = 0.1
 
@@ -146,7 +143,10 @@ class Memb2D:
                 self.working_lip[lipid] = {"head" : "P", "charge" : 0}
 
 
+
+
         self.chain_info = chain_info
+
 
 
         if guess_chain_l: # Guess the chain length of lipids. Chain sn2 start with C2 and chain sn1 start with C3
@@ -163,13 +163,18 @@ class Memb2D:
                 self.chain_info[lipid] = [len(actual_sn1) - 2, len(actual_sn2) - 2]
                 self.first_lipids[lipid] = first_lipid
 
+                self.working_lip[lipid]["last_c"] = [actual_sn1[-1], actual_sn2[-1]]
+                print(self.print_dict(self.working_lip))
+
                 if lipid == "CHL1":
                     non_polar = self.memb.select_atoms(f"resid {first_lipid} and not (name O3 or name H3')")
                     all_lip = self.memb.select_atoms(f"resid {first_lipid}")
 
+
                 else:
                     non_polar = self.memb.select_atoms(f"resid {first_lipid} and (name *C3* or name H*Y or name H*X or name H*Z  or name *C2* or name H*R or name H*S or name H*T) and not (name C3 or name C31 or name HY or name HX or name HZ  or name C2 or name C21 or name HR or name HS or name HT)")
                     all_lip = self.memb.select_atoms(f"resid {first_lipid}")
+
                 self.non_polar_dict[lipid] = list(non_polar.names)
 
                 self.non_polar_visualize[lipid] = [all_lip, non_polar]
@@ -177,10 +182,13 @@ class Memb2D:
 
 
         self.all_head = self.u.select_atoms(self.build_resname(self.lipid_list) + " and name P")
-        if v_min is None and v_max is None:
+        if edges is None:
             positions = self.all_head.positions[:,:2]
             self.v_min = np.min(positions)
             self.v_max = np.max(positions)
+        else:
+            self.v_min = edges[0]
+            self.v_max = edges[1]
         self.start = 0
         self.final = 100
         self.step = 1
@@ -291,9 +299,7 @@ class Memb2D:
                         step = 1,
                         method = "numpy",
                         ):
-        """Method that allows for the computation of order parameters in 2D fashion
-
-        Parameters
+        """ Computes the 2D histogram for SCD
         ----------
         lipid : str
             Working lipid to compute the order parameters
@@ -344,7 +350,7 @@ class Memb2D:
             n_chain2 = 0
 
         matrix = [] # this will store a matrix of the shape (2+n_chain,
-        for ts in self.u.trajectory[start:final:step]:
+        for _ in self.u.trajectory[start:final:step]:
             z = all_head.positions[:,2]
             z_mean = z.mean() # get middle of the membrane
 
@@ -371,18 +377,21 @@ class Memb2D:
             matrix.append(to_write) # Expect dim (n_lipids, 2+n_chain1+n_chain2)
             #print("Frame:",to_write.shape)
 
+
+
         #matrix = np.array(matrix) # Expect dim (frames, n_lipids, 2+n_chain1+n_chain2)
         matrix = np.concatenate(matrix, axis = 0) # Expect dim (n_lipids*frames, 2+n_chain1+n_chain2)
+        print(matrix.shape)
         v_min = self.v_min
         v_max = self.v_max
+        if edges is None:
+            edges = [v_min,v_max,v_min,v_max]
 
         if method == "numpy":
             H, edges = self.numpyhistogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = n_grid, edges = edges)
         else:
             H, edges = self.histogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = n_grid, edges = edges)
-        plt.imshow(H,cmap="Spectral")
-        plt.colorbar()
-        plt.close()
+
         H = np.rot90(H)
         H[H==0] = np.nan
 
@@ -598,6 +607,8 @@ class Memb2D:
             matrix containining the averaged 2D histogram, edges corresponding to te matrix
         """
         if edges is None:
+            limits = [[self.v_min,self.v_max], [self.v_min, self.v_max]]
+        else:
             limits = [[edges[0],edges[1]], [edges[2], edges[3]]]
         #print(v_min, v_max)
         nbin = np.empty(2,np.intp)
@@ -623,6 +634,7 @@ class Memb2D:
         hist = hist.astype(float, casting = "safe")
         core = 2*(slice(1,-1),)
         hist = hist[core]
+        edges = [edges[0][0], edges[0][-1], edges[1][0], edges[1][-1]]
 
         return hist, edges
 
@@ -689,6 +701,7 @@ class Memb2D:
             mat_chain.append(matrix)
 
         matrix = 0.5*(mat_chain[0] +mat_chain[1])
+
 
         return matrix, [xedges[0],xedges[-1], yedges[0], yedges[-1]]
 
@@ -848,7 +861,7 @@ class Memb2D:
         string = f"( (resname {resnames_list[0]}  and name {self.working_lip[resnames_list[0]]['head']}) "
 
         for resname in resnames_list[1:]:
-            string += f" or (resname {resnames_list[0]}  and name {self.working_lip[resnames_list[0]]['head']}) "
+            string += f" or (resname {resname}  and name {self.working_lip[resname]['head']}) "
 
         string +=  " ) "
         return string
@@ -877,7 +890,9 @@ class Memb2D:
                 step = None,
                 lipids = "DSPC",
                 layer = 'top',
-                filename = None, include_charge = False):
+                filename = None,
+                include_charge = False,
+                splay = False):
         """Code to loop over the trajectory and print [x,y,z(referenced to zmean), charge] in a file.
 
 
@@ -905,21 +920,15 @@ class Memb2D:
         """
 
 
-        if start == None:
+        if start is None:
             start = self.start
-        if final == None:
+        if final is None:
             final = self.final
-        if step == None:
+        if step is None:
             step = self.step
 
-        lipid_list = self.lipid_list
 
-        if self.verbose:
-            print("######### Running surface function ########## ")
-            print(f"We will compute the surface files for a membrane with there lipids {lipid_list}")
-            print(f"Currently working on: {lipids}")
-            print(f"Layer: {layer}")
-            print(f"Writing under the name of {filename}")
+
 
 
         if layer == "top":
@@ -932,24 +941,38 @@ class Memb2D:
         all_p = self.all_head
 
         if isinstance(lipids, list):
-
+            lipid_list = lipids
             names = f" {self.build_name(self.working_lip[lipids[0]]['head'])}"
             selection_string = f"(resname {lipids[0]} and {names}) "
             for lipid in lipids[1:]:
                 selection_string += f" or (resname {lipid} and {self.build_name(self.working_lip[lipid]['head'])}) "
-            if filename == None:
-                filename = f"{lipids[0]}_{layer}_{start}_{final}.dat"
+
         else:
+            lipid_list = [lipids]
             selection_string = f"(resname {lipids} and {self.build_name(self.working_lip[lipids]['head'])}) "
-            if filename == None:
-                filename = f"{lipids}_{layer}_{start}_{final}.dat"
 
+        columns = ["x", "y", "z", "id"]
+        if splay:
+            carbons1 = [self.working_lip[lipid]["last_c"][0] for lipid in lipid_list]
+            carbons2 = [self.working_lip[lipid]["last_c"][1] for lipid in lipid_list]
+            heads = [self.working_lip[lipid]["head"] for lipid in lipid_list]
 
+            heads = self.build_resname_atom(lipid_list, heads)
+            carbons1 = self.build_resname_atom(lipid_list, carbons1)
+            carbons2 = self.build_resname_atom(lipid_list, carbons2)
+            columns.append("splay")
+
+        if self.verbose:
+            print("######### Running surface function ########## ")
+            print(f"We will compute the surface files for a membrane with there lipids {lipid_list}")
+            print(f"Currently working on: {lipids}")
+            print(f"Layer: {layer}")
+            print(f"Writing under the name of {filename}")
 
 
         #### Loop over trajectory to find the lipids in the requested membrane
         pos_data = []
-        for ts in self.u.trajectory[start:final:step]:
+        for _ in self.u.trajectory[start:final:step]:
             positions = all_p.positions[:,2]
             mean_z = positions.mean()
 
@@ -960,36 +983,75 @@ class Memb2D:
                 #print(selection_string)
                 final_selection_string = f"({selection_string}) and prop z {sign} {str(mean_z)}"
 
-            # Find the positions of the P atoms
-            atoms = self.u.select_atoms(final_selection_string)
+            # Select the atoms in the head
+            if splay:
+                final_selection_byres = f"byres {final_selection_string}"
+                lipid_ats = self.u.select_atoms(final_selection_byres)
 
-            ### Get positions
+                head_p = lipid_ats.select_atoms(heads)
+                c1 = lipid_ats.select_atoms(carbons1)
+                c2 = lipid_ats.select_atoms(carbons2)
+                v1 = c1.positions - head_p.positions
+                v2 = c2.positions - head_p.positions
+                print(heads,carbons2,carbons1, head_p.n_atoms, c1.n_atoms)
+                costheta = np.sum(v1 * v2, axis=1)/(np.linalg.norm(v1, axis = 1)* np.linalg.norm(v2, axis = 1))# Compute the cos of splay angle, must bet lenmght nlipids
+                costheta = np.rad2deg(costheta[:,np.newaxis])
+                atoms = lipid_ats.select_atoms(selection_string)
+            else:
+                atoms = self.u.select_atoms(final_selection_string)
+
+            ### Get positions # Maybe have to check what happens with masses 0
             atom_pos = atoms.center_of_mass(compound="residues")
-            #print(atom_pos.shape)
+
 
 
 
             ### Get resids
             atom_resid = atoms.residues.resids
+            print(atom_resid.shape)
+            print(f"costheta {costheta.shape}")
             atom_resid = atom_resid[:,np.newaxis]
             #print(atom_resid.shape)
 
             atom_pos = np.concatenate((atom_pos, atom_resid), axis = 1)
+            if splay:
+                atom_pos = np.concatenate((atom_pos, costheta), axis = 1)
             atom_pos[:,2] = np.abs(atom_pos[:,2]-mean_z)
+
+
+
+
 
             pos_data.append(atom_pos)
 
 
 
         pos_data = np.concatenate(pos_data, axis = 0)
-        df_data = pd.DataFrame(pos_data, columns = ["x", "y", "z", "id"])
+        df_data = pd.DataFrame(pos_data, columns = columns)
         df_data["id"] = df_data["id"].astype(int)
         #if include_charge:
         #    df_data["charge"] = self.charge_li[lipid]
         #    df_data.to_csv(f"pd_{filename}", index = False)
-        df_data.to_csv(f"pd_{filename}", index = False)
+        #df_data.to_csv(f"pd_{filename}", index = False)
+
+        print(df_data)
 
         return df_data   # Maybe have to change, it does not make sense to return thi
+
+    @staticmethod
+    def build_resname_atom(resnames, atomsnames):
+        resnames = list(resnames)
+        string = f"( (resname {resnames[0]}  and name {atomsnames[0]} ) "
+
+        for i, resname in enumerate(resnames[1:]):
+            string += f" or (resname {resname}  and name {atomsnames[ i + 1]}) "
+
+        string +=  " ) "
+        return string
+
+
+    #def individual_splay(self, atom_group, lipids):
+
 
 
     def height_matrix(self, lipids, layer, edges = None, start = None, final = None, step = None, nbins = 50, clean = True):
@@ -1039,7 +1101,7 @@ class Memb2D:
             except:
                 df_data = self.surface(lipids = lipids, layer = layer, filename = filename, include_charge = True, start = start, final = final)
         else:
-            df_data = self.surface(lipids = lipids, layer = layer, filename = filename, include_charge = True, start = start, final = final)
+            df_data = self.surface(lipids = lipids, layer = layer, filename = filename, include_charge = True, start = start, final = final, splay=True)
 
 
         data = df_data
@@ -1051,10 +1113,10 @@ class Memb2D:
             ymin = edges[2]
             ymax = edges[3]
         else:
-            xmin = data["x"].min()
-            xmax = data["x"].max()
-            ymin = data["y"].min()
-            ymax = data["y"].max()
+            xmin = self.v_min
+            xmax = self.v_max
+            ymin = self.v_min
+            ymax = self.v_max
 
 
         H_height, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], weights = data["z"], bins = nbins, range = [[xmin,xmax], [ymin,ymax]])
@@ -1070,6 +1132,87 @@ class Memb2D:
 
         np.savetxt(f'Height_{layer}_{start}_{final}.dat', H_avg, fmt = '%.2f')
         np.savetxt(f"edges_{layer}_{start}_{final}.dat", x_edges, fmt = "%.2f")
+        return H_avg, [x_edges[0],x_edges[-1],y_edges[0], y_edges[-1]]
+
+
+    def splay_matrix(self, lipids, layer, edges = None, start = None, final = None, step = None, nbins = 50, clean = True):
+        """ Code to divide the space in a 2D grid and compute the height referenced to zmean
+
+        Parameters
+        ----------
+        lipids : list(str)
+            Lipids to include in the height analysis
+        layer : str
+            Working layer for thickness
+        edges : list
+            Edges for the grid
+        start : int, optional
+            Frame to start analysis, by default None
+        final : int, optional
+            Final frame for the analysis, by default None
+        step : int, optional
+            Steps to skip, by default None
+        nbins : int, optional
+            Number of bins to divide the grid space, by default 50
+        clean : bool, optional
+            Decide if rerun and overwrite surface generated files, by default True
+
+        Returns
+        -------
+        ndarray(nbins,nbins)
+            Retun a matrix with the height information
+        """
+
+
+        if start is None:
+            start = self.start
+        if final is None:
+            final = self.final
+        if step is None:
+            step = self.step
+
+
+
+
+        print(f"Computing matrix for {layer} in frames {start}-{final}")
+        data = []
+
+        filename = f"{lipids[0]}_{layer}_{start}-{final}.dat"
+        if not clean:
+            try:
+                df_data = pd.read_csv(f"pd_{filename}")
+            except:
+                df_data = self.surface(lipids = lipids, layer = layer, filename = filename, include_charge = True, start = start, final = final)
+        else:
+            df_data = self.surface(lipids = lipids, layer = layer, filename = filename, include_charge = True, start = start, final = final, splay=True)
+
+
+        data = df_data
+        #print(data)
+
+        if edges is not None:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
+        else:
+            xmin = self.v_min
+            xmax = self.v_max
+            ymin = self.v_min
+            ymax = self.v_max
+
+
+        H_splay, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], weights = data["splay"], bins = nbins, range = [[xmin,xmax], [ymin,ymax]])
+        H_count, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], bins = nbins, range = [[xmin, xmax], [ymin,ymax]])
+
+        H_count[H_count == 0] = 1.
+
+        H_avg = H_splay/H_count
+
+        H_avg[H_avg == 0] =  np.nan
+
+        H_avg = np.rot90(H_avg)
+
         return H_avg, [x_edges[0],x_edges[-1],y_edges[0], y_edges[-1]]
 
 
@@ -1258,7 +1401,7 @@ class Memb2D:
 
 
 
-        pos_data = []
+
 
         #### Define radious to be used for the different atoms
         mat_radii_dict = {}
@@ -1843,6 +1986,7 @@ class Memb2D:
 
         heads = self.memb.select_atoms(selection_string)
         heads_pos = heads.positions[:,:2]
+        height_pos =np.abs(heads.positions[:,2] - mean_z)
         resnames_pos = heads.resnames
         orig_len = len(heads_pos)
         print("Here first shapes", heads_pos.shape, resnames_pos.shape)
@@ -1851,13 +1995,15 @@ class Memb2D:
         dimensions = self.u.trajectory.ts.dimensions[:2]
         cons = 0.1
 
-        heads_pos, resnames_pos = self.extend_data(heads_pos, dimensions, cons, others = [resnames_pos])
-        resnames_pos = resnames_pos[0]
+        heads_pos, others = self.extend_data(heads_pos, dimensions, self.periodicity, others = [resnames_pos, height_pos])
+        resnames_pos = others[0]
+        height_pos = others[1]
         from scipy.spatial import Voronoi, voronoi_plot_2d
         from scipy.spatial import ConvexHull
 
         voronoi_dict = {"vertices":list(),
                         "points":heads_pos,
+                        "heights":height_pos,
                         "areas":list(),
                         "resnames":resnames_pos,
                         "orig_len":orig_len
@@ -1896,15 +2042,6 @@ class Memb2D:
             result_dict[lipid] = np.mean(np.array(result_dict[lipid]))
 
         voronoi_dict["apl"] = result_dict
-
-        #voronoi_plot_2d(voronoi)
-        #for region in voronoi.regions:
-        #    if not -1 in region:
-        #        polygon = [voronoi.vertices[i] for i in region]
-        #        plt.fill(*zip(*polygon))
-
-        #plt.show()
-
 
 
         return voronoi_dict
@@ -2006,15 +2143,6 @@ class Memb2D:
         """
         if lipid_list == None:
             lipid_list = list(self.lipid_list)
-        if layer == "top":
-            sign = " > "
-        elif layer == "bot":
-            sign = " < "
-
-
-        all_p = self.all_head
-        positions = all_p.positions
-        mean_z = positions[:,2].mean()
 
         if edges is None:
             xmin = self.v_min
@@ -2029,24 +2157,10 @@ class Memb2D:
 
 
 
-        #xmin1 = np.min(positions[:,0])
-        #xmax1 = np.max(positions[:,0])
-        #ymin1 = np.min(positions[:,1])
-        #ymax1 = np.max(positions[:,1])
-
-        #dist_x = xmax1 - xmin1
-        #dist_y = ymax1 - ymin1
 
         matrices = []
-        for ts in self.u.trajectory[start:final:step]:
+        for _ in self.u.trajectory[start:final:step]:
 
-            selection_string = f"(((resname {lipid_list[0]} and name {self.working_lip[lipid_list[0]]['head']}) and prop z {sign} {mean_z}))"
-            for lipid in lipid_list[1:]:
-                selection_string += f" or (((resname {lipid} and name {self.working_lip[lipid]['head']}) and prop z {sign} {mean_z}))"
-
-            heads = self.memb.select_atoms(selection_string)
-
-            head_pos = heads.positions[:2]
             voronoi_dict = self.voronoi_apl(layer = layer)
             matrix,_ = self.map_voronoi(voronoi_dict["points"], voronoi_dict["areas"], nbins, [xmin, xmax, ymin, ymax])
             matrices.append(matrix)
@@ -2057,24 +2171,7 @@ class Memb2D:
 
         final_mat = np.mean(np.array(matrices), axis = 0)
 
-        #print(f"final_mat {np.array(matrices).shape}")
-        #fig , ax = plt.subplots(1,len(matrices)+1)
-        #count = 0
-        #indices = []
-        #for mat in matrices:
-            #ax[count].imshow(mat, cmap = "Spectral")
-        #    x_ref = matrices[0].flatten()
-        #    y = mat.flatten()
-            #ax[count].scatter(x_ref,y)
 
-        #    indices.append(np.corrcoef(x_ref, y)[0,1])
-        #    count +=1
-        #ax[count].imshow(final_mat, cmap = "Spectral")
-        #plt.show()
-
-
-        #plt.plot(indices)
-        #plt.show()
         return final_mat, edges
 
     def windows_apl(self, layer = "top", start = 0, final = -1, step = 1, w_size = 10, lipid_list = None, nbins = 180, edges = None):
@@ -2116,10 +2213,149 @@ class Memb2D:
         return matrices
 
 
+    @staticmethod
+    def create_sel_string(lipid_list, sign, mean_z):
+        selection_string = f"(((resname {lipid_list[0]} and name {self.working_lip[lipid_list[0]]['head']}) and prop z {sign} {mean_z}))"
+        for lipid in lipid_list[1:]:
+            selection_string += f" or (((resname {lipid} and name {self.working_lip[lipid]['head']}) and prop z {sign} {mean_z}))"
+        return selection_string
 
 
 
 
+    def voronoi_thickness(self, start = 0, final = -1, step = 1, lipid_list = None, nbins = 180, edges = None):
+        """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
+
+        Parameters
+        ----------
+        layer : str, optional
+            working lipid layer, by default "top"
+        start : int, optional
+            Frame to start, by default 0
+        final : int, optional
+            final frame, by default -1
+        step : int, optional
+            Frames to skip, by default 1
+        lipid_list : list, optional
+            lipids involved in the computation, by default None
+        nbins : int, optional
+            number of bins for the grid, by default 180
+        edges : list, optional
+            A list with the limits of the grid [xmin,xmax,ymin,ymax]
+
+        Returns
+        -------
+        ndarray
+            Array with the averaged 2D APL, edges
+        """
+        if lipid_list == None:
+            lipid_list = list(self.lipid_list)
+
+        if edges is None:
+            xmin = self.v_min
+            xmax = self.v_max
+            ymin = self.v_min
+            ymax = self.v_max
+        else:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
+
+
+        matrices = []
+        for _ in self.u.trajectory[start:final:step]:
+
+            voronoi_dict = self.voronoi_apl(layer = "top",
+                                            lipid_list=lipid_list)
+            matrix_top,_ = self.map_voronoi(voronoi_dict["points"],
+                                         voronoi_dict["heights"],
+                                         nbins,
+                                         [xmin, xmax, ymin, ymax],
+
+                                         )
+
+            voronoi_dict = self.voronoi_apl(layer = "bot",
+                                            lipid_list=lipid_list)
+            matrix_bot,_ = self.map_voronoi(voronoi_dict["points"],
+                                         voronoi_dict["heights"],
+                                         nbins,
+                                         [xmin, xmax, ymin, ymax],
+
+                                         )
+
+            matrix_thickness = matrix_top + matrix_bot
+
+
+            matrices.append(matrix_thickness)
+
+        final_mat = np.mean(np.array(matrices), axis = 0)
+
+        return final_mat, edges
+
+
+    def voronoi_height(self, layer = "top", start = 0, final = -1, step = 1, lipid_list = None, nbins = 180, edges = None):
+        """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
+
+        Parameters
+        ----------
+        layer : str, optional
+            working lipid layer, by default "top"
+        start : int, optional
+            Frame to start, by default 0
+        final : int, optional
+            final frame, by default -1
+        step : int, optional
+            Frames to skip, by default 1
+        lipid_list : list, optional
+            lipids involved in the computation, by default None
+        nbins : int, optional
+            number of bins for the grid, by default 180
+        edges : list, optional
+            A list with the limits of the grid [xmin,xmax,ymin,ymax]
+
+        Returns
+        -------
+        ndarray
+            Array with the averaged 2D APL, edges
+        """
+        if lipid_list == None:
+            lipid_list = list(self.lipid_list)
+
+        if edges is None:
+            xmin = self.v_min
+            xmax = self.v_max
+            ymin = self.v_min
+            ymax = self.v_max
+        else:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
+
+
+        matrices = []
+
+
+
+        for _ in self.u.trajectory[start:final:step]:
+
+            voronoi_dict = self.voronoi_apl(layer = "layer")
+            matrix_height,_ = self.map_voronoi(voronoi_dict["points"],
+                                         voronoi_dict["heights"],
+                                         nbins,
+                                         [xmin, xmax, ymin, ymax],
+                                         lipid_list = lipid_list,
+                                         )
+
+
+
+
+            matrices.append(matrix_height)
+
+        final_mat = np.mean(np.array(matrices), axis = 0)
+
+        return final_mat, edges
 
 
 
