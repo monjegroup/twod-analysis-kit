@@ -21,18 +21,16 @@
 [url_license]: https://www.gnu.org/licenses/gpl-2.0
 [url_mda]: https://www.mdanalysis.org
 
-Project created to study lipid membranes in a 2D fashion.
+Toolkit created to map biophysical properties of lipid bilayers to the membrane plane to track changes and study correlations in 2D. This kit is built following the format of MDAKits.
 
 2D Analysis is bound by a [Code of Conduct](https://github.com/monjegroup/twod-analysis-kit/blob/main/CODE_OF_CONDUCT.md).
 
 ### Installation
 
 To build 2D Analysis from source,
-we highly recommend using virtual environments.
-If possible, we strongly recommend that you use
+We strongly recommend that you use virtual environments and
 [Anaconda](https://docs.conda.io/en/latest/) as your package manager.
-Below we provide instructions both for `conda` and
-for `pip`.
+Below we provide instructions both for `conda` and `pip`.
 
 #### With conda
 
