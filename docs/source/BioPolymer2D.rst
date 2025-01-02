@@ -39,26 +39,26 @@ attribute. Especially convinient if working with more than object at the same ti
 
 .. code-block:: python
 
-    ag_analysis.system_name='Omicron PBL1'
-    ag_analysis.INFO()
+    biopol.system_name='Omicron PBL1'
+    biopol.INFO()
 
 In general, we would also like to compute the positions of the residues in our object. This will store position values of each frame on 
 the ``pos`` attribute. Compute:
 
 .. code-block:: python
 
-    ag_analysis.getPositions()
+    biopol.getPositions()
 
 If you want to consider only a time section of your whole trajectory set the attributes ``startT``, ``endT``, and ``stepT`` before 
 computing ``getPositions``,e.g.
 
 .. code-block:: python
     
-    ag_analysis.startT=100
-    ag_analysis.endT=200
-    ag_analysis.stepT=0.4
-    ag_analysis.INFO()
-    ag_analysis.getPositions()
+    biopol.startT=100
+    biopol.endT=200
+    biopol.stepT=0.4
+    biopol.INFO()
+    biopol.getPositions()
 
 
 ``INFO`` to confirm that  ``startT``, ``endT``, and ``stepT`` have been overwriten.
@@ -80,9 +80,16 @@ Then, we compute the  ``PolarAnalysis``, setting these parameters,
     select_res='resid 198 200 12 8 40 45 111 115 173'
     zlim=15
     Nframes=900
-    hist_arr,pos_hist=ag_analysis.PolarAnalysis(select_res,Nframes, 
+    hist_arr,pos_hist=biopol.PolarAnalysis(select_res,Nframes, 
                                                 zlim=zlim,control_plots=False,plot=True)
     plt.show()
+
+.. figure:: PolarHist.png
+   :alt: Example of Polar Histograms
+   :width: 100%
+   :align: center
+
+..    **Figure 1:** Example of output  Polar Histograms. 
 
 If we only want to compute the histogram, set ``plot=False``. ``control_plots`` is to visualize the diferent steps of the PolarAnalysis calculations.
 Titles and further figure costumization can be added to the plot using standard ``matplotlib.pyplot`` methods before ``plt.show()``.
@@ -94,8 +101,8 @@ Titles and further figure costumization can be added to the plot using standard 
     .. code-block:: python
 
         surface_selection='resname DOL and name O1 and prop z > 16'
-        surface_pos=ag_analysis.getPositions(select=surface_selection, inplace=False)
-        ag_analysis.surf_pos=surface_pos
+        surface_pos=biopol.getPositions(select=surface_selection, inplace=False)
+        biopol.surf_pos=surface_pos
 
     With the ``inplace=False`` it will not overwrite the ``pos`` attribute of the object, but only return it.
     
@@ -107,10 +114,11 @@ we first compute the KDE of whole molecule, and then compute the KDE of selected
 
 .. code-block:: python
 
-    paths=biopol.getKDEAnalysis(zlim,Nframes,)
-    biopol.plotPathsInLevel(paths,0,show=False)
+    paths=biopol.getKDEAnalysis(zlim,Nframes,) # Computes the paths of all the contour levels
+    biopol.plotPathsInLevel(paths,0,show=False) # Plots paths in contour level 0
+    # Plot the KDE contour plots of the selected residues
     all_residues_paths,residues_in_contour=biopol.KDEAnalysisSelection('resid 198 200 12 8 40 45 111 115 173',Nframes,zlim,show=False,legend=True)
-    plt.show()
+    plt.show() # Can also set "show=True" if no plot customization is required.
 
 .. note:: Setting the same ``zlim`` and ``Nframes`` paramater values for ``PolarAnalysis`` , ``getKDEAnalysis`` and ``KDEAnalysisSelection`` is suggested.
 
@@ -121,7 +129,7 @@ We now can compute the Areas of the paths computed by ``KDEAnalysisSelection`` w
 
     data=[]
     for p in range(len(all_residues_paths)):
-        areas=BioPolymer2D.getAreas(all_residues_paths[p],0,getTotal=True)
+        areas=BioPolymer2D.getAreas(all_residues_paths[p],0,getTotal=True) # Stores the total area of contour level 0. 
         data.append([residues_in_contour.residues[p].resid,residues_in_contour.residues[p].resname,areas])
     df=pd.DataFrame(data=data, columns=["ResIDs", "Resnames", "Area (angs^2)"])
     df
@@ -144,7 +152,7 @@ The parallel and perpendicular radii of gyration gives structural information du
    :align: center
 
    **Figure 1:** Example of radii of gyration correlation figures that can be made with method on the left and a schematic 
-   representacion of the parallel and perpendicular radii of gyrations on the right. Figure taken from the TOC figure of `Bosch et\.al`_ (2024).
+   representacion of the parallel and perpendicular radii of gyrations on the right. Figure taken from the TOC figure of `Bosch et\. al`_ (2024).
 
 
 To notice significant results, we need to select a region that is in contact with the surface as our object, e.g.
@@ -158,11 +166,46 @@ To notice significant results, we need to select a region that is in contact wit
     ratio=Contact_region.RgPerpvsRgsPar(rgs, 'tab:green',show=False) # Make RgPerp vs Rg parallel plot
     
 The output will be similar to Figure 1 (left), with only one system instead of six. The ``ratio`` will give
-the :math:`\langle R_{g\perp}^2 \rangle /\langle R_{g\parallel}^2 \rangle` ratio, which is relevant on charactertizing the adsorption of polymers (CITE 2 PAPERS).
+the :math:`\langle R_{g\perp}^2 \rangle /\langle R_{g\parallel}^2 \rangle` ratio, which is relevant on charactertizing the adsorption of polymers 
+(`Egorov et\. al`_ (2016)`, `Poblete et\. al`_ (2021)).
 
 
 Hydrogen bonds per residues
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+To the hydrogen bonds between two arbitrary selections of residues. In particular, you can compute the hydrogen bonds present between a biopolymer 
+and a the surface as follows:
+
+.. code-block:: python
+
+    biopol_selection='protein or resname AFUC BMAN AMAN BGLCNA' # Selection of protein and its glycan
+    surf_selection='resname DOL' # Selection of atoms present in the surfaces
+    biopol.getHbonds(surf_selection,biopol_selection) # Compute H-bonds between surface and biopolymer
+
+By default, the H-bond count will be stored in the attribute ``hbonds`` of the object, which can be changed to only returning the result setting 
+``inplace=False`` in ``getHonds``.
+
+To visualize these results, we suggest using the ``plotHbondsPerResidues`` method. For the use of this method, you will need to compute a KDE control 
+plot as a reference of the biopolymer. 
+
+.. code-block:: python
 
 
-.. _Bosch et\.al: https://pubs.acs.org/doi/10.1021/acs.jcim.4c00460
+    paths=biopol.getKDEAnalysis(zlim,Nframes)
+    biopol.plotHbondsPerResidues(paths,contour_lvls_to_plot=[0,5,8],top=5, print_table=True,filter=['DOL'])
+    plt.show()
+
+
+.. figure:: hbonds.png
+   :alt: Example of Polar Histograms
+   :width: 100%
+   :align: center
+
+..    **Figure 1:** Example of output  Polar Histograms. 
+
+Here, you will be showing the contour levels 0 (outer), 5 (middle) and 8 (inner) as reference. Also, you will be plotting only the 5 residues with 
+most H-bonds during the simulation (using ``top`` paramater), with ``filter`` paramater you are filtering residues with residue names DOL (in general, 
+we are interested in counting only the Hbonds of out biopolyer), and setting to print a table with **all** the residues H-bond percentages during the simulation.
+
+.. _Bosch et\. al: https://pubs.acs.org/doi/10.1021/acs.jcim.4c00460
+.. _Poblete et\. al: https://pubs.acs.org/doi/10.1021/acsomega.1c04774
+.. _Egorov et\. al: https://pubs.aip.org/aip/jcp/article-abstract/144/17/174902/194646/Semiflexible-polymers-under-good-solvent?redirectedFrom=fulltext
