@@ -386,8 +386,8 @@ class BioPolymer2D:
         else:
             ordered_selected_pos=pos_selected
             sort_i=np.arange(ordered_selected_pos.shape[1])
-        print(pos_selected.shape, ordered_selected_pos.shape)
-        print(pos_selected[:,:3].shape, ordered_selected_pos[:,:3].shape)
+        # print(pos_selected.shape, ordered_selected_pos.shape)
+        # print(pos_selected[:,:3].shape, ordered_selected_pos[:,:3].shape)
         if plot==True:
             norm_max_hist=1/max_hist
             ax = plt.subplot(111, polar=True)
