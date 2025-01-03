@@ -3,8 +3,9 @@ import numpy as np
 import pandas as pd
 from twodanalysis import MembProp
 from twodanalysis.analysis import OrderParameters
-class Cumulative2D(MembProp):
 
+
+class Cumulative2D(MembProp):
     def __init__(self,
                  universe,
                 lipid_list = None,
@@ -36,11 +37,11 @@ class Cumulative2D(MembProp):
 
 
     ############## Order parameters related code ####################
-    def order_histogram(self,
+    def order_matrix(self,
                         lipid = "DOPC",
                         layer = "top",
                         nbins = 50,
-                        n_chain = [17,17],
+                        n_chain = None,
                         edges = None,
                         start = None,
                         final = None,
@@ -58,7 +59,7 @@ class Cumulative2D(MembProp):
         nbins : int
             number of divisions of the grid
         n_chain : int or list
-            number of carbons in the first chain or in both chains, e.g., 16 or [16,18]
+            number of carbons in the first chain or in both chains, e.g., 16 or [16,18], defaults to None
         v_min : float, optional
             min value for the 2D grid, by default None
         v_max : float, optional
@@ -91,6 +92,9 @@ class Cumulative2D(MembProp):
             sign = " > "
         elif layer == "bot":
             sign = " < "
+
+        if n_chain is None:
+            n_chain = self.chain_info[lipid]
 
         try:
             n_chain1 = n_chain[0]
@@ -333,7 +337,6 @@ class Cumulative2D(MembProp):
 
     def all_lip_order(self, layer, nbins,
                         edges = None,
-                        all_head = None,
                         start = None,
                         final = None,
                         step = 1,
@@ -385,8 +388,7 @@ class Cumulative2D(MembProp):
         matrices = []
         for key in lipid_list:
             print(key)
-            H, edges = self.order_histogram(key, layer, nbins, lipids[key],edges,
-                        all_head = all_head,
+            H, edges = self.order_matrix(key, layer, nbins, lipids[key],edges,
                         start = start,
                         final = final,
                         step = step)
@@ -406,3 +408,375 @@ class Cumulative2D(MembProp):
 
 
     ############## End of order parameters related code ############################3
+
+
+
+    def surface(self,
+                start = None,
+                final = None,
+                step = None,
+                lipid_list = "DSPC",
+                layer = 'top',
+                include_charge = False,
+                splay = False):
+        """Code to loop over the trajectory and print [x,y,z(referenced to zmean), charge] in a file.
+
+
+        Parameters
+        ----------
+        start : int, optional
+            Start Frame, by default None
+        final : int, optional
+            Final frame, by default None
+        step : int, optional
+            Frames to skip, by default None
+        lipids : str or list, optional
+             Lipid to work, by default "DSPC"
+        layer : str, optional
+            Layer to work, by default 'top'
+        filename : str, optional
+            filename to write data, by default None
+        include_charge : bool, optional
+            Include or not charge, by default False
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+
+
+        if start is None:
+            start = self.start
+        if final is None:
+            final = self.final
+        if step is None:
+            step = self.step
+
+
+
+
+
+        if layer == "top":
+            sign = " > "
+        elif layer == "bot":
+            sign = " < "
+
+
+        ##### Select all the P atoms to find the middle of the membrane
+        all_p = self.all_head
+
+        if isinstance(lipid_list, list):
+            names = f" {self.build_name(self.working_lip[lipid_list[0]]['head'])}"
+            selection_string = f"(resname {lipid_list[0]} and {names}) "
+            for lipid in lipid_list[1:]:
+                selection_string += f" or (resname {lipid} and {self.build_name(self.working_lip[lipid]['head'])}) "
+
+        else:
+            lipid_list = [lipid_list]
+            selection_string = f"(resname {lipid_list} and {self.build_name(self.working_lip[lipid]['head'])}) "
+
+        #print(self.working_lip, selection_string)
+        columns = ["x", "y", "z", "id"]
+
+
+        if splay:
+            self.guess_last_cs()
+            carbons1 = [self.working_lip[lipid]["last_c"][0] for lipid in lipid_list]
+            carbons2 = [self.working_lip[lipid]["last_c"][1] for lipid in lipid_list]
+            heads = [self.working_lip[lipid]["head"] for lipid in lipid_list]
+            heads = self.build_resname_atom(lipid_list, heads)
+            carbons1 = self.build_resname_atom(lipid_list, carbons1)
+            carbons2 = self.build_resname_atom(lipid_list, carbons2)
+            columns.append("splay")
+
+        if self.verbose:
+            print("######### Running surface function ########## ")
+            print(f"We will compute the surface files for a membrane with there lipids {lipid_list}")
+            print(f"Currently working on: {lipid_list}")
+            print(f"Layer: {layer}")
+
+
+
+        #### Loop over trajectory to find the lipids in the requested membrane
+        pos_data = []
+        for _ in self.u.trajectory[start:final:step]:
+            positions = all_p.positions[:,2]
+            mean_z = positions.mean()
+
+            # Selects the lipid head and of the working lipid
+            if layer == "both":
+                final_selection_string = selection_string
+            else:
+                #print(selection_string)
+                final_selection_string = f"({selection_string}) and prop z {sign} {str(mean_z)}"
+
+            # Select the atoms in the head
+            if splay:
+                final_selection_byres = f"byres {final_selection_string}"
+                lipid_ats = self.u.select_atoms(final_selection_byres)
+                head_p = lipid_ats.select_atoms(heads)
+                c1 = lipid_ats.select_atoms(carbons1)
+                c2 = lipid_ats.select_atoms(carbons2)
+                v1 = c1.positions - head_p.positions
+                v2 = c2.positions - head_p.positions
+                #print(heads,carbons2,carbons1, head_p.n_atoms, c1.n_atoms)
+                costheta = np.sum(v1 * v2, axis=1)/(np.linalg.norm(v1, axis = 1)* np.linalg.norm(v2, axis = 1))# Compute the cos of splay angle, must bet lenmght nlipids
+                costheta = np.rad2deg(costheta[:,np.newaxis])
+                atoms = lipid_ats.select_atoms(selection_string)
+            else:
+                atoms = self.u.select_atoms(final_selection_string)
+
+            ### Get positions # Maybe have to check what happens with masses 0
+            atom_pos = atoms.center_of_mass(compound="residues")
+
+
+
+
+            ### Get resids
+            atom_resid = atoms.residues.resids
+            #print(atom_resid.shape)
+            #print(f"costheta {costheta.shape}")
+            atom_resid = atom_resid[:,np.newaxis]
+            #print(atom_resid.shape)
+
+            atom_pos = np.concatenate((atom_pos, atom_resid), axis = 1)
+            if splay:
+                atom_pos = np.concatenate((atom_pos, costheta), axis = 1)
+            atom_pos[:,2] = np.abs(atom_pos[:,2]-mean_z)
+
+
+
+
+
+            pos_data.append(atom_pos)
+
+
+
+        pos_data = np.concatenate(pos_data, axis = 0)
+        df_data = pd.DataFrame(pos_data, columns = columns)
+        df_data["id"] = df_data["id"].astype(int)
+        #if include_charge:
+        #    df_data["charge"] = self.charge_li[lipid]
+        #    df_data.to_csv(f"pd_{filename}", index = False)
+        #df_data.to_csv(f"pd_{filename}", index = False)
+
+        #print(df_data)
+
+        return df_data   # Maybe have to change, it does not make sense to return thi
+
+
+
+    @staticmethod
+    def build_resname_atom(resnames, atomsnames):
+        resnames = list(resnames)
+        string = f"( (resname {resnames[0]}  and name {atomsnames[0]} ) "
+
+        for i, resname in enumerate(resnames[1:]):
+            string += f" or (resname {resname}  and name {atomsnames[ i + 1]}) "
+
+        string +=  " ) "
+        return string
+
+
+    #def individual_splay(self, atom_group, lipids):
+
+
+
+    def height_matrix(self, lipid_list, layer, edges = None, start = None, final = None, step = None, nbins = 50):
+        """ Code to divide the space in a 2D grid and compute the height referenced to zmean
+
+        Parameters
+        ----------
+        lipids : list(str)
+            Lipids to include in the height analysis
+        layer : str
+            Working layer for thickness
+        edges : list
+            Edges for the grid
+        start : int, optional
+            Frame to start analysis, by default None
+        final : int, optional
+            Final frame for the analysis, by default None
+        step : int, optional
+            Steps to skip, by default None
+        nbins : int, optional
+            Number of bins to divide the grid space, by default 50
+        clean : bool, optional
+            Decide if rerun and overwrite surface generated files, by default True
+
+        Returns
+        -------
+        ndarray(nbins,nbins)
+            Retun a matrix with the height information
+        """
+
+
+        if start is None:
+            start = self.start
+        if final is None:
+            final = self.final
+        if step is None:
+            step = self.step
+
+
+        print(f"Computing matrix for {layer} in frames {start}-{final}")
+        data = []
+
+        filename = f"{lipid_list[0]}_{layer}_{start}-{final}.dat"
+
+        data = self.surface(lipid_list= lipid_list, layer = layer, include_charge = True, start = start, final = final)
+
+
+
+        if edges is not None:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
+        else:
+            xmin = self.v_min
+            xmax = self.v_max
+            ymin = self.v_min
+            ymax = self.v_max
+
+
+        H_height, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], weights = data["z"], bins = nbins, range = [[xmin,xmax], [ymin,ymax]])
+        H_count, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], bins = nbins, range = [[xmin, xmax], [ymin,ymax]])
+
+        H_count[H_count == 0] = 1.
+
+        H_avg = H_height/H_count
+
+        H_avg[H_avg == 0] =  np.nan
+
+        H_avg = np.rot90(H_avg)
+
+        np.savetxt(f'Height_{layer}_{start}_{final}.dat', H_avg, fmt = '%.2f')
+        np.savetxt(f"edges_{layer}_{start}_{final}.dat", x_edges, fmt = "%.2f")
+        return H_avg, [x_edges[0],x_edges[-1],y_edges[0], y_edges[-1]]
+
+
+    def splay_matrix(self, lipid_list, layer, edges = None, start = None, final = None, step = None, nbins = 50):
+        """ Code to divide the space in a 2D grid and compute the height referenced to zmean
+
+        Parameters
+        ----------
+        lipids : list(str)
+            Lipids to include in the height analysis
+        layer : str
+            Working layer for thickness
+        edges : list
+            Edges for the grid
+        start : int, optional
+            Frame to start analysis, by default None
+        final : int, optional
+            Final frame for the analysis, by default None
+        step : int, optional
+            Steps to skip, by default None
+        nbins : int, optional
+            Number of bins to divide the grid space, by default 50
+        clean : bool, optional
+            Decide if rerun and overwrite surface generated files, by default True
+
+        Returns
+        -------
+        ndarray(nbins,nbins)
+            Retun a matrix with the height information
+        """
+
+
+        if start is None:
+            start = self.start
+        if final is None:
+            final = self.final
+        if step is None:
+            step = self.step
+
+
+
+
+        print(f"Computing matrix for {layer} in frames {start}-{final}")
+        data = []
+
+        data = self.surface(lipid_list=lipid_list, layer = layer, include_charge = True, start = start, final = final, splay=True)
+
+
+        #print(data)
+
+        if edges is not None:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
+        else:
+            xmin = self.v_min
+            xmax = self.v_max
+            ymin = self.v_min
+            ymax = self.v_max
+
+
+        H_splay, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], weights = data["splay"], bins = nbins, range = [[xmin,xmax], [ymin,ymax]])
+        H_count, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], bins = nbins, range = [[xmin, xmax], [ymin,ymax]])
+
+        H_count[H_count == 0] = 1.
+
+        H_avg = H_splay/H_count
+
+        H_avg[H_avg == 0] =  np.nan
+
+        H_avg = np.rot90(H_avg)
+
+        return H_avg, [x_edges[0],x_edges[-1],y_edges[0], y_edges[-1]]
+
+
+
+    def thickness(self, nbins, edges = None,lipid_list = None, start = 0, final=-1, step = 1):
+        """Find the thichness mapped in a 2d grid
+
+        Parameters
+        ----------
+        nbins : int
+            number of bins for thickness
+        edges : list
+            Edges for the grid
+        lipids : list(str)
+            Lipids to be considered in the thickness computation
+        start : int, optional
+            Start frame, by default 0
+        final : int, optional
+            Final frame, by default -1
+        step : int, optional
+            Step frame, by default 1
+
+        Returns
+        -------
+        np.array, np.array
+            Matrix with the thickness, edeges for the matrix
+        """
+        if lipid_list is None:
+            lipid_list = list(self.lipid_list)
+            if "CHL1" in lipids:
+                lipid_list.remove("CHL1")
+
+        matrix_up, edges = self.height_matrix(lipid_list,
+                        "top",
+                        edges = edges,
+                        start = start,
+                        final = final,
+                        step = step,
+                        nbins = nbins)
+        matrix_bot, edges = self.height_matrix(lipid_list,
+                        "bot",
+                        edges = edges,
+                        start = start,
+                        final = final,
+                        step = step,
+                        nbins = nbins)
+
+        mat_thickness = matrix_bot + matrix_up
+
+        mat_thickness[mat_thickness == 0] = np.nan
+        #print(mat_thickness,mat_thickness.shape,matrix_bot.shape,[edges[0], edges[-1], edges[0], edges[-1]])
+
+        return mat_thickness, edges
