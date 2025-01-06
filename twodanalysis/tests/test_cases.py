@@ -27,8 +27,49 @@ def universe():
     return mda.Universe(tpr, traj)
 
 
+univ = mda.Universe(tpr, traj)
+
+membrane = Memb2D(univ)
+lipid_list = list(membrane.lipid_list)
+
+if "CHL1" in lipid_list:
+    lipid_list.remove("CHL1")
 
 
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+membrane.periodicity = 0.1
+
+
+#mat, edges = membrane.voronoi_thickness(start=61, final=110, lipid_list=lipid_list, nbins=180)
+matrices=[]
+
+matrices = np.array(matrices)
+mat = np.nanmean(matrices, axis = 0)
+#mat, edges = membrane.thickness(lipids=lipid_list, start = 61, final = 110, step = 1, nbins = 40, edges = None)
+mat, edges = membrane.thickness(lipids=lipid_list, start = 61, final = 110, step = 1, nbins = 40, edges = None)
+
+fig,ax =plt.subplots(2,1)
+
+first = ax[0].imshow(mat,extent = edges,cmap = "Spectral")
+divider1 = make_axes_locatable(ax[0])
+cax1 = divider1.append_axes("right", size="5%", pad=0.05)
+cbar = fig.colorbar(first, cax = cax1)
+
+
+mat1, edges = membrane.voronoi_thickness(lipid_list=lipid_list, start = 61, final = 110, step = 1, nbins = 40, edges = None)
+print(edges)
+second = ax[1].imshow(mat1, extent = edges, cmap = "Spectral")
+divider2 = make_axes_locatable(ax[1])
+cax2 = divider2.append_axes("right", size="5%", pad=0.05)
+cbar = fig.colorbar(second, cax = cax2)
+#plt.colorbar()
+plt.show()
+print(lipid_list)
+
+
+plt.imshow(mat1, extent=edges, cmap = "Spectral")
+plt.colorbar()
+plt.show()
 
 
 
@@ -97,8 +138,26 @@ def test_all_order(universe):
 
     assert isinstance(mat_top, np.ndarray)
 
-#plt.imshow(mat_top,extent=edges, cmap = "Spectral")
-#plt.show()
+universe = mda.Universe("membrane.gro", MEMBRANE_XTC)
+membrane = Memb2D(universe,
+                        verbose = True,
+                        add_radii = True)
+
+
+mat_thi, edges = membrane.thickness(50, edges = [10,170,10,170],start = 0, final = 100, step = 1)
+
+plt.imshow(mat_thi,extent=edges, cmap = "Spectral")
+plt.colorbar()
+plt.show()
+
+mat_top, edges = membrane.all_lip_order("top", nbins,
+                        start = 0,
+                        final = 100,
+                        step = 1)#
+#print(membrane.working_lip)
+
+plt.imshow(mat_top,extent=edges, cmap = "Spectral")
+plt.show()
 #plt.imshow(mat_bot, extent=edges,cmap = "Spectral")
 #plt.show()
 #plt.imshow(mat_both,extent=edges, cmap = "Spectral")
@@ -110,8 +169,8 @@ def test_all_order(universe):
 
 
 # Adding POPE lipids that are not taken into account
-#membrane.non_polar_dict["POPE"].append("H101")
-#membrane.non_polar_dict["POPE"].append("H91")
+membrane.non_polar_dict["POPE"].append("H101")
+membrane.non_polar_dict["POPE"].append("H91")
 
 """ Print selections to test packing deffects with VMD
 lipid_polar = {}
@@ -144,16 +203,16 @@ for key in lipid_polar.keys():
 #                        verbose = True,
 #                        add_radii = True)
 
-#defects, defects_dict = membrane.packing_defects(layer = "top", nbins = 200, periodic=True)
+defects, defects_dict = membrane.packing_defects(layer = "top", nbins = 400, periodic=True)
 
 #print(membrane.print_dict(defects_dict))
 
 # Plot defects
-#plt.imshow(defects, cmap = "viridis")
-#plt.xlabel("x  $[\AA]$")
-#plt.ylabel("y  $[\AA]$")
-#plt.show()
-#membrane.visualize_polarity()
+plt.imshow(defects, cmap = "viridis")
+plt.xlabel("x  $[\AA]$")
+plt.ylabel("y  $[\AA]$")
+plt.show()
+membrane.visualize_polarity()
 
 #print(membrane.non_polar_dict["POPE"])
 
