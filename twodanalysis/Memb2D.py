@@ -849,10 +849,8 @@ class Memb2D:
     def build_resname(resnames_list):
         resnames_list = list(resnames_list)
         string = " (resname " + resnames_list[0]
-
         for resname in resnames_list[1:]:
             string = string + " or resname " + resname
-
         string = string + ") "
         return string
 
@@ -868,14 +866,11 @@ class Memb2D:
 
     @staticmethod
     def build_name(resnames_list):
-
         if isinstance(resnames_list, str):
             return f"(name {resnames_list})"
-
         string = " (name " + resnames_list[0]
         for resname in resnames_list[1:]:
             string = string + " or name " + resname
-
         string = string + ") "
         return string
 
@@ -952,11 +947,12 @@ class Memb2D:
             selection_string = f"(resname {lipids} and {self.build_name(self.working_lip[lipids]['head'])}) "
 
         columns = ["x", "y", "z", "id"]
+
+
         if splay:
             carbons1 = [self.working_lip[lipid]["last_c"][0] for lipid in lipid_list]
             carbons2 = [self.working_lip[lipid]["last_c"][1] for lipid in lipid_list]
             heads = [self.working_lip[lipid]["head"] for lipid in lipid_list]
-
             heads = self.build_resname_atom(lipid_list, heads)
             carbons1 = self.build_resname_atom(lipid_list, carbons1)
             carbons2 = self.build_resname_atom(lipid_list, carbons2)
@@ -1259,7 +1255,9 @@ class Memb2D:
                         final = final,
                         step = step,
                         nbins = nbins)
+
         mat_thickness = matrix_bot + matrix_up
+
         mat_thickness[mat_thickness == 0] = np.nan
         #print(mat_thickness,mat_thickness.shape,matrix_bot.shape,[edges[0], edges[-1], edges[0], edges[-1]])
 
@@ -1932,6 +1930,7 @@ class Memb2D:
                         layer = 'top',
                         working_lip = None,
                         lipid_list = None,
+                        splay = False,
                         ):
         """Computes the APL for membranes with different lipids
 
@@ -1966,13 +1965,9 @@ class Memb2D:
         all_p = self.all_head
         positions = all_p.positions
 
-        xmin = np.min(positions[:,0])
-        xmax = np.max(positions[:,0])
-        ymin = np.min(positions[:,1])
-        ymax = np.max(positions[:,1])
 
-        dist_x = xmax - xmin
-        dist_y = ymax - ymin
+
+
 
 
         mean_z = positions[:,2].mean()
@@ -1980,6 +1975,11 @@ class Memb2D:
         selection_string = f"(((resname {lipid_list[0]} and name {working_lip[lipid_list[0]]['head']}) and prop z {sign} {mean_z}))"
         for lipid in lipid_list[1:]:
             selection_string += f" or (((resname {lipid} and name {working_lip[lipid]['head']}) and prop z {sign} {mean_z}))"
+
+
+
+
+
 
         print(selection_string)
 
@@ -1993,9 +1993,33 @@ class Memb2D:
 
         ## Extent data
         dimensions = self.u.trajectory.ts.dimensions[:2]
-        cons = 0.1
 
-        heads_pos, others = self.extend_data(heads_pos, dimensions, self.periodicity, others = [resnames_pos, height_pos])
+        others = [resnames_pos, height_pos]
+
+
+        if splay:
+            carbons1 = [self.working_lip[lipid]["last_c"][0] for lipid in lipid_list]
+            carbons2 = [self.working_lip[lipid]["last_c"][1] for lipid in lipid_list]
+            heads = [self.working_lip[lipid]["head"] for lipid in lipid_list]
+            heads = self.build_resname_atom(lipid_list, heads)
+            carbons1 = self.build_resname_atom(lipid_list, carbons1)
+            carbons2 = self.build_resname_atom(lipid_list, carbons2)
+            selection_string_byres = f"byres {selection_string}"
+            lipid_ats = self.memb.select_atoms(selection_string_byres)
+
+
+            head_p = lipid_ats.select_atoms(heads)
+            c1 = lipid_ats.select_atoms(carbons1)
+            c2 = lipid_ats.select_atoms(carbons2)
+            v1 = c1.positions - head_p.positions
+            v2 = c2.positions - head_p.positions
+            print(heads,carbons2,carbons1, head_p.n_atoms, c1.n_atoms)
+            costheta = np.sum(v1 * v2, axis=1)/(np.linalg.norm(v1, axis = 1)* np.linalg.norm(v2, axis = 1))# Compute the cos of splay angle, must bet lenmght nlipids
+            costheta = np.rad2deg(costheta)
+            others.append(costheta)
+
+
+        heads_pos, others = self.extend_data(heads_pos, dimensions, self.periodicity, others = others)
         resnames_pos = others[0]
         height_pos = others[1]
         from scipy.spatial import Voronoi, voronoi_plot_2d
@@ -2008,6 +2032,8 @@ class Memb2D:
                         "resnames":resnames_pos,
                         "orig_len":orig_len
                          }
+        if splay:
+            voronoi_dict["splay"] = others[2]
 
 
         voronoi = Voronoi(heads_pos)
@@ -2262,14 +2288,21 @@ class Memb2D:
             ymin = edges[2]
             ymax = edges[3]
 
-
+        no_present = [lipid for lipid in list(self.lipid_list) if lipid not in lipid_list]
         matrices = []
         for _ in self.u.trajectory[start:final:step]:
 
+
+
+
+
             voronoi_dict = self.voronoi_apl(layer = "top",
                                             lipid_list=lipid_list)
+            heights = voronoi_dict["heights"]
+            for lipid in no_present:
+                heights[voronoi_dict["resnames"] == lipid] = np.nan
             matrix_top,_ = self.map_voronoi(voronoi_dict["points"],
-                                         voronoi_dict["heights"],
+                                         heights,
                                          nbins,
                                          [xmin, xmax, ymin, ymax],
 
@@ -2277,6 +2310,10 @@ class Memb2D:
 
             voronoi_dict = self.voronoi_apl(layer = "bot",
                                             lipid_list=lipid_list)
+            heights = voronoi_dict["heights"]
+            for lipid in no_present:
+                heights[voronoi_dict["resnames"] == lipid] = np.nan
+
             matrix_bot,_ = self.map_voronoi(voronoi_dict["points"],
                                          voronoi_dict["heights"],
                                          nbins,
@@ -2289,12 +2326,87 @@ class Memb2D:
 
             matrices.append(matrix_thickness)
 
-        final_mat = np.mean(np.array(matrices), axis = 0)
-
+        final_mat = np.nanmean(np.array(matrices), axis = 0)
+        final_mat = np.flipud(final_mat)
         return final_mat, edges
 
 
     def voronoi_height(self, layer = "top", start = 0, final = -1, step = 1, lipid_list = None, nbins = 180, edges = None):
+        """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
+
+        Parameters
+        ----------
+        layer : str, optional
+            working lipid layer, by default "top"
+        start : int, optional
+            Frame to start, by default 0
+        final : int, optional
+            final frame, by default -1
+        step : int, optional
+            Frames to skip, by default 1
+        lipid_list : list, optional
+            lipids involved in the computation, by default None
+        nbins : int, optional
+            number of bins for the grid, by default 180
+        edges : list, optional
+            A list with the limits of the grid [xmin,xmax,ymin,ymax]
+
+        Returns
+        -------
+        ndarray
+            Array with the averaged 2D APL, edges
+        """
+        if lipid_list == None:
+            lipid_list = list(self.lipid_list)
+
+
+        # Check which lipids are not requested
+        no_present = [lipid for lipid in list(self.lipid_list) if lipid not in lipid_list]
+
+
+        if edges is None:
+            xmin = self.v_min
+            xmax = self.v_max
+            ymin = self.v_min
+            ymax = self.v_max
+        else:
+            xmin = edges[0]
+            xmax = edges[1]
+            ymin = edges[2]
+            ymax = edges[3]
+
+
+        matrices = []
+
+
+
+        for _ in self.u.trajectory[start:final:step]:
+
+            voronoi_dict = self.voronoi_apl(layer = layer)
+
+            heights = voronoi_dict["heights"]
+            for lipid in no_present:
+                heights[voronoi_dict["resnames"] == lipid] = np.nan
+
+
+            matrix_height,_ = self.map_voronoi(voronoi_dict["points"],
+                                         heights,
+                                         nbins,
+                                         [xmin, xmax, ymin, ymax],
+
+                                         )
+
+
+
+
+            matrices.append(matrix_height)
+
+        final_mat = np.nanmean(np.array(matrices), axis = 0)
+        final_mat = np.flipud(final_mat)
+        return final_mat, edges
+
+
+    def voronoi_splay(self, layer = "top", start = 0, final = -1, step = 1, lipid_list = None, nbins = 180, edges = None):
         """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
 
         Parameters
@@ -2333,19 +2445,26 @@ class Memb2D:
             ymin = edges[2]
             ymax = edges[3]
 
-
+        no_present = [lipid for lipid in list(self.lipid_list) if lipid not in lipid_list]
         matrices = []
 
 
 
         for _ in self.u.trajectory[start:final:step]:
 
-            voronoi_dict = self.voronoi_apl(layer = "layer")
+            voronoi_dict = self.voronoi_apl(layer = layer, splay=True)
+
+
+            splay_vect = voronoi_dict["splay"]
+            for lipid in no_present:
+                splay_vect[voronoi_dict["resnames"] == lipid] = np.nan
+
+
             matrix_height,_ = self.map_voronoi(voronoi_dict["points"],
-                                         voronoi_dict["heights"],
+                                         splay_vect,
                                          nbins,
                                          [xmin, xmax, ymin, ymax],
-                                         lipid_list = lipid_list,
+
                                          )
 
 
@@ -2353,8 +2472,8 @@ class Memb2D:
 
             matrices.append(matrix_height)
 
-        final_mat = np.mean(np.array(matrices), axis = 0)
-
+        final_mat = np.nanmean(np.array(matrices), axis = 0)
+        final_mat = np.flipud(final_mat)
         return final_mat, edges
 
 

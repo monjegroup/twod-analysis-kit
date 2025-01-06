@@ -184,3 +184,8 @@ class OrderParameters:
             chains.append(angles)
         chains = np.array(chains) # Expect array of dim (n_chain, n_lipids)
         return chains
+
+
+
+
+

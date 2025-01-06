@@ -1,7 +1,8 @@
 import MDAnalysis as mda
 import pandas as pd
 import numpy as np
-
+import networkx as nx
+import matplotlib.pyplot as plt
 
 
 class MembProp:
@@ -71,11 +72,20 @@ class MembProp:
                                 "DSPC" : {"head" :"P", "charge" : 1.1},
                             }
 
+        self.connection_chains = {
+
+            "CHL1" : [("O3", "C3")],
+            "DODMA" : [("C21", "C22"), ("C31", "C32")],
+            "DSPC" : [("C21", "C22"), ("C31", "C32")],
+
+        }
+
 
         for lipid in self.lipid_list:
             test_lips = self.working_lip.keys()
             if lipid not in test_lips:
                 self.working_lip[lipid] = {"head" : "P", "charge" : 0}
+                self.connection_chains[lipid] = [("C21", "C22"), ("C31", "C32")]
 
 
         self.all_head = self.u.select_atoms(self.build_resname(self.lipid_list) + " and name P")
@@ -94,8 +104,9 @@ class MembProp:
             print(f"The default start frame is {self.start}, final {self.final}, step {self.step}\n\n")
 
 
-    def add_radii(self):
-        self.radii_dict = {"H": 1.1,
+    def add_radii(self, radii_dict = None):
+        if radii_dict is None:
+            radii_dict = {"H": 1.1,
                             "N": 1.55,
                             "C": 1.7,
                             "P": 1.8,
@@ -133,6 +144,7 @@ class MembProp:
             actual_sn1 = actual_sn1.names
             actual_sn2 = actual_sn2.names
             self.working_lip[lipid]["last_c"] = [actual_sn1[-1], actual_sn2[-1]]
+        return self.working_lip
 
 
     def guess_polarity(self):
@@ -248,6 +260,197 @@ class MembProp:
                 ax.set_zlim(mids[2]-dists/2, mids[2]+dists/2)
                 count += 1
         plt.show()
+
+
+    @staticmethod
+    def extend_data(data, dimensions, percentage, others = None):
+        """ Function to extent data for periodicity purposes
+
+        Parameters
+        ----------
+        data : ndarray(:,2)
+            data in 2D fashion
+        dimensions : ndarray(2)
+            periodicity dimension (usually gottem from u.ts.dimensions[:2])
+        percentage : float
+            Percentage of data to replicate with periodicity
+        others : list(ndarray(:), ndarray(:),...,ndarray(:)), optional
+            List of other data to replicate with periodicity (ndarrays initially match with data axis 0 dimension), by default None
+
+        Returns
+        -------
+        ndarray
+            Data extended
+        ndarray, list
+            Data extended, others extended
+        """
+        xmin = np.min(data[:,0])
+        xmax = np.max(data[:,0])
+        ymin = np.min(data[:,1])
+        ymax = np.max(data[:,1])
+
+
+
+        dist_x = xmax - xmin
+        dist_y = ymax - ymin
+        if len(data[0]) == 2:
+            left_add = data[data[:,0] <= xmin + percentage*dist_x] + [dimensions[0],0]
+            right_add = data[data[:,0] >= xmax - percentage*dist_x] - [dimensions[0],0]
+        else:
+            left_add = data[data[:,0] <= xmin + percentage*dist_x] + [dimensions[0],0,0]
+            right_add = data[data[:,0] >= xmax - percentage*dist_x] - [dimensions[0],0,0]
+
+
+        if others is not None:
+            temp_right = []
+            temp_left = []
+            for i in range(len(others)):
+                temp_left.append(others[i][data[:,0] <= xmin + percentage*dist_x])
+                temp_right.append(others[i][data[:,0] >= xmax - percentage*dist_x])
+
+
+
+
+        data = np.concatenate([data, left_add, right_add], axis = 0)
+
+        if others is not None:
+            for i in range(len(others)):
+                others[i] = np.concatenate([others[i], temp_left[i], temp_right[i]], axis = 0)
+
+        # Extent in y
+        if len(data[0]) == 2:
+            up_add = data[data[:,1] <= ymin + percentage*dist_y] + [0,dimensions[1]]
+            low_add = data[data[:,1] >= ymax - percentage*dist_y] - [0,dimensions[1]]
+        else:
+            up_add = data[data[:,1] <= ymin + percentage*dist_y] + [0,dimensions[1],0]
+            low_add = data[data[:,1] >= ymax - percentage*dist_y] - [0,dimensions[1],0]
+
+
+        if others is not None:
+            temp_up = []
+            temp_low = []
+            for i in range(len(others)):
+                temp_up.append(others[i][data[:,1] <= ymin + percentage*dist_y])
+                temp_low.append(others[i][data[:,1] >= ymax - percentage*dist_y])
+
+
+
+        data = np.concatenate([data, up_add, low_add], axis = 0)
+        if others is not None:
+            for i in range(len(others)):
+                others[i] = np.concatenate([others[i], temp_up[i], temp_low[i]], axis = 0)
+
+        if others is not None:
+            return data, others
+        return data
+
+
+
+
+
+    def nx_polarity(self):
+        import matplotlib.pyplot as plt
+
+
+        self.non_polar_dict = {}
+        self.polar_dict = {}
+        self.first_lipids = {}
+        self.non_polar_visualize = {}
+
+        for lipid in self.lipid_list:
+            first_lipid = self.memb.select_atoms(f"resname {lipid}")
+            first_id = first_lipid.resids[0]
+            first_lipid = first_lipid.select_atoms(f"resid {first_id}")
+            self.first_lipids[lipid] = first_id
+
+
+
+            bonds = mda.topology.guessers.guess_bonds(first_lipid, first_lipid.positions)
+            nodes = set()
+            for edge in bonds:
+                nodes.update(edge)
+            nodes = sorted(nodes)
+
+            names = first_lipid.names
+            map_node_name = {nodes[i]:names[i] for i in range(len(nodes))}
+
+            edges_labeled = [(map_node_name[u], map_node_name[v]) for u,v in bonds]
+
+            G = nx.Graph()
+            G.add_edges_from(edges_labeled)
+
+            non_polar = []
+
+            for edge in self.connection_chains[lipid]:
+                G.remove_edge(edge[0], edge[1])
+                components = list(nx.connected_components(G))
+                non_polar.append(next(comp for comp in components if edge[1] in comp))
+
+            self.non_polar_dict[lipid] = [elem for s in non_polar for elem in s]
+
+            polar = next(comp for comp in components if self.connection_chains[lipid][0][0] in comp)
+            self.polar_dict[lipid] = polar
+
+
+    def nx_chain_names(self):
+        import matplotlib.pyplot as plt
+
+
+
+        self.first_lipids = {}
+
+        self.chain_conections = {}
+        for lipid in self.lipid_list:
+            first_lipid = self.memb.select_atoms(f"resname {lipid}")
+            first_id = first_lipid.resids[0]
+            first_lipid = first_lipid.select_atoms(f"resid {first_id}")
+            self.first_lipids[lipid] = first_id
+
+
+            if lipid != "CHL1":
+                bonds = mda.topology.guessers.guess_bonds(first_lipid, first_lipid.positions)
+                nodes = set()
+                for edge in bonds:
+                    nodes.update(edge)
+                nodes = sorted(nodes)
+
+                names = first_lipid.names
+                map_node_name = {nodes[i]:names[i] for i in range(len(nodes))}
+
+                edges_labeled = [(map_node_name[u], map_node_name[v]) for u,v in bonds]
+
+                G = nx.Graph()
+                G.add_edges_from(edges_labeled)
+
+                chains = []
+                for edge in self.connection_chains[lipid]:
+                    G.remove_edge(edge[0], edge[1])
+                    components = list(nx.connected_components(G))
+                    chains.append(next(comp for comp in components if edge[1] in comp))
+
+                chain_graphs = []
+                carbons = []
+                for chain in chains:
+                    chain_graphs.append(G.subgraph(chain))
+                    filtered_sorted_carbs = [item for item in chain if "C" in item]
+                    carbons.append(filtered_sorted_carbs)
+                nx.draw(G, with_labels = True)
+                plt.show()
+
+                carbon_conections = {}
+
+                for chain, carbs in zip(chain_graphs,carbons):
+                    for carbon in carbs:
+                        connected_atoms = list(chain.neighbors(carbon))
+                        connected_atoms = [atom for atom in connected_atoms if "C" not in atom]
+                        carbon_conections[carbon] = connected_atoms
+
+
+
+
+            self.chain_conections[lipid] = carbon_conections
+
+        print(self.chain_conections)
 
 
 
