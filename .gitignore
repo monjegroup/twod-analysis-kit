@@ -118,6 +118,9 @@ membrane.gro
 membrane.xtc
 *.npz
 *.lock
+*.wsd
+*.puml
+twodanalysis/testing.py
 #*.pdb
 *.ipynb
 *.swp
