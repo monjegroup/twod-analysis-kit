@@ -4,10 +4,28 @@
 .. automodule:: twodanalysis.data
 
    
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
 .. rubric:: Modules
 
 .. autosummary::
    :toctree:
    :recursive:
 
-   files
+   twodanalysis.data.files
+
