@@ -6,7 +6,22 @@ API Documentation
    :recursive:
 
 
-.. autoclass:: twodanalysis.Memb2D.Memb2D
+.. autoclass:: twodanalysis.MembProp.MembProp
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: twodanalysis.Cumulative2D.Cumulative2D
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: twodanalysis.Voronoi2D.Voronoi2D
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoclass:: twodanalysis.Packing.PackingDefects
    :members:
    :undoc-members:
    :show-inheritance:

@@ -1,3 +1,20 @@
+"""
+Cumulative2D
+=============
+Class created mainly to analyze lipid membranes in different ways
+
+Classes
+-------
+
+.. autoclass:: Cumulative2D
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+"""
+
+
 import MDAnalysis as mda
 import numpy as np
 import pandas as pd
