@@ -1,3 +1,19 @@
+"""
+MembProp
+=============
+Class created mainly to analyze lipid membranes in different ways
+
+Classes
+-------
+
+.. autoclass:: MembProp
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+"""
+
 import MDAnalysis as mda
 import pandas as pd
 import numpy as np
@@ -88,7 +104,7 @@ class MembProp:
                 self.connection_chains[lipid] = [("C21", "C22"), ("C31", "C32")]
 
 
-        self.all_head = self.u.select_atoms(self.build_resname(self.lipid_list) + " and name P")
+        self.all_head = self.memb.select_atoms(self.build_resname(self.lipid_list) + " and name P")
 
 
 
@@ -101,7 +117,7 @@ class MembProp:
             print(f"We will use the following heads and charges for the following lipids.\
                    If the lipid is not here we will use P as head as default \n{self.print_dict(self.working_lip)}\n")
             print("Note: To compute the middle of the membrane we use only P heads\n\n")
-            print(f"The default start frame is {self.start}, final {self.final}, step {self.step}\n\n")
+            #print(f"The default start frame is {self.start}, final {self.final}, step {self.step}\n\n")
 
 
     def add_radii(self, radii_dict = None):
@@ -456,5 +472,10 @@ class MembProp:
 
 
 
-
+    @staticmethod
+    def print_dict(dictio):
+        string = ""
+        for key in dictio.keys():
+            string += f"{key} : {dictio[key]}\n"
+        return string
 
