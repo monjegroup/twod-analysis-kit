@@ -28,6 +28,7 @@ class Cumulative2D(MembProp):
                 lipid_list = None,
                 verbose = False,
                 edges = None,
+                nbins = None,
                 ):
 
         super().__init__(universe,
@@ -47,6 +48,8 @@ class Cumulative2D(MembProp):
         self.start = 0
         self.final = -1
         self.step = 1
+
+        self.nbins = nbins if nbins is not None else 50
 
 
         self.guess_chain_lenght()
@@ -531,7 +534,7 @@ class Cumulative2D(MembProp):
             # Select the atoms in the head
             if splay:
                 final_selection_byres = f"byres {final_selection_string}"
-                lipid_ats = self.u.select_atoms(final_selection_byres)
+                lipid_ats = self.memb.select_atoms(final_selection_byres)
                 head_p = lipid_ats.select_atoms(heads)
                 c1 = lipid_ats.select_atoms(carbons1)
                 c2 = lipid_ats.select_atoms(carbons2)
@@ -542,7 +545,7 @@ class Cumulative2D(MembProp):
                 costheta = np.rad2deg(costheta[:,np.newaxis])
                 atoms = lipid_ats.select_atoms(selection_string)
             else:
-                atoms = self.u.select_atoms(final_selection_string)
+                atoms = self.memb.select_atoms(final_selection_string)
 
             ### Get positions # Maybe have to check what happens with masses 0
             atom_pos = atoms.center_of_mass(compound="residues")
@@ -748,7 +751,7 @@ class Cumulative2D(MembProp):
 
 
 
-    def thickness(self, nbins, edges = None,lipid_list = None, start = 0, final=-1, step = 1):
+    def thickness(self, nbins = None, edges = None,lipid_list = None, start = 0, final=-1, step = 1):
         """Find the thichness mapped in a 2d grid
 
         Parameters
@@ -771,9 +774,11 @@ class Cumulative2D(MembProp):
         np.array, np.array
             Matrix with the thickness, edeges for the matrix
         """
+        if nbins is None:
+            nbins = self.nbins
         if lipid_list is None:
             lipid_list = list(self.lipid_list)
-            if "CHL1" in lipids:
+            if "CHL1" in lipid_list:
                 lipid_list.remove("CHL1")
 
         matrix_up, edges = self.height_matrix(lipid_list,
