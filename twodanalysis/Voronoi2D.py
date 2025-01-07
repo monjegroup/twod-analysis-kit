@@ -6,7 +6,7 @@ Class created mainly to analyze lipid membranes in different ways
 Classes
 -------
 
-.. autoclass:: MembProp
+.. autoclass:: Voronoi2D
     :members:
     :undoc-members:
     :show-inheritance:
@@ -179,18 +179,19 @@ class Voronoi2D(MembProp):
             #print(i, region, len(voronoi.point_region), len(voronoi_dict["resnames"]))
             if -1 in voronoi.regions[region]:
                 #print("here")
+                voronoi_dict["areas"].append(np.nan)
                 continue
 
             vertex = vertices[voronoi.regions[region]]
             hull = ConvexHull(vertex)
             area = hull.volume
             voronoi_dict["areas"].append(area)
-            update_points.append(voronoi_dict["points"][i])
+            #update_points.append(voronoi_dict["points"][i])
             if i < orig_len:
                 result_dict[voronoi_dict["resnames"][i]].append(area)
 
             voronoi_dict["vertices"].append(vertex)
-        voronoi_dict["points"] = np.array(update_points)
+        #voronoi_dict["points"] = np.array(update_points)
         #print(len(voronoi_dict["areas"]))
 
         for lipid in resnames:
@@ -285,21 +286,43 @@ class Voronoi2D(MembProp):
             ymin = edges[2]
             ymax = edges[3]
 
-
-
-
+        grid_size = (xmax-xmin)/nbins
+        ng = int(nbins*0.025)
+        self.guess_last_cs()
+        no_present = [lipid for lipid in list(self.lipid_list) if lipid not in lipid_list]
         matrices = []
         for _ in self.u.trajectory[start:final:step]:
 
             voronoi_dict = self.voronoi_properties(layer = layer)
-            matrix,_ = self.map_voronoi(voronoi_dict["points"], voronoi_dict["areas"], nbins, [xmin, xmax, ymin, ymax])
+            areas = np.array(voronoi_dict["areas"])
+            #print(voronoi_dict["resnames"])
+            #print(type(areas),
+            #       voronoi_dict["points"].shape,
+            #       areas.shape,
+            #       voronoi_dict["resnames"].shape,
+            #       voronoi_dict["splay"].shape)
+            for lipid in no_present:
+                areas[voronoi_dict["resnames"] == lipid] = np.nan
+
+            points = voronoi_dict["points"]
+
+
+            selection_x = (points[:,0] > xmin - ng*grid_size) & (points[:,0] < xmax + ng*grid_size)
+            selection_y = (points[:,1] > ymin - ng*grid_size) & (points[:,1] < ymax + ng*grid_size)
+            selection = selection_x & selection_y
+
+            points = points[selection]
+            areas = areas[selection]
+
+
+            matrix,_ = self.map_voronoi(points, areas, nbins, [xmin, xmax, ymin, ymax])
             matrices.append(matrix)
-            print(matrix.shape)
+            #print(matrix.shape)
 
 
 
 
-        final_mat = np.mean(np.array(matrices), axis = 0)
+        final_mat = np.nanmean(np.array(matrices), axis = 0)
 
 
         return final_mat, edges
@@ -406,6 +429,10 @@ class Voronoi2D(MembProp):
             heights = voronoi_dict["heights"]
             for lipid in no_present:
                 heights[voronoi_dict["resnames"] == lipid] = np.nan
+
+
+
+
             matrix_top,_ = self.map_voronoi(voronoi_dict["points"],
                                          heights,
                                          nbins,
