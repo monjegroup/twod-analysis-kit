@@ -11,7 +11,6 @@ from .Cumulative2D import Cumulative2D
 from .Voronoi2D import Voronoi2D
 from .analysis import OrderParameters
 from .Packing import PackingDefects
-from .Curvature2D import Curvature2D
 
 
 __version__ = version("twod-analysis-kit")
