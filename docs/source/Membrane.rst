@@ -51,8 +51,9 @@ To use this class you should call the class using  and mda.AtomGroup or a mda.Un
                     )
 
 
-Note: If your trajectory contains water and/or ions, we recommend you pass the list of lipids that
-compose the membrane by specifying :code:`lipid_list`.
+.. note::
+    If your trajectory contains water and/or ions, we recommend you pass the list of lipids that
+    compose the membrane by specifying :code:`lipid_list`.
 
 
 Membrane Thickness
@@ -141,8 +142,7 @@ Now we can plot the results
 
 Here we highligted regions where the order parameters are low (red region) and high (blue region). From this region
 the lipids looks as follows
-
- .. image:: image1aa.png
+path_arr_arr,res=obj.KDEAnalysisSelection(select_res,Nframes=1000,zlim=15,show=False,legend=False)
 
 
 
@@ -170,7 +170,7 @@ and then averaged over  frames to get the following plot.
 
 .. code:: python
 
-    plt.imshow(areas, extent = edges, cmap = "Spectral")
+    plt.imshow(splay, extent = edges, cmap = "Spectral")
     plt.xlabel("$x [\AA]$")
     plt.ylabel("$y [\AA]$")
     plt.title("Splay angle")
@@ -219,8 +219,9 @@ To use this class you should call the class using  and mda.AtomGroup or a mda.Un
                     )
 
 
-Note: If your trajectory contains water and/or ions, we recommend you pass the list of lipids that
-compose the membrane by specifying :code:`lipid_list`.
+..note::
+    If your trajectory contains water and/or ions, we recommend you pass the list of lipids that
+    compose the membrane by specifying :code:`lipid_list`.
 
 
 Membrane Thickness
@@ -322,7 +323,7 @@ and then averaged over  frames to get the following plot.
 
 .. code:: python
 
-    plt.imshow(areas, extent = edges, cmap = "Spectral")
+    plt.imshow(splay, extent = edges, cmap = "Spectral")
     plt.xlabel("$x [\AA]$")
     plt.ylabel("$y [\AA]$")
     plt.title("Splay angle")
@@ -339,35 +340,58 @@ Packing defects
 Packing defects is metric to evaluate the exposure of the hydrophobic core. It changes with membrane composition and
 also when proteins interact with the membrane. The computation of packing defects with packmemb implies extracting pdb files
 from the trajectories and then procesing them, which is time comsuming. Here we present an easy way to compute packing defects by
-only providing the trajectory and the topology file. Also, our code outperforms packmemb, doing the computations faster.
+only providing the trajectory and the topology file. Our
+code is able to compute packing defects for a single frame as well as for
+full trajectories with several frames. Also, our code outperforms packmemb, doing the computations faster.
 
-The packing defects code is the following:
+To use packign defects you should import the class as follows:
 
 .. code-block:: python
 
-    # Compute deffects for the first frame
+    tpr = "membrane.tpr" # Replace this with you own membrane tpr or gro file
+    xtc = "membrane.xtc" # Replace this with you xtc fila
+
+    universe = mda.Universe(tpr,xtc) # Define a universe with the trajectories
+
+    membrane = PackingDefects(universe,   # load universe
+                    verbose = False, # Does not print intial information
+                    )
+
+For a single frame, say the frame 100 we can run
+
+.. code-block:: python
+
+    membrane.u.trajectory[100] # Compute deffects for the 80 frame
     defects, defects_dict = membrane.packing_defects(layer = "top",         # layer to compute packing defects
-                                                    edges=[10,170,10,170],  # edges for output
+                                                    periodic = True,  # edges for output
                                                     nbins = 400,            # number of bins
                                                     )
 
 
 
+To plot and visualize the packing defects you should run:
 
 .. code-block:: python
 
-    # Plot defects
-    %matplotlib inline
-    plt.imshow(defects, cmap = "viridis", extent = defects_dict["edges"])
+    plt.imshow(defects, cmap = "viridis", extent = defects_dict["edges"]) # Plot defects
     plt.xlabel("x  $[\AA]$")
     plt.ylabel("y  $[\AA]$")
     plt.show()
 
 .. image:: packing_defects.png
 
+Follows a comparison (C) of a plot made with VMD (A) and the packing defects computed with our code (B)
+
+.. image:: packing1.png
 
 
-For various frames to get statistics
+
+
+
+
+
+For various frames, to get statistics. Here, the return is a pandas dataframe and an array with the
+sizes of the defects along the trajectory.
 
 .. code-block:: python
 
@@ -378,6 +402,22 @@ For various frames to get statistics
                                                       final = -1,
                                                       step=1)
 
+
+We can use this data to plot the probability of getting a packing defect of some areas
+
+.. code-block:: python
+
+    unique, counts = np.unique(numpy_sizes, return_counts = True)
+    probabilities = counts/counts.sum()
+
+    plt.figure(figsize=(8, 5))
+    plt.scatter(unique*defects_dict["grid_size"]*defects_dict["grid_size"], probabilities)
+    plt.xlabel('Area $\AA$')
+    plt.yscale('log')
+    plt.ylabel('Probability')
+    plt.title('Probability Distribution of Area')
+    plt.axvline(x = 5, color = "black")
+    plt.show()
 
 .. image:: sizedefetc.png
 
