@@ -70,7 +70,8 @@ are also available, check the documentation for mor information.
                                         step = 1,     # Frames to skip
                                         )
 
-The output is a matrix :math:`nbins\times nbins` and the edges in the form :math:`[xmin,xmax,ymin,ymax]`.
+The output is a matrix :math:`nbins\times nbins` and the edges in the form
+ :math:`[x_\text{min},x_\text{max},y_\text{min},y_\text{max}]`.
 
 We can visualize with `plt.imshow`
 
@@ -241,7 +242,7 @@ are also available, check the documentation for mor information.
                                             step = 1,     # Frames to skip
                                             )
 
-The output is a matrix :math:`nbins\times nbins` and the edges in the form :math:`[xmin,xmax,ymin,ymax]`.
+The output is a matrix :math:`nbins\times nbins` and the edges in the form :math:`[x_{\text{min}}, x_{\text{max}}, y_{\text{min}}, y_{\text{max}}]`.
 
 We can visualize with `plt.imshow`
 
@@ -344,7 +345,7 @@ only providing the trajectory and the topology file. Our
 code is able to compute packing defects for a single frame as well as for
 full trajectories with several frames. Also, our code outperforms packmemb, doing the computations faster.
 
-To use packign defects you should import the class as follows:
+To use packing defects you should import the class as follows:
 
 .. code-block:: python
 
@@ -356,6 +357,9 @@ To use packign defects you should import the class as follows:
     membrane = PackingDefects(universe,   # load universe
                     verbose = False, # Does not print intial information
                     )
+
+Single Frame
+++++++++++++
 
 For a single frame, say the frame 100 we can run
 
@@ -389,6 +393,8 @@ Follows a comparison (C) of a plot made with VMD (A) and the packing defects com
 
 
 
+Multiple Frames
++++++++++++++++
 
 For various frames, to get statistics. Here, the return is a pandas dataframe and an array with the
 sizes of the defects along the trajectory.
