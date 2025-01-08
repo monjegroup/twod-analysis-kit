@@ -56,7 +56,8 @@ class MembProp:
         if isinstance(obj, mda.Universe):
             self.u = obj
         elif isinstance(obj,mda.core.groups.AtomGroup):
-            self.u = obj.u
+
+            self.u = mda.core.universe.Merge(obj)
         else:
             raise TypeError("Input must be an MDAnalysis Universe or AtomGroup")
 
@@ -380,8 +381,12 @@ class MembProp:
             self.first_lipids[lipid] = first_id
 
 
-
-            bonds = mda.topology.guessers.guess_bonds(first_lipid, first_lipid.positions)
+            try:
+                bonds = first_lipid.bonds.indices
+                #print(bonds)
+            except:
+                bonds = mda.topology.guessers.guess_bonds(first_lipid, first_lipid.positions)
+            #print(bonds.shape)
             nodes = set()
             for edge in bonds:
                 nodes.update(edge)
@@ -399,13 +404,20 @@ class MembProp:
 
             for edge in self.connection_chains[lipid]:
                 G.remove_edge(edge[0], edge[1])
+
                 components = list(nx.connected_components(G))
+
                 non_polar.append(next(comp for comp in components if edge[1] in comp))
+                if lipid == "CHL1":
+                    print(components, next(comp for comp in components if edge[1] in comp))
 
             self.non_polar_dict[lipid] = [elem for s in non_polar for elem in s]
 
             polar = next(comp for comp in components if self.connection_chains[lipid][0][0] in comp)
+
             self.polar_dict[lipid] = polar
+
+            print(lipid , ":", self.polar_dict[lipid])
 
 
     def nx_chain_names(self):
