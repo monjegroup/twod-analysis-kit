@@ -41,6 +41,9 @@ class PackingDefects(MembProp):
                             "P": 1.8,
                             "O": 1.52,
                             "S" : 1.8,
+                            "K" : 1.2,
+                            "CL" : 1.81,
+                            "CS" : 1.7
                             }
 
         self.add_radii(self.radii_dict)
@@ -217,7 +220,7 @@ class PackingDefects(MembProp):
         defects = matrix
         defects = np.where(matrix < 1, matrix, np.nan)
         #defects = np.where(defects > 0, defects, np.nan)
-
+        defects = np.rot90(defects)
 
         return_dict = {
             "edges" : edges,
@@ -386,7 +389,7 @@ class PackingDefects(MembProp):
 
             #if names[i] in self.non_polar_dict[lipid]:
             #    small_matrix = small_matrix * 0.0001
-            small_matrix = small_matrix * self.polar_dict[lipid][names[i]]
+            small_matrix = small_matrix * self.polarity_dict[lipid][names[i]]
             self.add_small_matrix(matrix, small_matrix, indexes[0][i], indexes[1][i])
         return matrix
 
@@ -668,4 +671,4 @@ class PackingDefects(MembProp):
         for key in self.polar_dict.keys():
             polarity_dict[key] = {atom : 1 for atom in self.polar_dict[key]} | {atom : 0.001 for atom in self.non_polar_dict[key]}
 
-        self.polar_dict = polarity_dict
+        self.polarity_dict = polarity_dict
