@@ -335,7 +335,7 @@ and then averaged over  frames to get the following plot.
 
 
 
-Packing defects
+PackingDefects
 ^^^^^^^^^^^^^^^
 
 Packing defects is metric to evaluate the exposure of the hydrophobic core. It changes with membrane composition and
