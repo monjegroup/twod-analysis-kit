@@ -280,6 +280,7 @@ class Voronoi2D(MembProp):
             xmax = self.v_max
             ymin = self.v_min
             ymax = self.v_max
+            edges = [xmin,xmax,ymin,ymax]
         else:
             xmin = edges[0]
             xmax = edges[1]
@@ -287,13 +288,14 @@ class Voronoi2D(MembProp):
             ymax = edges[3]
 
         grid_size = (xmax-xmin)/nbins
-        ng = int(nbins*0.025)
+        ng = int(nbins*0.05)
         self.guess_last_cs()
         no_present = [lipid for lipid in list(self.lipid_list) if lipid not in lipid_list]
         matrices = []
         for _ in self.u.trajectory[start:final:step]:
 
             voronoi_dict = self.voronoi_properties(layer = layer)
+
             areas = np.array(voronoi_dict["areas"])
             #print(voronoi_dict["resnames"])
             #print(type(areas),
@@ -323,7 +325,7 @@ class Voronoi2D(MembProp):
 
 
         final_mat = np.nanmean(np.array(matrices), axis = 0)
-
+        final_mat = np.flipud(final_mat)
 
         return final_mat, edges
 
