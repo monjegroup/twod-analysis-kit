@@ -73,7 +73,7 @@ class MembProp:
                                              or resname ADE or resname CYT\
                                              or resname THY)")
 
-            print(self.memb)
+
 
             self.lipid_list = list(set(self.memb.residues.resnames))
         else:
