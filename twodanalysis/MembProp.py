@@ -66,13 +66,20 @@ class MembProp:
 
         # Select elements in the membrane (in principle only lipids)
         if lipid_list is None: # Select only elements of the membrane
+
+
             self.memb = self.u.select_atoms("all and not protein and not\
                                              (resname URA or resname GUA\
                                              or resname ADE or resname CYT\
                                              or resname THY)")
+
+            print(self.memb)
+
             self.lipid_list = list(set(self.memb.residues.resnames))
         else:
             self.memb = self.u.select_atoms(f"{self.build_resname(list(lipid_list))}")
+
+            self.lipid_list = list(set(self.memb.residues.resnames))
 
 
         # Set percentage for periodicity
