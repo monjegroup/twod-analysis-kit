@@ -236,7 +236,8 @@ class BioPolymer2D:
         """
         # pos=self.pos
         ##Take the mean of all selected residues
-        mean_z_top=pos[:,:,3].mean(axis=1)
+        # mean_z_top=pos[:,:,3].mean(axis=1)
+        mean_z_top=pos[:,:,3].min(axis=1)
         print(mean_z_top.shape)
         # Select frames where the mean of selected residues is < zlim
         # to garanty that same frames are used for all residues.
@@ -485,7 +486,7 @@ class BioPolymer2D:
             plt.plot(rg_arr[:,0], rg_arr[:,3], label=legend_names[2],color=colors[2])
             plt.legend()
             plt.xlabel('Time (ns)')
-            plt.ylabel('Radius of gyration (Angs)')
+            plt.ylabel('Radius of gyration ($\mathrm{\AA}$)')
             # plt.show()
         return rg_arr
 
@@ -518,8 +519,8 @@ class BioPolymer2D:
             label='%s (%.3f)'%(self.system_name,rg_ratio)
             plt.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=10, label=label,color='k')
             plt.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)')
-            plt.xlabel(r'$Rg_\parallel$ (angs)')
-            plt.ylabel(r'$Rg_\perp$ (angs)')
+            plt.xlabel(r'$Rg_\parallel$ ($\mathrm{\AA}$)')
+            plt.ylabel(r'$Rg_\perp$ ($\mathrm{\AA}$)')
             if show:
                 plt.show()
         return rg_ratio
@@ -603,7 +604,7 @@ class BioPolymer2D:
             i+=2
         return paths
 
-    def getKDEAnalysis(self,zlim,Nframes,inplace=True,control_plots=False):
+    def getKDEAnalysis(self,zlim,Nframes,axis=['x','y'],inplace=True,control_plots=False):
         """Computes KDE Contours using seaborn.kde_plot() function and extracts the paths of each contour level. The output of the seaborn.kde_plot() is stored in self.kdeanalysis.kde, and the paths of each contour level is stored in self.kdeanalysis.paths if inplace=True.
 
         Parameters
@@ -612,6 +613,8 @@ class BioPolymer2D:
             zlim of BioPolymer2D.FilterMinFrames(). Only use frames under a zlim threshold, to avoid using frames with desorbed molecule.
         Nframes : int
             Nframes of BioPolymer2D.FilterMinFrames(). To ensure to have a controled number of frames under zlim threshold.
+        axis : list, optional
+            Axes for which to make the KDE plot. Default is x and y axis.
         inplace : bool, optional
             If True, stores the paths of al contour levels in self.kdeanalysis.paths. Otherwise, it only returns it. By default True
         control_plots : bool, optional
@@ -629,9 +632,8 @@ class BioPolymer2D:
         print(pos_selected_reshape.shape)
         fig,ax=plt.subplots()
         df0=pd.DataFrame(pos_selected_reshape, columns=['t','x','y','z'])
-        # kde_plot=sns.kdeplot(df0, x='x',y='y', color = 'black',alpha=1,fill=True)
-        kde_plot = sns.kdeplot(df0, x='x', y='y', fill=True, cmap="Purples", color='black')
-        kde_plot=sns.kdeplot(df0, x='x',y='y', color = 'black',alpha=0.5)
+        kde_plot = sns.kdeplot(df0, x=axis[0], y=axis[1], fill=True, cmap="Purples", color='black')
+        kde_plot=sns.kdeplot(df0, x=axis[0],y=axis[1], color = 'black',alpha=0.5)
         self.kdeanalysis.kde=kde_plot
 
         paths_arr=[]
@@ -862,7 +864,7 @@ class BioPolymer2D:
             return df_final.sort_values('Count', ascending=False)
         else:
             return df_final
-    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, filter=None, print_table=True,show=False):
+    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, contour_colors=None,filter=None, print_table=True,show=False):
         """Makes a figure showing the center of mass of the residues with H-bonds. Figure shows a contour plot as a reference of position of the whole molecule. Legend of the Figure shows the percentage of time in which there were Hbonds during the simulation of the plotted residues.
 
         Parameters
@@ -873,6 +875,8 @@ class BioPolymer2D:
             Residues are plotted ranked by residues with most contact to least. This parameters indicates how many residues to plot of these ranked residues, e.g. top=5 wil plot the 5 residues with most Hbonds during the simulations. By default -1, plots all the residues with H-bonds.
         contour_lvls_to_plot : list, optional
             Contour Levels to show in plot, by default None
+        contour_colors : list, optional
+            Colors to use to show the reference contour levels.This list must be the same size than `contour_lvls_to_plot` parameter. Default None, which all reference contour plots are shown in black.
         contour_lvls_to_plot : str or list, optional
             Residue names to be filtered out of the plot and the output table.
         print_table : bool, optional
@@ -905,8 +909,11 @@ class BioPolymer2D:
 
         if not contour_lvls_to_plot:
             contour_lvls_to_plot=range(len(paths_for_contour))
-        for lvl in contour_lvls_to_plot:
-            self.plotPathsInLevel(paths_for_contour,lvl)
+        if not contour_colors:
+            contour_colors=['k' for _ in paths_for_contour]
+
+        for lvl,c in zip(contour_lvls_to_plot,contour_colors):
+            self.plotPathsInLevel(paths_for_contour,lvl,color=c)
 
         colors = ['C%s' % i for i in range(10)]  # Define color palette
         num_colors = len(colors)
