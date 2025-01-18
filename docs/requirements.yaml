@@ -13,6 +13,8 @@ dependencies:
   - pandas
   - seaborn
   - nglview
+  - networkx
     # Pip-only installs
   - pip:
     - imageio>=2.36.0
+
