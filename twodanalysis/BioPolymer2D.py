@@ -107,6 +107,33 @@ class BioPolymer2D:
         self._stepT = value
         self._recalculate_frames()  # Update dependent attributes
 
+    @property
+    def startF(self):
+        return self._startF
+
+    @startF.setter
+    def startF(self, value):
+        self._startF = value
+        self._recalculate_frames()  # Update dependent attributes
+
+    @property
+    def endF(self):
+        return self._endF
+
+    @endF.setter
+    def endF(self, value):
+        self._endF = value
+        self._recalculate_frames()  # Update dependent attributes
+
+    @property
+    def stepF(self):
+        return self._stepF
+
+    @stepF.setter
+    def stepF(self, value):
+        self._stepF = value
+        self._recalculate_frames()  # Update dependent attributes
+
     def __repr__(self):
         return f"<{self.__class__.__name__} with {len(self.atom_group)} atoms>"
 
