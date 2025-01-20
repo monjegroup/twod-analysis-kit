@@ -60,7 +60,7 @@ class Cumulative2D(MembProp):
     def order_matrix(self,
                         lipid = "DOPC",
                         layer = "top",
-                        nbins = 50,
+                        nbins = None,
                         n_chain = None,
                         edges = None,
                         start = None,
@@ -100,6 +100,8 @@ class Cumulative2D(MembProp):
         ndarray(n_grid,n_grid), ndarray(4) (Still check the return)
             matrix containind the 2D SCD and the edges in the following disposition [v_min,v_max,v_min,_vmax] (Can be used to plot directly with extent)
         """
+        if nbins is None:
+            nbins = self.nbins
 
         all_head = self.all_head
 
@@ -355,7 +357,7 @@ class Cumulative2D(MembProp):
         return result
 
 
-    def all_lip_order(self, layer, nbins,
+    def all_lip_order(self, layer, nbins = None,
                         edges = None,
                         start = None,
                         final = None,
@@ -392,7 +394,8 @@ class Cumulative2D(MembProp):
 
 
 
-
+        if nbins is None:
+            nbins = self.nbins
 
         lipid_list = list(self.lipid_list)
         if "CHL1" in lipid_list:
@@ -672,8 +675,6 @@ class Cumulative2D(MembProp):
 
         H_avg = np.rot90(H_avg)
 
-        np.savetxt(f'Height_{layer}_{start}_{final}.dat', H_avg, fmt = '%.2f')
-        np.savetxt(f"edges_{layer}_{start}_{final}.dat", x_edges, fmt = "%.2f")
         return H_avg, [x_edges[0],x_edges[-1],y_edges[0], y_edges[-1]]
 
 
