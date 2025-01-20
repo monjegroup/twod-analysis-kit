@@ -29,6 +29,7 @@ class Voronoi2D(MembProp):
                  universe,
                 lipid_list = None,
                 verbose = False,
+                nbins = None,
                 edges = None,
                 ):
         super().__init__(universe,
@@ -48,6 +49,9 @@ class Voronoi2D(MembProp):
         self.start = 0
         self.final = -1
         self.step = 1
+        self.nbins = 180
+        if nbins is not None:
+            self.nbins = nbins
 
 
         self.guess_chain_lenght()
@@ -247,7 +251,13 @@ class Voronoi2D(MembProp):
 
 
 
-    def voronoi_apl(self,layer = "top", start = 0, final = -1, step = 1, lipid_list = None, nbins = 180, edges = None):
+    def voronoi_apl(self,layer = "top",
+                    start = 0,
+                    final = -1,
+                    step = 1,
+                    lipid_list = None,
+                    nbins = None,
+                    edges = None):
         """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
 
         Parameters
@@ -272,8 +282,12 @@ class Voronoi2D(MembProp):
         ndarray
             Array with the averaged 2D APL, edges
         """
-        if lipid_list == None:
+        if lipid_list is None:
             lipid_list = list(self.lipid_list)
+
+        if nbins is None:
+            nbins = self.nbins
+
 
         if edges is None:
             xmin = self.v_min
@@ -378,7 +392,13 @@ class Voronoi2D(MembProp):
 
 
 
-    def voronoi_thickness(self, start = 0, final = -1, step = 1, lipid_list = None, nbins = 180, edges = None):
+    def voronoi_thickness(self,
+                          start = 0,
+                          final = -1,
+                          step = 1,
+                          lipid_list = None,
+                          nbins = None,
+                          edges = None):
         """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
 
         Parameters
@@ -403,8 +423,12 @@ class Voronoi2D(MembProp):
         ndarray
             Array with the averaged 2D APL, edges
         """
-        if lipid_list == None:
+        if lipid_list is None:
             lipid_list = list(self.lipid_list)
+
+        if nbins is None:
+            nbins = self.nbins
+
 
         if edges is None:
             xmin = self.v_min
@@ -465,7 +489,14 @@ class Voronoi2D(MembProp):
         return final_mat, edges
 
 
-    def voronoi_height(self, layer = "top", start = 0, final = -1, step = 1, lipid_list = None, nbins = 180, edges = None):
+    def voronoi_height(self,
+                       layer = "top",
+                       start = 0,
+                       final = -1,
+                       step = 1,
+                       lipid_list = None,
+                       nbins = None,
+                       edges = None):
         """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
 
         Parameters
@@ -490,10 +521,11 @@ class Voronoi2D(MembProp):
         ndarray
             Array with the averaged 2D APL, edges
         """
-        if lipid_list == None:
+        if lipid_list is None:
             lipid_list = list(self.lipid_list)
 
-
+        if nbins is None:
+            nbins =self.nbins
         # Check which lipids are not requested
         no_present = [lipid for lipid in list(self.lipid_list) if lipid not in lipid_list]
 
@@ -541,7 +573,14 @@ class Voronoi2D(MembProp):
         return final_mat, edges
 
 
-    def voronoi_splay(self, layer = "top", start = 0, final = -1, step = 1, lipid_list = None, nbins = 180, edges = None):
+    def voronoi_splay(self,
+                      layer = "top",
+                      start = 0,
+                      final = -1,
+                      step = 1,
+                      lipid_list = None,
+                      nbins = None,
+                      edges = None):
         """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
 
         Parameters
@@ -566,8 +605,11 @@ class Voronoi2D(MembProp):
         ndarray
             Array with the averaged 2D APL, edges
         """
-        if lipid_list == None:
+        if lipid_list is None:
             lipid_list = list(self.lipid_list)
+
+        if nbins is None:
+            nbins = self.nbins
 
         if edges is None:
             xmin = self.v_min
