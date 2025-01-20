@@ -93,12 +93,14 @@ class Cumulative2D(MembProp):
         step : int, optional
             frames to skip, by default 1
         method : str, optional
-            method to compute the 2d histogram, by default "numpy" which uses np.histogram2d for each carbon in the lipid tails.
+            method to compute the 2d histogram, by default "numpy" which uses np.histogram2d for each
+            carbon in the lipid tails.
 
         Returns
         -------
         ndarray(n_grid,n_grid), ndarray(4) (Still check the return)
-            matrix containind the 2D SCD and the edges in the following disposition [v_min,v_max,v_min,_vmax] (Can be used to plot directly with extent)
+            matrix containind the 2D SCD and the edges in the following disposition [v_min,v_max,v_min,_vmax]
+            (Can be used to plot directly with extent)
         """
         if nbins is None:
             nbins = self.nbins
@@ -176,7 +178,12 @@ class Cumulative2D(MembProp):
 
 
     # Computes teh histogram of the average order parameters in each bin
-    def histogram2D(self,sample1, weights, n_chain, bins = 10, edges = None):
+    def histogram2D(self,
+                    sample1,
+                    weights,
+                    n_chain,
+                    bins = 10,
+                    edges = None):
         """ Computes the 2D histogram of 2D data with various values taking an average of them
 
         Parameters
@@ -230,7 +237,12 @@ class Cumulative2D(MembProp):
         return hist, edges
 
     # Computes teh histogram of the average order parameters in each bin
-    def numpyhistogram2D(self,sample1, weights, n_chain, bins = 10, edges = None):
+    def numpyhistogram2D(self,
+                         sample1,
+                         weights,
+                         n_chain,
+                         bins = 10,
+                         edges = None):
         """ Computes the 2D histogram of 2D data with various values taking an average of them
 
         Parameters
@@ -265,7 +277,10 @@ class Cumulative2D(MembProp):
         if type(n_chain) == int:
             n_chain = [n_chain]
 
-        hist, xedges,yedges = np.histogram2d(sample1[:,0], sample1[:,1], bins = bins, range = [[xmin, xmax], [ymin, ymax]])
+        hist, xedges,yedges = np.histogram2d(sample1[:,0],
+                                             sample1[:,1],
+                                             bins = bins,
+                                             range = [[xmin, xmax], [ymin, ymax]])
         hist[hist == 0] = 1
 
         count = 0
@@ -284,7 +299,11 @@ class Cumulative2D(MembProp):
         for chain in n_chain:
             matrix = np.zeros(hist.shape)
             for i in range(chain):
-                temp, xedges, yedges = np.histogram2d(sample1[:,0], sample1[:,1], weights = weights[:,count * n_chain[0]+ i], bins = bins, range = [[xmin, xmax], [ymin, ymax]])
+                temp, xedges, yedges = np.histogram2d(sample1[:,0],
+                                                      sample1[:,1],
+                                                      weights = weights[:,count * n_chain[0]+ i],
+                                                      bins = bins,
+                                                      range = [[xmin, xmax], [ymin, ymax]])
                 matrix += np.abs(temp)
             count += 1
             matrix = matrix/(chain*hist)
@@ -422,7 +441,12 @@ class Cumulative2D(MembProp):
 
         if plot:
             plt.close()
-            plt.imshow(matrices[1:-1,1:-1] ,cmap = "Spectral", extent = [edges[0][0], edges[0][-1], edges[1][0], edges[1][-1]])
+            plt.imshow(matrices[1:-1,1:-1] ,
+                       cmap = "Spectral",
+                       extent = [edges[0][0],
+                                 edges[0][-1],
+                                 edges[1][0],
+                                 edges[1][-1]])
             plt.colorbar(cmap = "Spectral")
             plt.savefig(f"all_lip1_{layer}.png")
             plt.close()
@@ -440,7 +464,7 @@ class Cumulative2D(MembProp):
                 step = None,
                 lipid_list = "DSPC",
                 layer = 'top',
-                include_charge = False,
+                include_ids = False,
                 splay = False):
         """Code to loop over the trajectory and print [x,y,z(referenced to zmean), charge] in a file.
 
@@ -606,7 +630,14 @@ class Cumulative2D(MembProp):
 
 
 
-    def height_matrix(self, lipid_list, layer, edges = None, start = None, final = None, step = None, nbins = 50):
+    def height_matrix(self,
+                      lipid_list,
+                      layer,
+                      edges = None,
+                      start = None,
+                      final = None,
+                      step = None,
+                      nbins = 50):
         """ Code to divide the space in a 2D grid and compute the height referenced to zmean
 
         Parameters
@@ -648,7 +679,11 @@ class Cumulative2D(MembProp):
 
         filename = f"{lipid_list[0]}_{layer}_{start}-{final}.dat"
 
-        data = self.surface(lipid_list= lipid_list, layer = layer, include_charge = True, start = start, final = final)
+        data = self.surface(lipid_list= lipid_list,
+                            layer = layer,
+                            include_charge = True,
+                            start = start,
+                            final = final)
 
 
 
@@ -664,8 +699,15 @@ class Cumulative2D(MembProp):
             ymax = self.v_max
 
 
-        H_height, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], weights = data["z"], bins = nbins, range = [[xmin,xmax], [ymin,ymax]])
-        H_count, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], bins = nbins, range = [[xmin, xmax], [ymin,ymax]])
+        H_height, x_edges, y_edges = np.histogram2d(x = data["x"],
+                                                    y = data["y"],
+                                                    weights = data["z"],
+                                                    bins = nbins,
+                                                    range = [[xmin,xmax], [ymin,ymax]])
+        H_count, x_edges, y_edges = np.histogram2d(x = data["x"],
+                                                   y = data["y"],
+                                                   bins = nbins,
+                                                   range = [[xmin, xmax], [ymin,ymax]])
 
         H_count[H_count == 0] = 1.
 
@@ -678,7 +720,14 @@ class Cumulative2D(MembProp):
         return H_avg, [x_edges[0],x_edges[-1],y_edges[0], y_edges[-1]]
 
 
-    def splay_matrix(self, lipid_list, layer, edges = None, start = None, final = None, step = None, nbins = 50):
+    def splay_matrix(self,
+                     lipid_list,
+                     layer,
+                     edges = None,
+                     start = None,
+                     final = None,
+                     step = None,
+                     nbins = 50):
         """ Code to divide the space in a 2D grid and compute the height referenced to zmean
 
         Parameters
@@ -720,7 +769,12 @@ class Cumulative2D(MembProp):
         print(f"Computing matrix for {layer} in frames {start}-{final}")
         data = []
 
-        data = self.surface(lipid_list=lipid_list, layer = layer, include_charge = True, start = start, final = final, splay=True)
+        data = self.surface(lipid_list=lipid_list,
+                            layer = layer,
+                            include_charge = True,
+                            start = start,
+                            final = final,
+                            splay=True)
 
 
         #print(data)
@@ -737,8 +791,15 @@ class Cumulative2D(MembProp):
             ymax = self.v_max
 
 
-        H_splay, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], weights = data["splay"], bins = nbins, range = [[xmin,xmax], [ymin,ymax]])
-        H_count, x_edges, y_edges = np.histogram2d(x = data["x"], y = data["y"], bins = nbins, range = [[xmin, xmax], [ymin,ymax]])
+        H_splay, x_edges, y_edges = np.histogram2d(x = data["x"],
+                                                   y = data["y"],
+                                                   weights = data["splay"],
+                                                   bins = nbins,
+                                                   range = [[xmin,xmax], [ymin,ymax]])
+        H_count, x_edges, y_edges = np.histogram2d(x = data["x"],
+                                                   y = data["y"],
+                                                   bins = nbins,
+                                                   range = [[xmin, xmax], [ymin,ymax]])
 
         H_count[H_count == 0] = 1.
 
@@ -752,7 +813,13 @@ class Cumulative2D(MembProp):
 
 
 
-    def thickness(self, nbins = None, edges = None,lipid_list = None, start = 0, final=-1, step = 1):
+    def thickness(self,
+                  nbins = None,
+                  edges = None,
+                  lipid_list = None,
+                  start = 0,
+                  final=-1,
+                  step = 1):
         """Find the thichness mapped in a 2d grid
 
         Parameters

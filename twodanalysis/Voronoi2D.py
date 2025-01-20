@@ -207,7 +207,11 @@ class Voronoi2D(MembProp):
         return voronoi_dict
 
 
-    def map_voronoi(self, voronoi_points, voronoi_property, nbins, edges):
+    def map_voronoi(self,
+                    voronoi_points,
+                    voronoi_property,
+                    nbins,
+                    edges):
         """ Function to map voronoi APL to a 2D plane
 
         Parameters
@@ -343,7 +347,15 @@ class Voronoi2D(MembProp):
 
         return final_mat, edges
 
-    def windows_apl(self, layer = "top", start = 0, final = -1, step = 1, w_size = 10, lipid_list = None, nbins = 180, edges = None):
+    def windows_apl(self,
+                    layer = "top",
+                    start = 0,
+                    final = -1,
+                    step = 1,
+                    w_size = 10,
+                    lipid_list = None,
+                    nbins = 180,
+                    edges = None):
         """Function to compute APL and map it to a 2D grid in windows of time defined by the user.
 
         Parameters
