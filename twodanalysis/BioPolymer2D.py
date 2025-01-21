@@ -31,16 +31,13 @@ import sys
 
 
 class BioPolymer2D:
-
-
-    def __init__(self, obj):
+    def __init__(self, obj, surf_selection=None,surf_axis='z'):
         """Class Initialization.
 
         Parameters
         ----------
         obj : AtomGroup or Universe
             Selection to initialize the class. If initialized with a Universe it will take the whole Universe as AtomGroup. The MDAnalysis Universe and AtomGroup will be accesible to with the `self.universe` and `self.atom_group` class attributes.
-
         Raises
         ------
         TypeError
@@ -54,6 +51,10 @@ class BioPolymer2D:
             self.atom_group = obj
         else:
             raise TypeError("Input must be an MDAnalysis Universe or AtomGroup")
+        
+        #Error or default value for surface direction? 
+        # if surf_selection and not surf_axis:
+        #     raise TypeError("If a surface selections if assigned, you must indicate the axis of the surface with surf_axis parameter. Options are 'x','y' or 'z')"
 
         # Initialize trajectory attributes
         self._startT = self.universe.trajectory[0].time * 0.001
@@ -66,9 +67,16 @@ class BioPolymer2D:
 
         # Calculate dependent attributes
         self._recalculate_frames()
+        self.surf_axis=surf_axis
+        self.surf_pos = None
+
+        if not surf_selection is None:
+            print('****** IN *******')
+            self.surf_pos=self.getPositions(select=surf_selection,inplace=False).mean(axis=(0,1)) #If want mean only over atoms set axis=1
+            print(self.surf_pos)
+
 
         self.pos = None
-        self.surf_pos = None
         self.com = None
         self.system_name = None
         self.kdeanalysis = lambda: None  # Create an empty object-like container
@@ -210,6 +218,11 @@ class BioPolymer2D:
                 pos[j,:,0]=ts.time/1000
                 pos[j,:,1:]= ag.atoms.positions
             j+=1
+        print(self.surf_axis)
+        if not self.surf_pos is None:
+            dict_axis={'x':1,'y':2,'z':3}
+            # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
+            pos[:,:,dict_axis[self.surf_axis]]-=self.surf_pos[dict_axis[self.surf_axis]]
         if inplace:
             self.pos=np.array(pos)
             return None
@@ -345,16 +358,24 @@ class BioPolymer2D:
         print(prot.residues)
         print(pos.shape)
         # sys.exit()
-
-        pos_centered=pos-np.array([0,to_center[0],to_center[1],0])
+        print(pos.mean(axis=(0,1)), 'pos mean')
+        if self.surf_axis=='x':
+            pos_centered=pos-np.array([0,0,to_center[1],to_center[2]])
+        if self.surf_axis=='y':
+            pos_centered=pos-np.array([0,to_center[0],0,to_center[2]])
+        if self.surf_axis=='z':                                        # If surf_axis if not 'z' by default, this must change slightly
+            pos_centered=pos-np.array([0,to_center[0],to_center[1],0])
+        else: 
+            raise TypeError("Must indicate the normal axis of the surface with surf_axis parameter. Options are 'x','y' or 'z'")
         if not self.surf_pos is None:
-            pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
+            dict_axis={'x':1,'y':2,'z':3}
+            # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
+            pos_centered[:,:,dict_axis[self.surf_axis]]-=self.surf_pos[dict_axis[self.surf_axis]]
+        print(pos_centered.mean(axis=(0,1)),'pos centered')
+        
         pos_selected=self.FilterMinFrames(pos_centered,zlim,Nframes,control_plots=control_plots)
-
         print(pos_selected.shape)
 
-
-        # center_arr=np.array(center_arr)
         if control_plots==True:
             for r in range(len(pos_selected[0])):
                 plt.plot(pos_selected[:,r,1],pos_selected[:,r,2],'o')
@@ -767,10 +788,10 @@ class BioPolymer2D:
         COM=self.atom_group.center_of_mass()
 
         pos_res_contour, res=self.getPositions(select=select_res,inplace=False,getselection=True)
-        if self.surf_pos is None:
-            pos_res_contour[:,:,3]=pos_res_contour[:,:,3]
-        else:            
-            pos_res_contour[:,:,3]=pos_res_contour[:,:,3]-self.surf_pos[2]
+        if not self.surf_pos is None:
+            dict_axis={'x':1,'y':2,'z':3}
+            # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
+            pos_res_contour[:,:,dict_axis[self.surf_axis]]-=self.surf_pos[dict_axis[self.surf_axis]]
         print(pos_res_contour.mean(axis=(0,1)))
         # fig,ax=plt.subplots()   
         # ListPaths(vertices,codes,plot_paths=True)
