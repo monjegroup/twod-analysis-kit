@@ -65,6 +65,8 @@ class BioPolymer2D:
         self._endF = self.universe.trajectory[-1].frame
         self._stepF = 1
 
+        # self._pos_in_surf_=False ## This attribute is set to True, if surface has already been substracted to positions. 
+
         # Calculate dependent attributes
         self._recalculate_frames()
         self.surf_axis=surf_axis
@@ -72,7 +74,7 @@ class BioPolymer2D:
 
         if not surf_selection is None:
             print('****** IN *******')
-            self.surf_pos=self.getPositions(select=surf_selection,inplace=False).mean(axis=(0,1)) #If want mean only over atoms set axis=1
+            self.surf_pos=self.getPositions(select=surf_selection,inplace=False,surf_is_zero=False).mean(axis=(0,1)) #If want mean only over atoms set axis=1
             print(self.surf_pos)
 
 
@@ -177,7 +179,7 @@ class BioPolymer2D:
         print("  N selected residues:", len(self.atom_group.residues))
         print("  N selected segments:", len(self.atom_group.segments))
 
-    def getPositions(self,pos_type='COM', inplace=True, select=None,getselection=False):
+    def getPositions(self,pos_type='COM', surf_is_zero=True, inplace=True, select=None,getselection=False):
         """Computes positions of selection from self.startT to self.endT with self.stepT steps of frames.
         By default, these parameters are set to compute over the whole trajectory.
 
@@ -218,8 +220,7 @@ class BioPolymer2D:
                 pos[j,:,0]=ts.time/1000
                 pos[j,:,1:]= ag.atoms.positions
             j+=1
-        print(self.surf_axis)
-        if not self.surf_pos is None:
+        if not self.surf_pos is None and surf_is_zero==True:
             dict_axis={'x':1,'y':2,'z':3}
             # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
             pos[:,:,dict_axis[self.surf_axis]]-=self.surf_pos[dict_axis[self.surf_axis]]
@@ -352,7 +353,7 @@ class BioPolymer2D:
         fromF=self.startF
         endF=self.endF
         print(f"Computing Polar Analysis from frame {fromF} (t={self.startT}ns) to {endF} (t={self.endT}ns) ")
-        pos=self.getPositions(select=select_res,inplace=False)
+        pos=self.getPositions(select=select_res,inplace=False,surf_is_zero=True)
         prot=self.universe.select_atoms(select_res)
 
         print(prot.residues)
@@ -367,10 +368,10 @@ class BioPolymer2D:
             pos_centered=pos-np.array([0,to_center[0],to_center[1],0])
         else: 
             raise TypeError("Must indicate the normal axis of the surface with surf_axis parameter. Options are 'x','y' or 'z'")
-        if not self.surf_pos is None:
-            dict_axis={'x':1,'y':2,'z':3}
-            # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
-            pos_centered[:,:,dict_axis[self.surf_axis]]-=self.surf_pos[dict_axis[self.surf_axis]]
+        # if not self.surf_pos is None:
+        #     dict_axis={'x':1,'y':2,'z':3}
+        #     # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
+        #     pos_centered[:,:,dict_axis[self.surf_axis]]-=self.surf_pos[dict_axis[self.surf_axis]]
         print(pos_centered.mean(axis=(0,1)),'pos centered')
         
         pos_selected=self.FilterMinFrames(pos_centered,zlim,Nframes,control_plots=control_plots)
@@ -554,7 +555,7 @@ class BioPolymer2D:
             # plt.show()
         return rg_arr
 
-    def RgPerpvsRgsPar(self,rgs,color, marker='s',plot=True,show=False):
+    def RgPerpvsRgsPar(self,rgs,color, marker='s',plot=True,show=False,ax=None):
         r"""Generates :math:`R_{g\perp}` vs. :math:`R_{g\parallel}` plots. Also, returns the :math:`\langle R_{g\perp}^2 \rangle /\langle R_{g\parallel}^2 \rangle` ratio
 
         Parameters
@@ -579,12 +580,14 @@ class BioPolymer2D:
         print(data.shape)
         rg_ratio=(data[:,0]**2).mean()/(data[:,1]**2).mean()
         if plot:
-            plt.plot(data[:,1],data[:,0],'o',markersize=1,c=color)
+            if ax is None:
+                fig, ax = plt.subplots()  # Create a new figure and axes if not provided
+            ax.plot(data[:,1],data[:,0],'o',markersize=1,c=color)
             label='%s (%.3f)'%(self.system_name,rg_ratio)
-            plt.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=10, label=label,color='k')
-            plt.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)')
-            plt.xlabel(r'$Rg_\parallel$ ($\mathrm{\AA}$)')
-            plt.ylabel(r'$Rg_\perp$ ($\mathrm{\AA}$)')
+            ax.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=10, label=label,color='k')
+            ax.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)')
+            ax.set_xlabel(r'$Rg_\parallel$ ($\mathrm{\AA}$)')
+            ax.set_ylabel(r'$Rg_\perp$ ($\mathrm{\AA}$)')
             if show:
                 plt.show()
         return rg_ratio
@@ -668,7 +671,7 @@ class BioPolymer2D:
             i+=2
         return paths
 
-    def getKDEAnalysis(self,zlim,Nframes,axis=['x','y'],inplace=True,ax=None,control_plots=False):
+    def getKDEAnalysis(self,zlim,Nframes,axis=['x','y'],inplace=True,ax=None,plot=False,control_plots=False):
         """Computes KDE Contours using seaborn.kde_plot() function and extracts the paths of each contour level. The output of the seaborn.kde_plot() is stored in self.kdeanalysis.kde, and the paths of each contour level is stored in self.kdeanalysis.paths if inplace=True.
 
         Parameters
@@ -691,7 +694,13 @@ class BioPolymer2D:
         list
             List of all paths in all the contour levels.
         """
-        pos_selected=self.FilterMinFrames(self.pos,zlim,Nframes,control_plots=control_plots)
+        pos=self.pos
+            
+        if not self.surf_pos is None:
+            dict_axis={'x':1,'y':2,'z':3}
+            # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
+            pos[:,:,dict_axis[self.surf_axis]]-=self.surf_pos[dict_axis[self.surf_axis]]
+        pos_selected=self.FilterMinFrames(pos,zlim,Nframes,control_plots=control_plots)
         ## Concatenate positions of all residues
         print(pos_selected.shape)
         pos_selected_reshape=np.reshape(pos_selected,(pos_selected.shape[0]*pos_selected.shape[1],pos_selected.shape[2]))
@@ -702,7 +711,10 @@ class BioPolymer2D:
         kde_plot = sns.kdeplot(df0, x=axis[0], y=axis[1], fill=True, cmap="Purples", color='black',ax=ax)
         kde_plot=sns.kdeplot(df0, x=axis[0],y=axis[1], color = 'black',alpha=0.5,ax=ax)
         self.kdeanalysis.kde=kde_plot
-
+        if plot:
+            plt.show()
+        else:
+            plt.close()
         paths_arr=[]
         Nlvls=len(kde_plot.collections[-1].get_paths())
         print(f"There are {Nlvls} levels in the KDE.")
@@ -761,7 +773,7 @@ class BioPolymer2D:
             return Areas
         
         
-    def KDEAnalysisSelection(self,select_res,Nframes=1000,zlim=15,show=False,legend=False):
+    def KDEAnalysisSelection(self,select_res,Nframes=1000,zlim=15,ax=None,show=False,legend=False):
         """KDE Contours for a set of selected residues. This computes the paths of all the contour levels of each residue.
 
         Parameters
@@ -787,11 +799,12 @@ class BioPolymer2D:
 
         COM=self.atom_group.center_of_mass()
 
-        pos_res_contour, res=self.getPositions(select=select_res,inplace=False,getselection=True)
-        if not self.surf_pos is None:
-            dict_axis={'x':1,'y':2,'z':3}
-            # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
-            pos_res_contour[:,:,dict_axis[self.surf_axis]]-=self.surf_pos[dict_axis[self.surf_axis]]
+        pos_res_contour, res=self.getPositions(select=select_res,inplace=False,getselection=True,surf_is_zero=True)
+        ### Maybe this section can be taken of if surf_is_zero=True?
+        # if not self.surf_pos is None:
+        #     dict_axis={'x':1,'y':2,'z':3}
+        #     # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
+        #     pos_res_contour[:,:,dict_axis[self.surf_axis]]-=self.surf_pos[dict_axis[self.surf_axis]]
         print(pos_res_contour.mean(axis=(0,1)))
         # fig,ax=plt.subplots()   
         # ListPaths(vertices,codes,plot_paths=True)
@@ -807,12 +820,14 @@ class BioPolymer2D:
         resnames=[]
         handles=[]
         paths_arr_arr=[]
+        if ax is None:
+            fig, ax = plt.subplots()  # Create a new figure and axes if not provided
         for ires in range(Nres):
             res_pos=all_pos_selected[:,ires]
             df0=pd.DataFrame(res_pos, columns=['t','x','y','z'])
             # kde_plot=sns.kdeplot(df0, x='x',y='y', color = 'black',alpha=1,fill=True)
             cmap_color=self.makeCmapColor(def_colors[ires])
-            kde_plot=sns.kdeplot(df0, x='x',y='y', fill=True,cmap=cmap_color,)
+            kde_plot=sns.kdeplot(df0, x='x',y='y', fill=True,cmap=cmap_color,ax=ax)
             # Create a legend handle manually
             handles.append(Line2D([0], [0], color=def_colors[ires], lw=4))
             resnames.append(f"{res.residues[ires].resid}-{res.residues[ires].resname}")
@@ -828,9 +843,9 @@ class BioPolymer2D:
                 paths_arr.append(paths)
             paths_arr_arr.append(paths_arr)
 
-        plt.title(f'Contour Positions {self.system_name}')
-        plt.xlabel(r'X ($\AA$)')
-        plt.ylabel(r'Y ($\AA$)')
+        ax.set_title(f'Contour Positions {self.system_name}')
+        ax.set_xlabel(r'X ($\AA$)')
+        ax.set_ylabel(r'Y ($\AA$)')
         plt.gca().set_aspect('equal', 'box')
 
         # Add the custom legend
@@ -931,7 +946,7 @@ class BioPolymer2D:
             return df_final.sort_values('Count', ascending=False)
         else:
             return df_final
-    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, contour_colors=None,filter=None, print_table=True,show=False):
+    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, contour_colors=None,filter=None, print_table=True,show=False,ax=None):
         """Makes a figure showing the center of mass of the residues with H-bonds. Figure shows a contour plot as a reference of position of the whole molecule. Legend of the Figure shows the percentage of time in which there were Hbonds during the simulation of the plotted residues.
 
         Parameters
@@ -968,7 +983,7 @@ class BioPolymer2D:
         str_resids=' '.join(np.array(df['ResIDs'],dtype=str))
         print(str_resids)
 
-        pos=self.getPositions(select=f'resid {str_resids}', inplace=False)
+        pos=self.getPositions(select=f'resid {str_resids}', inplace=False,surf_is_zero=False)
         df[['X','Y', 'Z']]=pos[:,:,1:].mean(axis=0)
         sorted_df=df.sort_values('Count', ascending=False)
         if print_table:
@@ -978,9 +993,11 @@ class BioPolymer2D:
             contour_lvls_to_plot=range(len(paths_for_contour))
         if not contour_colors:
             contour_colors=['k' for _ in paths_for_contour]
+        if ax is None:
+            fig,ax = plt.subplot()  # Create a new figure and axes if not provided
 
         for lvl,c in zip(contour_lvls_to_plot,contour_colors):
-            self.plotPathsInLevel(paths_for_contour,lvl,color=c)
+            self.plotPathsInLevel(paths_for_contour,lvl,color=c,ax=ax)
 
         colors = ['C%s' % i for i in range(10)]  # Define color palette
         num_colors = len(colors)
@@ -990,23 +1007,23 @@ class BioPolymer2D:
             norm_val=sorted_df['Count'].iloc[i]/len(self.universe.trajectory) #max_val
             norm_val_plot=sorted_df['Count'].iloc[i]/max_val
             pos=sorted_df[['X','Y','Z']].iloc[i]
-            plt.plot(pos['X'],pos['Y'], 'o',color=color,
+            ax.plot(pos['X'],pos['Y'], 'o',color=color,
                     label='%s-%s (%.2f)'%(sorted_df['ResIDs'].iloc[i],
                                         sorted_df['ResNames'].iloc[i],
                                         norm_val*100),)
-            plt.scatter(pos['X'],pos['Y'], s=(8*20*norm_val_plot)**2, alpha=.5, color=color)
-        plt.xlabel(r'X-axis($\AA$)',)#fontsize=20)
-        plt.ylabel(r'Y-axis($\AA$)',)#fontsize=20)
+            ax.scatter(pos['X'],pos['Y'], s=(8*20*norm_val_plot)**2, alpha=.5, color=color)
+        ax.set_xlabel(r'X-axis($\AA$)',)#fontsize=20)
+        ax.set_ylabel(r'Y-axis($\AA$)',)#fontsize=20)
         plt.gca().set_aspect('equal')
         plt.tight_layout()
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5),#prop={'size':22},
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),#prop={'size':22},
                     title="ResID-ResName(Hbond %)",)#title_fontsize=20)
         if show:
             plt.show()
         return sorted_df
 
     @staticmethod
-    def plotPathsInLevel(paths, contour_lvl,color='k',alpha=0.3,show=False):
+    def plotPathsInLevel(paths, contour_lvl,color='k',alpha=0.3,show=False,ax=None):
         """Plots the paths of a given contour level.
 
         Parameters
@@ -1022,10 +1039,12 @@ class BioPolymer2D:
         show : bool, optional
             Where to show or not the plot yet with matplolib.pyplot.plot, by default False
         """
+        if ax is None:
+            fig,ax = plt.subplot()  # Create a new figure and axes if not provided
         paths_in_lvl=paths[contour_lvl]
         for p in range(len(paths_in_lvl)):
             x_val,y_val=paths_in_lvl[p].T
-            plt.plot(x_val,y_val,color=color, alpha=alpha)
+            ax.plot(x_val,y_val,color=color, alpha=alpha)
         if show:
             plt.show()
 
