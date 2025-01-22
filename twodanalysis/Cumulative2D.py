@@ -464,7 +464,7 @@ class Cumulative2D(MembProp):
                 step = None,
                 lipid_list = "DSPC",
                 layer = 'top',
-                include_ids = False,
+                function = None,
                 splay = False):
         """Code to loop over the trajectory and print [x,y,z(referenced to zmean), charge] in a file.
 
@@ -504,6 +504,7 @@ class Cumulative2D(MembProp):
 
 
 
+
         if layer == "top":
             sign = " > "
         elif layer == "bot":
@@ -527,6 +528,8 @@ class Cumulative2D(MembProp):
         columns = ["x", "y", "z", "id"]
 
 
+
+
         if splay:
             self.guess_last_cs()
             carbons1 = [self.working_lip[lipid]["last_c"][0] for lipid in lipid_list]
@@ -536,6 +539,9 @@ class Cumulative2D(MembProp):
             carbons1 = self.build_resname_atom(lipid_list, carbons1)
             carbons2 = self.build_resname_atom(lipid_list, carbons2)
             columns.append("splay")
+
+        if function:
+            columns.append("property")
 
         if self.verbose:
             print("######### Running surface function ########## ")
@@ -569,10 +575,18 @@ class Cumulative2D(MembProp):
                 v2 = c2.positions - head_p.positions
                 #print(heads,carbons2,carbons1, head_p.n_atoms, c1.n_atoms)
                 costheta = np.sum(v1 * v2, axis=1)/(np.linalg.norm(v1, axis = 1)* np.linalg.norm(v2, axis = 1))# Compute the cos of splay angle, must bet lenmght nlipids
+                costheta = np.arccos(costheta)
                 costheta = np.rad2deg(costheta[:,np.newaxis])
                 atoms = lipid_ats.select_atoms(selection_string)
             else:
                 atoms = self.memb.select_atoms(final_selection_string)
+
+            ### Get resids
+            atom_resid = atoms.residues.resids
+
+
+
+
 
             ### Get positions # Maybe have to check what happens with masses 0
             atom_pos = atoms.center_of_mass(compound="residues")
@@ -580,18 +594,34 @@ class Cumulative2D(MembProp):
 
 
 
-            ### Get resids
-            atom_resid = atoms.residues.resids
+
             #print(atom_resid.shape)
             #print(f"costheta {costheta.shape}")
-            atom_resid = atom_resid[:,np.newaxis]
+            #atom_resid = atom_resid[:,np.newaxis]
             #print(atom_resid.shape)
 
-            atom_pos = np.concatenate((atom_pos, atom_resid), axis = 1)
+            atom_pos = np.concatenate((atom_pos, atom_resid[:,np.newaxis]), axis = 1)
             if splay:
                 atom_pos = np.concatenate((atom_pos, costheta), axis = 1)
             atom_pos[:,2] = np.abs(atom_pos[:,2]-mean_z)
 
+
+
+            if function is not None:
+                final_selection_byres = f"byres {final_selection_string}"
+                lipid_ats = self.memb.select_atoms(final_selection_byres)
+                ids, values = function(lipid_ats)
+
+
+                #print(ids.shape, values.shape, atom_resid.shape)
+                mapped_array = np.full_like(atom_resid, np.nan, dtype=float)
+
+                id_to_value = dict(zip(ids, values))
+
+                for i, id_ in enumerate(atom_resid):
+                    mapped_array[i] = id_to_value.get(id_, np.nan)
+                mapped_array = mapped_array[:,np.newaxis]
+                atom_pos = np.concatenate((atom_pos, mapped_array), axis=1)
 
 
 
@@ -603,12 +633,7 @@ class Cumulative2D(MembProp):
         pos_data = np.concatenate(pos_data, axis = 0)
         df_data = pd.DataFrame(pos_data, columns = columns)
         df_data["id"] = df_data["id"].astype(int)
-        #if include_charge:
-        #    df_data["charge"] = self.charge_li[lipid]
-        #    df_data.to_csv(f"pd_{filename}", index = False)
-        #df_data.to_csv(f"pd_{filename}", index = False)
 
-        #print(df_data)
 
         return df_data   # Maybe have to change, it does not make sense to return thi
 
@@ -677,13 +702,11 @@ class Cumulative2D(MembProp):
         print(f"Computing matrix for {layer} in frames {start}-{final}")
         data = []
 
-        filename = f"{lipid_list[0]}_{layer}_{start}-{final}.dat"
-
         data = self.surface(lipid_list= lipid_list,
                             layer = layer,
-                            include_charge = True,
                             start = start,
-                            final = final)
+                            final = final,
+                            step = step)
 
 
 
@@ -771,9 +794,9 @@ class Cumulative2D(MembProp):
 
         data = self.surface(lipid_list=lipid_list,
                             layer = layer,
-                            include_charge = True,
                             start = start,
                             final = final,
+                            step = step,
                             splay=True)
 
 
@@ -870,3 +893,78 @@ class Cumulative2D(MembProp):
         #print(mat_thickness,mat_thickness.shape,matrix_bot.shape,[edges[0], edges[-1], edges[0], edges[-1]])
 
         return mat_thickness, edges
+
+    def project_property(self,
+                        function,
+                      layer = "top",
+                      distribution = False,
+                      edges = None,
+                      start = None,
+                      final = None,
+                      step = None,
+                      nbins = None,
+                      ):
+        """ Code to divide the space in a 2D grid and compute the height referenced to zmean
+
+        Parameters
+        ----------
+        lipids : list(str)
+            Lipids to include in the height analysis
+        layer : str
+            Working layer for thickness
+        edges : list
+            Edges for the grid
+        start : int, optional
+            Frame to start analysis, by default None
+        final : int, optional
+            Final frame for the analysis, by default None
+        step : int, optional
+            Steps to skip, by default None
+        nbins : int, optional
+            Number of bins to divide the grid space, by default 50
+        clean : bool, optional
+            Decide if rerun and overwrite surface generated files, by default True
+
+        Returns
+        -------
+        ndarray(nbins,nbins)
+            Retun a matrix with the height information
+        """
+
+        print(f"Computing matrix for {layer} in frames {start}-{final}")
+        data = []
+        data = self.surface(function = function, lipid_list=self.lipid_list,
+                            layer = layer,
+                            start = start,
+                            final = final,
+                            step = step)
+
+        print("We passed")
+
+        nbins = self.nbins if nbins is None else nbins
+        edges = [self.edges[:2], self.edges[2:]] if edges is None else [edges[:2], edges[2:]]
+        print(edges)
+        print(data)
+
+        H_property, x_edges, y_edges = np.histogram2d(x = data["x"],
+                                                    y = data["y"],
+                                                    weights = data["property"],
+                                                    bins = nbins,
+                                                    range = edges)
+        H_out = H_property
+        if not distribution:
+            H_count, x_edges, y_edges = np.histogram2d(x = data["x"],
+                                                   y = data["y"],
+                                                   bins = nbins,
+                                                   range = edges)
+
+            H_count[H_count == 0] = 1.
+
+            H_out = H_property/H_count
+
+            H_out[H_out == 0] =  np.nan
+
+
+        H_out = np.rot90(H_out)
+
+        return H_out, [x_edges[0],x_edges[-1],y_edges[0], y_edges[-1]]
