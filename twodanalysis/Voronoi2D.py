@@ -149,6 +149,7 @@ class Voronoi2D(MembProp):
             v2 = c2.positions - head_p.positions
             #print(heads,carbons2,carbons1, head_p.n_atoms, c1.n_atoms)
             costheta = np.sum(v1 * v2, axis=1)/(np.linalg.norm(v1, axis = 1)* np.linalg.norm(v2, axis = 1))# Compute the cos of splay angle, must bet lenmght nlipids
+            costheta = np.arccos(costheta)
             costheta = np.rad2deg(costheta)
             others.append(costheta)
 
