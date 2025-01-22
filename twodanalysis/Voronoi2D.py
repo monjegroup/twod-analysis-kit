@@ -66,6 +66,7 @@ class Voronoi2D(MembProp):
                         working_lip = None,
                         lipid_list = None,
                         splay = False,
+                        keep_ids = False
                         ):
         """Computes the APL for membranes with different lipids
         Parameters
