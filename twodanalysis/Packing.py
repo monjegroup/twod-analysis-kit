@@ -10,6 +10,7 @@ class PackingDefects(MembProp):
                 verbose = False,
                 edges = None,
                 nbins = 100,
+                connection_chains = None,
                 ):
 
         super().__init__(universe,
@@ -31,7 +32,21 @@ class PackingDefects(MembProp):
         self.step = 1
         self.nbins = nbins
 
-        self.nx_polarity()
+        if connection_chains is not None:
+            self.connection_chains = connection_chains
+
+
+        try:
+            self.nx_polarity()
+        except:
+            raise """ Our code does not recognize the bond between the lipid head and the lipid tails,
+            or your lipid is not standard. We have set up the standard cuts in the dictionary self.connection_chains, that are
+            for example self.connection_chains["DOPC"] = [("C21", "C22"), ("C31", "C32")] for the first and second chain.
+
+            If this error occur to you, please provide connection chains when defining PackingDefects. For instance:
+            membrane = PackingDefects(universe = universe, connection_chains = {"CHL1" : [("O3", "C3")], "DOPC" : [("C21", "C22"), ("C31", "C32")]})
+            """
+
 
         self.build_polarity_dict()
 
@@ -57,7 +72,6 @@ class PackingDefects(MembProp):
                         edges = None,
                         area = True,
                         count = True,
-                        verbose = True,
                         ):
         """Compute packing defects based on packmem: https://doi.org/10.1016/j.bpj.2018.06.025
 
@@ -132,7 +146,7 @@ class PackingDefects(MembProp):
         lipid_list = list(self.lipid_list)
 
 
-        if verbose:
+        if self.verbose:
             print((f'######### Running packing defects function ########## \
                   \nWe will compute packing defects for a membrane with lipids {lipid_list}'),
                   end = "\r")
