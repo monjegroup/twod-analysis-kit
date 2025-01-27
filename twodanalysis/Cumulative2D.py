@@ -37,13 +37,12 @@ class Cumulative2D(MembProp):
 
         if edges is None:
             positions = self.all_head.positions[:,:2]
-            self.v_min = np.min(positions)
-            self.v_max = np.max(positions)
-            self.edges = [self.v_min, self.v_max, self.v_min, self.v_max]
+            v_min = np.min(positions)
+            v_max = np.max(positions)
+            self.edges = [v_min, v_max, v_min, v_max]
         else:
             self.edges = edges
-            self.v_min = edges[0]
-            self.v_max = edges[1]
+
 
         self.start = 0
         self.final = -1
@@ -112,11 +111,6 @@ class Cumulative2D(MembProp):
         if final is None:
             final = self.final
 
-        if layer == "top":
-            sign = " > "
-        elif layer == "bot":
-            sign = " < "
-
         if n_chain is None:
             n_chain = self.chain_info[lipid]
 
@@ -136,34 +130,32 @@ class Cumulative2D(MembProp):
             if layer == "both":
                 layer_at = self.memb.select_atoms(f"byres ((resname {lipid} and name {self.working_lip[lipid]['head']}))")
             else:
-                layer_at = self.memb.select_atoms(f"byres ((resname {lipid} and name {self.working_lip[lipid]['head']}) and prop z {sign} {z_mean})")
-            #print("Info:", all_head.n_atoms, z_mean, layer.n_atoms)
+                layer_at = self.memb.select_atoms(f"byres ((resname {lipid} and name {self.working_lip[lipid]['head']}) and prop z {self.map_layers[layer]} {z_mean})")
+
 
             only_p = layer_at.select_atoms(f"name {self.working_lip[lipid]['head']}")
             positions = only_p.positions[:,:2]
             angles_sn1 = OrderParameters.individual_order_sn1(layer_at, lipid, n_chain1)
             angles_sn1 = angles_sn1.T
 
-            #print(angles_sn1.T.shape, positions.shape)
-            #print(angles_sn1.shape, positions.shape)
-            to_write = np.concatenate([positions, angles_sn1], axis = 1)
+
+            positions = np.concatenate([positions, angles_sn1], axis = 1)
             if n_chain2 != 0:
                 angles_sn2 = OrderParameters.individual_order_sn2(layer_at, lipid, n_chain2)
                 angles_sn2 = angles_sn2.T
-                to_write = np.concatenate([to_write, angles_sn2], axis = 1)
+                positions = np.concatenate([positions, angles_sn2], axis = 1)
 
-            matrix.append(to_write) # Expect dim (n_lipids, 2+n_chain1+n_chain2)
-            #print("Frame:",to_write.shape)
+            matrix.append(positions) # Expect dim (n_lipids, 2+n_chain1+n_chain2)
+
 
 
 
         #matrix = np.array(matrix) # Expect dim (frames, n_lipids, 2+n_chain1+n_chain2)
         matrix = np.concatenate(matrix, axis = 0) # Expect dim (n_lipids*frames, 2+n_chain1+n_chain2)
-        print(matrix.shape)
-        v_min = self.v_min
-        v_max = self.v_max
+        #print(matrix.shape)
+
         if edges is None:
-            edges = [v_min,v_max,v_min,v_max]
+            edges = self.edges
 
         if method == "numpy":
             H, edges = self.numpyhistogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = nbins, edges = edges)
@@ -205,10 +197,10 @@ class Cumulative2D(MembProp):
             matrix containining the averaged 2D histogram, edges corresponding to te matrix
         """
         if edges is None:
-            limits = [[self.v_min,self.v_max], [self.v_min, self.v_max]]
+            limits = [[self.edges[0],self.edges[1]], [self.edges[2], self.edges[2]]]
         else:
             limits = [[edges[0],edges[1]], [edges[2], edges[3]]]
-        #print(v_min, v_max)
+
         nbin = np.empty(2,np.intp)
         edges = 2*[None]
 
@@ -263,15 +255,11 @@ class Cumulative2D(MembProp):
             matrix containining the averaged 2D histogram, edges corresponding to te matrix
         """
         if edges is None:
-            xmin = self.v_min
-            xmax = self.v_max
-            ymin = self.v_min
-            ymax = self.v_max
+            edges = [[self.edges[0], self.edges[1]],
+                     [self.edges[2], self.edges[3]]]
         else:
-            xmin = edges[0]
-            xmax = edges[1]
-            ymin = edges[2]
-            ymax = edges[3]
+            edges = [[edges[0], edges[1]],
+                     [edges[2], edges[3]]]
 
         #print(sample1.shape, weights.shape)
         if type(n_chain) == int:
@@ -280,7 +268,7 @@ class Cumulative2D(MembProp):
         hist, xedges,yedges = np.histogram2d(sample1[:,0],
                                              sample1[:,1],
                                              bins = bins,
-                                             range = [[xmin, xmax], [ymin, ymax]])
+                                             range = edges)
         hist[hist == 0] = 1
 
         count = 0
@@ -292,7 +280,7 @@ class Cumulative2D(MembProp):
 
         #print("here", n_feat, weights.shape[1])
         if n_feat == weights.shape[1]:
-            "Las dimensiones don correctad"
+            "Dimensions are correct"
 
         weights = 1.5*weights-0.5
 
@@ -303,7 +291,7 @@ class Cumulative2D(MembProp):
                                                       sample1[:,1],
                                                       weights = weights[:,count * n_chain[0]+ i],
                                                       bins = bins,
-                                                      range = [[xmin, xmax], [ymin, ymax]])
+                                                      range = edges)
                 matrix += np.abs(temp)
             count += 1
             matrix = matrix/(chain*hist)
@@ -593,13 +581,6 @@ class Cumulative2D(MembProp):
 
 
 
-
-
-            #print(atom_resid.shape)
-            #print(f"costheta {costheta.shape}")
-            #atom_resid = atom_resid[:,np.newaxis]
-            #print(atom_resid.shape)
-
             atom_pos = np.concatenate((atom_pos, atom_resid[:,np.newaxis]), axis = 1)
             if splay:
                 atom_pos = np.concatenate((atom_pos, costheta), axis = 1)
@@ -635,7 +616,7 @@ class Cumulative2D(MembProp):
         df_data["id"] = df_data["id"].astype(int)
 
 
-        return df_data   # Maybe have to change, it does not make sense to return thi
+        return df_data
 
 
 
@@ -662,7 +643,7 @@ class Cumulative2D(MembProp):
                       start = None,
                       final = None,
                       step = None,
-                      nbins = 50):
+                      nbins = None):
         """ Code to divide the space in a 2D grid and compute the height referenced to zmean
 
         Parameters
@@ -689,55 +670,48 @@ class Cumulative2D(MembProp):
         ndarray(nbins,nbins)
             Retun a matrix with the height information
         """
+        nbins = self.nbins if nbins is None else nbins
 
-
-        if start is None:
-            start = self.start
-        if final is None:
-            final = self.final
-        if step is None:
-            step = self.step
+        # Assign values if any is None
+        if edges is None:
+            edges = [[self.edges[0], self.edges[1]],
+                     [self.edges[2], self.edges[3]]]
+        else:
+            edges = [[edges[0], edges[1]],
+                     [edges[2], edges[3]]]
 
 
         print(f"Computing matrix for {layer} in frames {start}-{final}")
-        data = []
 
+        #### Obtain data
         data = self.surface(lipid_list= lipid_list,
                             layer = layer,
                             start = start,
                             final = final,
                             step = step)
 
-
-
-        if edges is not None:
-            xmin = edges[0]
-            xmax = edges[1]
-            ymin = edges[2]
-            ymax = edges[3]
-        else:
-            xmin = self.v_min
-            xmax = self.v_max
-            ymin = self.v_min
-            ymax = self.v_max
-
-
+        ### Obtain weighted 2D histogram
         H_height, x_edges, y_edges = np.histogram2d(x = data["x"],
                                                     y = data["y"],
                                                     weights = data["z"],
                                                     bins = nbins,
-                                                    range = [[xmin,xmax], [ymin,ymax]])
+                                                    range = edges)
+        ### Obtain count 2D histogram
         H_count, x_edges, y_edges = np.histogram2d(x = data["x"],
                                                    y = data["y"],
                                                    bins = nbins,
-                                                   range = [[xmin, xmax], [ymin,ymax]])
+                                                   range = edges)
 
+        # Replace 0 counts with 1 to avoind division by zero
         H_count[H_count == 0] = 1.
 
+        # Obtain the average for each grid square
         H_avg = H_height/H_count
 
+        # Replace values with zero with nan
         H_avg[H_avg == 0] =  np.nan
 
+        # Rotate to recover the original shape of the x,y plane
         H_avg = np.rot90(H_avg)
 
         return H_avg, [x_edges[0],x_edges[-1],y_edges[0], y_edges[-1]]
@@ -750,7 +724,7 @@ class Cumulative2D(MembProp):
                      start = None,
                      final = None,
                      step = None,
-                     nbins = 50):
+                     nbins = None):
         """ Code to divide the space in a 2D grid and compute the height referenced to zmean
 
         Parameters
@@ -778,19 +752,19 @@ class Cumulative2D(MembProp):
             Retun a matrix with the height information
         """
 
+        nbins = self.nbins if nbins is None else nbins
 
-        if start is None:
-            start = self.start
-        if final is None:
-            final = self.final
-        if step is None:
-            step = self.step
+        if edges is None:
+            edges = [[self.edges[0], self.edges[1]],
+                     [self.edges[2], self.edges[3]]]
+        else:
+            edges = [[edges[0], edges[1]],
+                     [edges[2], edges[3]]]
 
 
 
 
         print(f"Computing matrix for {layer} in frames {start}-{final}")
-        data = []
 
         data = self.surface(lipid_list=lipid_list,
                             layer = layer,
@@ -798,40 +772,19 @@ class Cumulative2D(MembProp):
                             final = final,
                             step = step,
                             splay=True)
-
-
-        #print(data)
-
-        if edges is not None:
-            xmin = edges[0]
-            xmax = edges[1]
-            ymin = edges[2]
-            ymax = edges[3]
-        else:
-            xmin = self.v_min
-            xmax = self.v_max
-            ymin = self.v_min
-            ymax = self.v_max
-
-
         H_splay, x_edges, y_edges = np.histogram2d(x = data["x"],
                                                    y = data["y"],
                                                    weights = data["splay"],
                                                    bins = nbins,
-                                                   range = [[xmin,xmax], [ymin,ymax]])
+                                                   range = edges)
         H_count, x_edges, y_edges = np.histogram2d(x = data["x"],
                                                    y = data["y"],
                                                    bins = nbins,
-                                                   range = [[xmin, xmax], [ymin,ymax]])
-
+                                                   range = edges)
         H_count[H_count == 0] = 1.
-
         H_avg = H_splay/H_count
-
         H_avg[H_avg == 0] =  np.nan
-
         H_avg = np.rot90(H_avg)
-
         return H_avg, [x_edges[0],x_edges[-1],y_edges[0], y_edges[-1]]
 
 
@@ -890,7 +843,6 @@ class Cumulative2D(MembProp):
         mat_thickness = matrix_bot + matrix_up
 
         mat_thickness[mat_thickness == 0] = np.nan
-        #print(mat_thickness,mat_thickness.shape,matrix_bot.shape,[edges[0], edges[-1], edges[0], edges[-1]])
 
         return mat_thickness, edges
 
@@ -932,7 +884,7 @@ class Cumulative2D(MembProp):
         """
 
         print(f"Computing matrix for {layer} in frames {start}-{final}")
-        data = []
+
         data = self.surface(function = function, lipid_list=self.lipid_list,
                             layer = layer,
                             start = start,
@@ -943,8 +895,7 @@ class Cumulative2D(MembProp):
 
         nbins = self.nbins if nbins is None else nbins
         edges = [self.edges[:2], self.edges[2:]] if edges is None else [edges[:2], edges[2:]]
-        print(edges)
-        print(data)
+
 
         H_property, x_edges, y_edges = np.histogram2d(x = data["x"],
                                                     y = data["y"],
