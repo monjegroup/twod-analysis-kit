@@ -588,6 +588,7 @@ class BioPolymer2D:
             ax.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)')
             ax.set_xlabel(r'$Rg_\parallel$ ($\mathrm{\AA}$)')
             ax.set_ylabel(r'$Rg_\perp$ ($\mathrm{\AA}$)')
+            ax.legend(fontsize=10)
             if show:
                 plt.show()
         return rg_ratio
@@ -671,7 +672,7 @@ class BioPolymer2D:
             i+=2
         return paths
 
-    def getKDEAnalysis(self,zlim,Nframes,axis=['x','y'],inplace=True,ax=None,plot=False,control_plots=False):
+    def getKDEAnalysis(self,zlim,Nframes,axis=['x','y'],inplace=True,ax=None,show=False,control_plots=False):
         """Computes KDE Contours using seaborn.kde_plot() function and extracts the paths of each contour level. The output of the seaborn.kde_plot() is stored in self.kdeanalysis.kde, and the paths of each contour level is stored in self.kdeanalysis.paths if inplace=True.
 
         Parameters
@@ -711,10 +712,7 @@ class BioPolymer2D:
         kde_plot = sns.kdeplot(df0, x=axis[0], y=axis[1], fill=True, cmap="Purples", color='black',ax=ax)
         kde_plot=sns.kdeplot(df0, x=axis[0],y=axis[1], color = 'black',alpha=0.5,ax=ax)
         self.kdeanalysis.kde=kde_plot
-        if plot:
-            plt.show()
-        else:
-            plt.close()
+
         paths_arr=[]
         Nlvls=len(kde_plot.collections[-1].get_paths())
         print(f"There are {Nlvls} levels in the KDE.")
@@ -728,7 +726,8 @@ class BioPolymer2D:
             # plt.pause(2)
             if control_plots:
                 plt.pause(2)
-        plt.close()
+        if not show:
+            plt.close()
         if inplace:
             self.kdeanalysis.paths=paths_arr
         return paths_arr
@@ -994,7 +993,7 @@ class BioPolymer2D:
         if not contour_colors:
             contour_colors=['k' for _ in paths_for_contour]
         if ax is None:
-            fig,ax = plt.subplot()  # Create a new figure and axes if not provided
+            fig,ax = plt.subplots()  # Create a new figure and axes if not provided
 
         for lvl,c in zip(contour_lvls_to_plot,contour_colors):
             self.plotPathsInLevel(paths_for_contour,lvl,color=c,ax=ax)
@@ -1040,7 +1039,7 @@ class BioPolymer2D:
             Where to show or not the plot yet with matplolib.pyplot.plot, by default False
         """
         if ax is None:
-            fig,ax = plt.subplot()  # Create a new figure and axes if not provided
+            fig,ax = plt.subplots()  # Create a new figure and axes if not provided
         paths_in_lvl=paths[contour_lvl]
         for p in range(len(paths_in_lvl)):
             x_val,y_val=paths_in_lvl[p].T
