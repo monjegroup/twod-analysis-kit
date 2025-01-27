@@ -66,7 +66,7 @@ class Voronoi2D(MembProp):
                         working_lip = None,
                         lipid_list = None,
                         splay = False,
-                        keep_ids = False
+                        function = None,
                         ):
         """Computes the APL for membranes with different lipids
         Parameters
@@ -100,10 +100,6 @@ class Voronoi2D(MembProp):
         positions = all_p.positions
 
 
-
-
-
-
         mean_z = positions[:,2].mean()
 
         selection_string = f"(((resname {lipid_list[0]} and name {working_lip[lipid_list[0]]['head']}) and prop z {sign} {mean_z}))"
@@ -123,11 +119,13 @@ class Voronoi2D(MembProp):
         height_pos =np.abs(heads.positions[:,2] - mean_z)
         resnames_pos = heads.resnames
         orig_len = len(heads_pos)
-        #print("Here first shapes", heads_pos.shape, resnames_pos.shape)
+
+
+
 
         ## Extent data
         dimensions = self.u.trajectory.ts.dimensions[:2]
-
+        columns_others = ["resnames", "heights"]
         others = [resnames_pos, height_pos]
 
 
@@ -152,7 +150,26 @@ class Voronoi2D(MembProp):
             costheta = np.arccos(costheta)
             costheta = np.rad2deg(costheta)
             others.append(costheta)
+            columns_others.append("splay")
 
+        if function is not None:
+            selection_string_byres = f"byres {selection_string}"
+            lipid_ats = self.memb.select_atoms(selection_string_byres)
+            resids = lipid_ats.residues.resids
+
+            ids, values = function(lipid_ats)
+            mapped_array = np.full_like(resids, np.nan, dtype=float)
+            id_to_value = dict(zip(ids, values))
+
+            for i, id_ in enumerate(resids):
+                mapped_array[i] = id_to_value.get(id_, np.nan)
+            others.append(mapped_array)
+            columns_others.append("function")
+
+
+
+
+        #for names, oth in zip():
 
         heads_pos, others = self.extend_data(heads_pos, dimensions, self.periodicity, others = others)
         resnames_pos = others[0]
@@ -162,13 +179,12 @@ class Voronoi2D(MembProp):
 
         voronoi_dict = {"vertices":list(),
                         "points":heads_pos,
-                        "heights":height_pos,
                         "areas":list(),
-                        "resnames":resnames_pos,
                         "orig_len":orig_len
                          }
-        if splay:
-            voronoi_dict["splay"] = others[2]
+
+        for column, other in zip(columns_others, others):
+            voronoi_dict[column] = other
 
 
         voronoi = Voronoi(heads_pos)
@@ -669,6 +685,62 @@ class Voronoi2D(MembProp):
         final_mat = np.nanmean(np.array(matrices), axis = 0)
         final_mat = np.flipud(final_mat)
         return final_mat, edges
+
+
+
+
+    def project_property(self,
+                      layer = "top",
+                      start = 0,
+                      final = -1,
+                      step = 1,
+                      function = None,
+                      nbins = None,
+                      edges = None):
+        """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
+
+        Parameters
+        ----------
+        layer : str, optional
+            working lipid layer, by default "top"
+        start : int, optional
+            Frame to start, by default 0
+        final : int, optional
+            final frame, by default -1
+        step : int, optional
+            Frames to skip, by default 1
+        lipid_list : list, optional
+            lipids involved in the computation, by default None
+        nbins : int, optional
+            number of bins for the grid, by default 180
+        edges : list, optional
+            A list with the limits of the grid [xmin,xmax,ymin,ymax]
+
+        Returns
+        -------
+        ndarray
+            Array with the averaged 2D APL, edges
+        """
+        if nbins is None:
+            nbins = self.nbins
+        if edges is None:
+            edges = self.edges
+        matrices = []
+        for _ in self.u.trajectory[start:final:step]:
+            voronoi_dict = self.voronoi_properties(layer = layer, function = function)
+            property_vect = voronoi_dict["function"]
+
+            matrix_height,_ = self.map_voronoi(voronoi_dict["points"],
+                                         property_vect,
+                                         nbins,
+                                         edges,
+                                         )
+            matrices.append(matrix_height)
+        final_mat = np.nanmean(np.array(matrices), axis = 0)
+        final_mat = np.flipud(final_mat)
+        return final_mat, edges
+
+
 
     @staticmethod
     def build_resname_atom(resnames, atomsnames):
