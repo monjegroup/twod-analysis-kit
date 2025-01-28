@@ -533,7 +533,9 @@ class BioPolymer2D:
         np.ndarray
             3D, perpendicular and parallel radius of gyration values at each frame (`self.endF`-`self.startF` frames,3, `Natoms`)
         """
-        colors=['tab:blue','tab:orange','tab:green']
+
+        # Define the classic color cycle
+        colors = ['b', 'm', 'c', 'r', 'g', 'y', 'k']
         rg_arr=np.zeros((len(self.pos),4))
         i=0
         masses=self.atom_group.atoms.masses
@@ -555,7 +557,7 @@ class BioPolymer2D:
             # plt.show()
         return rg_arr
 
-    def RgPerpvsRgsPar(self,rgs,color, marker='s',plot=True,show=False,ax=None):
+    def RgPerpvsRgsPar(self,rgs,color, marker='s',plot=True,show=False,ax=None,legend=True):
         r"""Generates :math:`R_{g\perp}` vs. :math:`R_{g\parallel}` plots. Also, returns the :math:`\langle R_{g\perp}^2 \rangle /\langle R_{g\parallel}^2 \rangle` ratio
 
         Parameters
@@ -585,10 +587,10 @@ class BioPolymer2D:
             ax.plot(data[:,1],data[:,0],'o',markersize=1,c=color)
             label='%s (%.3f)'%(self.system_name,rg_ratio)
             ax.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=10, label=label,color='k')
-            ax.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)')
             ax.set_xlabel(r'$Rg_\parallel$ ($\mathrm{\AA}$)')
             ax.set_ylabel(r'$Rg_\perp$ ($\mathrm{\AA}$)')
-            ax.legend(fontsize=10)
+            if legend:
+                ax.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)', fontsize=10)
             if show:
                 plt.show()
         return rg_ratio
@@ -772,7 +774,7 @@ class BioPolymer2D:
             return Areas
         
         
-    def KDEAnalysisSelection(self,select_res,Nframes=1000,zlim=15,ax=None,show=False,legend=False):
+    def KDEAnalysisSelection(self,select_res,Nframes=1000,zlim=15,ax=None,show=False,legend=False,plot_COM=True):
         """KDE Contours for a set of selected residues. This computes the paths of all the contour levels of each residue.
 
         Parameters
@@ -798,7 +800,7 @@ class BioPolymer2D:
 
         COM=self.atom_group.center_of_mass()
 
-        pos_res_contour, res=self.getPositions(select=select_res,inplace=False,getselection=True,surf_is_zero=True)
+        pos_res_contour, res=self.getPositions(select=select_res,inplace=False,getselection=True,surf_is_zero=True,)
         ### Maybe this section can be taken of if surf_is_zero=True?
         # if not self.surf_pos is None:
         #     dict_axis={'x':1,'y':2,'z':3}
@@ -815,7 +817,8 @@ class BioPolymer2D:
         # all_pos_selected_reshaped=np.reshape(all_pos_selected,(all_pos_selected.shape[0]*all_pos_selected.shape[1],4))
         # print(all_pos_selected_reshaped.shape)
         Nres=len(all_pos_selected[0])
-        plt.plot(COM[0],COM[1],c='k',marker='o')
+        if plot_COM:
+            plt.plot(COM[0],COM[1],c='k',marker='o')
         resnames=[]
         handles=[]
         paths_arr_arr=[]
@@ -931,13 +934,20 @@ class BioPolymer2D:
         pandas.DataFrame
             DataFrame showing all the residues with H-bonds.
         """
-        result=np.array(self.hbonds.hbonds[:,[2,3]], dtype=int)
+        result=np.array(self.hbonds.hbonds[:,[2,3]], dtype=int) #Indexes of Hydrogen and acceptors starting from 0.
+        print(result[0,0],self.universe.atoms[result[0,0]-1], 'result check') ## [result[0,0]-1 is an O, not a hydrogen, not correct to substract 1
         resids=np.array([self.universe.atoms[result[:,0]].resids,self.universe.atoms[result[:,1]].resids])
         df=pd.DataFrame(data=resids.T, columns=['Hydrogen', 'Acceptors'])
+        # resids=np.array([self.hbonds.hbonds[:,0],self.universe.atoms[result[:,0]].resids,self.universe.atoms[result[:,1]].resids])
+        # df=pd.DataFrame(data=resids.T, columns=['Frame','Hydrogen', 'Acceptors'])
+        # print(df[df['Hydrogen']==199].iloc[:10])
+
+        print(resids.shape, result.shape, 'resid', 'result')
+        print(df)
         Acc_resids = df[np.isin(df['Acceptors'],self.atom_group.residues.resids)].pivot_table(columns=['Acceptors'], aggfunc='size')
-        H_resids = df[np.isin(df['Acceptors'],self.atom_group.residues.resids)].pivot_table(columns=['Hydrogen'], aggfunc='size')
+        H_resids = df[np.isin(df['Hydrogen'],self.atom_group.residues.resids)].pivot_table(columns=['Hydrogen'], aggfunc='size')
         # print(H_resids,Acc_resids)
-        final_count=Acc_resids.add(H_resids, fill_value=0)
+        final_count=Acc_resids.add(H_resids, fill_value=0) # dividing by 2 is not necesarry since a a atom will be a donot and acceptor at the same time. 
         df_final=pd.DataFrame(np.array([self.universe.residues[final_count.index-1].resids,self.universe.residues[final_count.index-1].resnames,final_count]).T,
                             columns=['ResIDs','ResNames','Count'])
 
