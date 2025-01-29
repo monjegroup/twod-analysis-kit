@@ -1,19 +1,8 @@
-What is twodanalysis?
+What is 2Danalysis?
 ============
 
-`twodanalysis` is a class that helps with the 2D analysis of
-membranes and/or biopolymers interacting with a membrane/surface.
+`2Danalysis` is a toolbox for the analysis of simulation trajectories of biomolecules projected onto 2D planar interfaces of interest. MembProp and BioPolymer2D are the two hubs to analyze interactions of lipid membrane molecules and biopolymers (nucleic acids, proteins, glycans), respectively. This project is maintained continuously by the Monje Group from the University at Buffalo (USA) and Guzman Research from the Universidad Autonoma de Madrid (Spain).
 
-It is built on MDAnalysis with the objective of be useful for any
-molecular dynamcis engine. Our core runs without problems on the charmm36
-force fields, but it is potentially useful for other forcefields with small
-changes in the code. In the future, we plan to add support to any forcefield.
-This projects is intented to be continously maintaned by the monje group at the
-University at Buffalo and GuzmanResearch at Universidad Autonoma de Madrid.
+The toolbox is built on MDAnalysis and compatible with output files from any molecular dynamcis engine. Our core runs by default using the atom nomenclature of the charmm36 force field, but the user can define names for other forcefields with small changes in the code. In the future, we plan to add automated support to more simulation force fields.
 
-twodanalysis is a an open-source library, where we have made a huge effort to
-provide enough details so that the community can twich the code acording to their needs. By doing this,
-we hope the code can be useful for the most amount of people. Any bugs or suggestions please open an issue or
-send an email to vmonje@buffalo.edu.
-
-
+2Danalysis is a an open-source library with detailed documentation and comprehensive tutorials (https://github.com/pyF4all/2DanalysisTutorials). Users may cite and use the code acording to their research needs and customize anlysis pipelines. You may direct questions or suggestions via email to vmonje@buffalo.edu & hguzman@icmab.es
