@@ -921,7 +921,7 @@ class BioPolymer2D:
             plt.show()
         return hbonds.results
 
-    def HbondsPerResidues(self,sorted=True):
+    def HbondsPerResidues(self,sorted=True, unique_res=False):
         """Computes the number of H-bonds of each residue during the simulation. self.getHbonds(inplace=True) must be computed prior to the use this function.
 
         Parameters
@@ -935,19 +935,24 @@ class BioPolymer2D:
             DataFrame showing all the residues with H-bonds.
         """
         result=np.array(self.hbonds.hbonds[:,[2,3]], dtype=int) #Indexes of Hydrogen and acceptors starting from 0.
-        print(result[0,0],self.universe.atoms[result[0,0]-1], 'result check') ## [result[0,0]-1 is an O, not a hydrogen, not correct to substract 1
-        resids=np.array([self.universe.atoms[result[:,0]].resids,self.universe.atoms[result[:,1]].resids])
-        df=pd.DataFrame(data=resids.T, columns=['Hydrogen', 'Acceptors'])
-        # resids=np.array([self.hbonds.hbonds[:,0],self.universe.atoms[result[:,0]].resids,self.universe.atoms[result[:,1]].resids])
-        # df=pd.DataFrame(data=resids.T, columns=['Frame','Hydrogen', 'Acceptors'])
-        # print(df[df['Hydrogen']==199].iloc[:10])
-
+        # print(result[0,0],self.universe.atoms[result[0,0]-1], 'result check') ## [result[0,0]-1 is an O, not a hydrogen, not correct to substract 1
+        # resids=np.array([self.universe.atoms[result[:,0]].resids,self.universe.atoms[result[:,1]].resids])
+        # df=pd.DataFrame(data=resids.T, columns=['Hydrogens', 'Acceptors'])
+        resids=np.array([self.hbonds.hbonds[:,0],self.universe.atoms[result[:,0]].resids,self.universe.atoms[result[:,1]].resids], dtype=int)
+        df=pd.DataFrame(data=resids.T, columns=['Frame','Hydrogens', 'Acceptors'])
+        # print(df[df['Hydrogens']==199].iloc[:10])
+        print(resids.shape, result.shape, 'resid', 'result')
+        print(df)
+        if unique_res:
+            df.drop_duplicates(subset=['Frame','Hydrogens'],inplace=True,ignore_index=True)
+            df.drop_duplicates(subset=['Frame','Acceptors'],inplace=True,ignore_index=True)
         print(resids.shape, result.shape, 'resid', 'result')
         print(df)
         Acc_resids = df[np.isin(df['Acceptors'],self.atom_group.residues.resids)].pivot_table(columns=['Acceptors'], aggfunc='size')
-        H_resids = df[np.isin(df['Hydrogen'],self.atom_group.residues.resids)].pivot_table(columns=['Hydrogen'], aggfunc='size')
+        H_resids = df[np.isin(df['Hydrogens'],self.atom_group.residues.resids)].pivot_table(columns=['Hydrogens'], aggfunc='size')
         # print(H_resids,Acc_resids)
         final_count=Acc_resids.add(H_resids, fill_value=0) # dividing by 2 is not necesarry since a a atom will be a donot and acceptor at the same time. 
+        print(final_count.index-1, 'final_count.index')
         df_final=pd.DataFrame(np.array([self.universe.residues[final_count.index-1].resids,self.universe.residues[final_count.index-1].resnames,final_count]).T,
                             columns=['ResIDs','ResNames','Count'])
 
@@ -981,7 +986,7 @@ class BioPolymer2D:
             Sorted DataFrame from the residues with most contact to the residue with least contacts.
         """
 
-        df=self.HbondsPerResidues(sorted=False)
+        df=self.HbondsPerResidues(sorted=False, unique_res=True)
         df_resname=df['ResNames']
         if filter is not None:
             if isinstance(filter, list):
