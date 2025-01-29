@@ -1,8 +1,7 @@
 Usage
 =====
 
-This software contains four main classes, `Cumulative2D`, `Voronoi2D`, `PackingDefects`, `analysis`, and `BioPolymer2D` which should
-be imported as follows
+This software contains four main classes, `Cumulative2D`, `Voronoi2D`, `PackingDefects`, `analysis`, and `BioPolymer2D`, which should be imported as follows
 
 .. code-block:: python
 
@@ -11,27 +10,9 @@ be imported as follows
    from twodanalysis import PackingDefects
    from twodanalysis import BioPolymer2D
 
+Cumulative and Voronoi approaches project membrane properties to the membrane surface plane using a slightly
+different logic behind that is explained in the Quick Guide. Current membrane analysis include membrane thickness, deuterium order paramters, area-per-lipid, and lipid tail splay angle.
 
-We split our work in three approaches: Cumulative approaches (Cumulative2D), Voronoi approaches (Voronoi2D), and Packing defects (PackingDefects).
-Cumulative and Voronoi approaches intend to project properties in the 2D space using a slightly
-different logic behind that is explained in [Add article, or link to quick guide]. Some of the properties
-that we can currently project are:
+Biopolymer2D currently includes four routines to characterize the adsorption and confinement mechanisms of biopolymers onto surfaces:  (i) parallel ($R_{g\parallel}$) and perpendicular $R_{g\perp}$ radii of gyration; (ii) polar histogram; (iii) 2D-projected density; and (iv) H-bonds per residue/nucleotide/bead
 
- - Thickness
- - Order parameters (Only for Cumulative)
- - APL (Only for Voronoi)
- - Splay angle
-
-Furthermore, our code allows the user to project further properties in an easy way.
-
-On the other hand, Packing defects allows us to identify regions where the Hydrophobic core is exposed,
-using a method implemented in PackMem. This method has been optimized and implemented in python.
-
-
-
-
-
-BioPolymer2D
-------------
-
-To Do
+2Danalysis allows the user to compute and project additional structural and dynamic properties to quantify molecular interactions, conpute statistical correlations from the output data, and readily integrate the results into other analysis pipelines.
