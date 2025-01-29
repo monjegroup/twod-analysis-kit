@@ -17,3 +17,6 @@ python:
 
 conda:
   environment: docs/requirements.yaml
+
+sphinx:
+    configuration: docs/source/conf.py
