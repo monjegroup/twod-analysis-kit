@@ -1,4 +1,4 @@
-twodanalysis
+2Danalysis
 ==============================
 [//]: # (Badges)
 
@@ -23,7 +23,7 @@ twodanalysis
 
 Toolkit created to map biophysical properties of proteins onto surfaces, and lipid bilayers to the membrane plane to track changes and study correlations in 2D. This kit is built following the format of MDAKits.
 
-twodnalysis is bound by a [Code of Conduct](https://github.com/monjegroup/twod-analysis-kit/blob/main/CODE_OF_CONDUCT.md).
+2Danalysis is bound by a [Code of Conduct](https://github.com/monjegroup/twod-analysis-kit/blob/main/CODE_OF_CONDUCT.md).
 
 ### Installation
 
