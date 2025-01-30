@@ -115,6 +115,10 @@ class MembProp:
         self.all_head = self.memb.select_atoms(self.build_resname(self.lipid_list) + " and name P")
 
 
+        self.map_layers = {"top" : " > ",
+                           "bot": " < ",
+                           "up" : " > ",
+                           "down" : " < "}
 
 
 
