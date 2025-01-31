@@ -460,14 +460,12 @@ class BioPolymer2D:
             for i in range(ordered_selected_pos.shape[1]):
                 fig_label='%i-%s'%(prot.residues.resids[sort_i[i]],prot.residues.resnames[sort_i[i]])
 
-                with mpl.rc_context():
-                    # mpl.style.use('classic')
-                    bars = ax.bar(hist_arr[sort_i[i],0], hist_arr[sort_i[i],1]*max_height*norm_max_hist,
-                            width=width,label='%s'%fig_label,
-                            bottom=bottom,#color=colors[i],
-                            alpha=0.8
+                bars = ax.bar(hist_arr[sort_i[i],0], hist_arr[sort_i[i],1]*max_height*norm_max_hist,
+                        width=width,label='%s'%fig_label,
+                        bottom=bottom,#color=colors[i],
+                        alpha=0.8
                         )
-                ax.set_yticklabels([])
+            ax.set_yticklabels([])
             ax.legend(loc='center', bbox_to_anchor=(0.5, 0.5),framealpha=1)
             ax.set_ylim((0,2))
             # plt.title('Polar Histogram RBD-%s %s variant'%('PBL', plabels[ivar]))
