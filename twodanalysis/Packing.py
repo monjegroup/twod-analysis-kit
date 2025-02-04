@@ -10,7 +10,6 @@ class PackingDefects(MembProp):
                 verbose = False,
                 edges = None,
                 nbins = 100,
-                connection_chains = None,
                 ):
 
         super().__init__(universe,
@@ -32,8 +31,7 @@ class PackingDefects(MembProp):
         self.step = 1
         self.nbins = nbins
 
-        if connection_chains is not None:
-            self.connection_chains = connection_chains
+
 
 
         try:
@@ -146,10 +144,7 @@ class PackingDefects(MembProp):
         lipid_list = list(self.lipid_list)
 
 
-        if self.verbose:
-            print((f'######### Running packing defects function ########## \
-                  \nWe will compute packing defects for a membrane with lipids {lipid_list}'),
-                  end = "\r")
+
 
 
 
@@ -619,7 +614,7 @@ class PackingDefects(MembProp):
                                 final = -1,
                                 step = 1,
                                 area_size = True,
-                                verbose = True,
+
                                 ):
         """ Run packing defects from `start` to `final` and stores data
           about area of defects, total area, number of defects,
@@ -660,8 +655,8 @@ class PackingDefects(MembProp):
                              edges = edges,
                              area =True,
                              count = True,
-                             verbose = False)
-            if verbose:
+                                )
+            if self.verbose:
                 print(f"Runing packing defects on frame {ts.frame}", end="\r")
             results.append([packing_dict["area"]["defects"],
                              packing_dict["area"]["total"],
