@@ -72,15 +72,20 @@ class Voronoi2D(MembProp):
         Parameters
         ----------
         layer : str, optional
-            layer to compute the apl, by default 'top'
+            layer to compute the apl. It can be top/bot, by default 'top'
         working_lip : dict, optional
             dictionary mapping lipid and atoms to work for APL, by default None
         lipid_list : list, optional
             list of lipids to be considered for APL, by default None
+        splay : bool,
+            If True, it computes the splay angle for the lipids.
+        function: function:
+            Function that takes mda.Atomgroup and returns two arrays: (1) array with ids
+            (2) array with value of properties
         Returns
         -------
         dict
-            dictionary with vertices, areas, and APL
+            dictionary with vertices, areas, apl (if true), function values (if provided)
         """
 
         if layer == "top":
@@ -107,21 +112,11 @@ class Voronoi2D(MembProp):
             selection_string += f" or (((resname {lipid} and name {working_lip[lipid]['head']}) and prop z {sign} {mean_z}))"
 
 
-
-
-
-
-        #print(selection_string)
-
-
         heads = self.memb.select_atoms(selection_string)
         heads_pos = heads.positions[:,:2]
         height_pos =np.abs(heads.positions[:,2] - mean_z)
         resnames_pos = heads.resnames
         orig_len = len(heads_pos)
-
-
-
 
         ## Extent data
         dimensions = self.u.trajectory.ts.dimensions[:2]
@@ -166,10 +161,6 @@ class Voronoi2D(MembProp):
             others.append(mapped_array)
             columns_others.append("function")
 
-
-
-
-        #for names, oth in zip():
 
         heads_pos, others = self.extend_data(heads_pos, dimensions, self.periodicity, others = others)
         resnames_pos = others[0]
@@ -228,30 +219,30 @@ class Voronoi2D(MembProp):
     def map_voronoi(self,
                     voronoi_points,
                     voronoi_property,
-                    nbins,
-                    edges):
-        """ Function to map voronoi APL to a 2D plane
+                    nbins = None,
+                    edges = None):
+        """ Function to map voronoi diagram to a 2D plane
 
         Parameters
         ----------
         voronoi_points : ndarray(:,2)
             [x,y] positions of the points to be considered in the voronoi plot
-        voronoi_areas : ndarray(:)
+        voronoi_property : ndarray(:)
             Areas correspondng to the points
         nbins : int
             number of bins for the grid
-        edges : list
-            A list with the lipids of the grid [xmin,xmax,ymin,ymax]
+        edges : list(float)
+            A list with the lipids of the grid [xmin,xmax,ymin,ymax], defaults to None
 
         Returns
         -------
         ndarray, edges
             numpy array (nbins,nbins), adn edges of this array
         """
-        xmin =edges[0]
-        xmax =edges[1]
-        ymin =edges[2]
-        ymax =edges[3]
+
+        edges = self.edges if edges is None else edges
+        nbins = self.nbins if nbins is None else nbins
+        xmin, xmax, ymin, ymax = edges
 
         xcoords = np.linspace(xmin, xmax, nbins)
         ycoords = np.linspace(ymin, ymax, nbins)
@@ -287,15 +278,15 @@ class Voronoi2D(MembProp):
         layer : str, optional
             working lipid layer, by default "top"
         start : int, optional
-            Frame to start, by default 0
+            Frame to start, by default None. If None uses all the trajectory
         final : int, optional
-            final frame, by default -1
+            final frame, by default None. If None uses all the trajectory
         step : int, optional
-            Frames to skip, by default 1
+            Frames to skip, by default None. If None uses all the trajectory
         lipid_list : list, optional
             lipids involved in the computation, by default None
         nbins : int, optional
-            number of bins for the grid, by default 180
+            number of bins for the grid, by default None
         edges : list, optional
             A list with the limits of the grid [xmin,xmax,ymin,ymax]
 
@@ -304,24 +295,15 @@ class Voronoi2D(MembProp):
         ndarray
             Array with the averaged 2D APL, edges
         """
-        if lipid_list is None:
-            lipid_list = list(self.lipid_list)
-
-        if nbins is None:
-            nbins = self.nbins
+        lipid_list = list(self.lipid_list) if lipid_list is None else lipid_list
 
 
-        if edges is None:
-            xmin = self.v_min
-            xmax = self.v_max
-            ymin = self.v_min
-            ymax = self.v_max
-            edges = [xmin,xmax,ymin,ymax]
-        else:
-            xmin = edges[0]
-            xmax = edges[1]
-            ymin = edges[2]
-            ymax = edges[3]
+
+        nbins = self.nbins if nbins is None else nbins
+
+        edges = self.edges if edges is None else edges
+
+        xmin, xmax, ymin, ymax = edges
 
         grid_size = (xmax-xmin)/nbins
         ng = int(nbins*0.05)
@@ -407,7 +389,12 @@ class Voronoi2D(MembProp):
         n_windows = (final-start)//w_size
         matrices = []
         for i in range(n_windows):
-            matrix = self.voronoi_apl(layer = layer, start = i*w_size + start, final =(i+1)*w_size + start , step = step, lipid_list = None, nbins = nbins)
+            matrix = self.voronoi_apl(layer = layer,
+                                    start = i*w_size + start,
+                                    final =(i+1)*w_size + start ,
+                                    step = step,
+                                    lipid_list = None,
+                                    nbins = nbins)
             matrices.append(matrix)
         return matrices
 
@@ -423,28 +410,29 @@ class Voronoi2D(MembProp):
 
 
     def voronoi_thickness(self,
-                          start = 0,
-                          final = -1,
-                          step = 1,
+                          start = None,
+                          final = None,
+                          step = None,
                           lipid_list = None,
                           nbins = None,
                           edges = None):
         """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
+
 
         Parameters
         ----------
         layer : str, optional
             working lipid layer, by default "top"
         start : int, optional
-            Frame to start, by default 0
+            Frame to start, by default None. If None uses all the trajectory
         final : int, optional
-            final frame, by default -1
+            final frame, by default None. If None uses all the trajectory
         step : int, optional
-            Frames to skip, by default 1
+            Frames to skip, by default None. If None uses all the trajectory
         lipid_list : list, optional
             lipids involved in the computation, by default None
         nbins : int, optional
-            number of bins for the grid, by default 180
+            number of bins for the grid, by default None
         edges : list, optional
             A list with the limits of the grid [xmin,xmax,ymin,ymax]
 
@@ -453,24 +441,15 @@ class Voronoi2D(MembProp):
         ndarray
             Array with the averaged 2D APL, edges
         """
-        if lipid_list is None:
-            lipid_list = list(self.lipid_list)
 
-        if nbins is None:
-            nbins = self.nbins
+        lipid_list = list(self.lipid_list) if lipid_list is None else lipid_list
+        start = self.start if start is None else start
+        final = self.final if final is None else final
+        step = self.step if step is None else step
+        nbins = self.nbins if nbins is None else nbins
 
 
-        if edges is None:
-            xmin = self.v_min
-            xmax = self.v_max
-            ymin = self.v_min
-            ymax = self.v_max
-            edges = self.edges
-        else:
-            xmin = edges[0]
-            xmax = edges[1]
-            ymin = edges[2]
-            ymax = edges[3]
+
 
         no_present = [lipid for lipid in list(self.lipid_list) if lipid not in lipid_list]
         matrices = []
@@ -492,7 +471,7 @@ class Voronoi2D(MembProp):
             matrix_top,_ = self.map_voronoi(voronoi_dict["points"],
                                          heights,
                                          nbins,
-                                         [xmin, xmax, ymin, ymax],
+                                         edges,
 
                                          )
 
@@ -505,8 +484,7 @@ class Voronoi2D(MembProp):
             matrix_bot,_ = self.map_voronoi(voronoi_dict["points"],
                                          voronoi_dict["heights"],
                                          nbins,
-                                         [xmin, xmax, ymin, ymax],
-
+                                         edges,
                                          )
 
             matrix_thickness = matrix_top + matrix_bot
@@ -521,62 +499,45 @@ class Voronoi2D(MembProp):
 
     def voronoi_height(self,
                        layer = "top",
-                       start = 0,
-                       final = -1,
-                       step = 1,
+                       start = None,
+                       final = None,
+                       step = None,
                        lipid_list = None,
                        nbins = None,
                        edges = None):
-        """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
+        """Function to compute and map the grid height for several frames, map them to a 2D grid and average them
 
         Parameters
         ----------
         layer : str, optional
             working lipid layer, by default "top"
         start : int, optional
-            Frame to start, by default 0
+            Frame to start, by default None. If None uses all the trajectory
         final : int, optional
-            final frame, by default -1
+            final frame, by default None. If None uses all the trajectory
         step : int, optional
-            Frames to skip, by default 1
+            Frames to skip, by default None. If None uses all the trajectory
         lipid_list : list, optional
             lipids involved in the computation, by default None
         nbins : int, optional
-            number of bins for the grid, by default 180
+            number of bins for the grid, by default None
         edges : list, optional
             A list with the limits of the grid [xmin,xmax,ymin,ymax]
 
         Returns
         -------
         ndarray
-            Array with the averaged 2D APL, edges
+            Array with the averaged 2D height, edges
         """
-        if lipid_list is None:
-            lipid_list = list(self.lipid_list)
+        lipid_list = list(self.lipid_list) if lipid_list is None else lipid_list
+        start = self.start if start is None else start
+        final = self.final if final is None else final
+        step = self.step if step is None else step
+        nbins = self.nbins if nbins is None else nbins
 
-        if nbins is None:
-            nbins =self.nbins
-        # Check which lipids are not requested
+
         no_present = [lipid for lipid in list(self.lipid_list) if lipid not in lipid_list]
-
-        #print(no_present, lipid_list, self.lipid_list)
-        if edges is None:
-            xmin = self.v_min
-            xmax = self.v_max
-            ymin = self.v_min
-            ymax = self.v_max
-            edges = [xmin,xmax,ymin,ymax]
-        else:
-            xmin = edges[0]
-            xmax = edges[1]
-            ymin = edges[2]
-            ymax = edges[3]
-
-
         matrices = []
-
-
-
         for _ in self.u.trajectory[start:final:step]:
 
             voronoi_dict = self.voronoi_properties(layer = layer)
@@ -584,20 +545,12 @@ class Voronoi2D(MembProp):
             heights = voronoi_dict["heights"]
             for lipid in no_present:
                 heights[voronoi_dict["resnames"] == lipid] = np.nan
-
-
             matrix_height,_ = self.map_voronoi(voronoi_dict["points"],
                                          heights,
                                          nbins,
-                                         [xmin, xmax, ymin, ymax],
-
+                                         edges,
                                          )
-
-
-
-
             matrices.append(matrix_height)
-
         final_mat = np.nanmean(np.array(matrices), axis = 0)
         final_mat = np.flipud(final_mat)
         return final_mat, edges
@@ -605,35 +558,35 @@ class Voronoi2D(MembProp):
 
     def voronoi_splay(self,
                       layer = "top",
-                      start = 0,
-                      final = -1,
-                      step = 1,
+                      start = None,
+                      final = None,
+                      step = None,
                       lipid_list = None,
                       nbins = None,
                       edges = None):
-        """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
+        """Function to compute and map the grid splay angle for several frames, map them to a 2D grid and average them
 
         Parameters
         ----------
         layer : str, optional
             working lipid layer, by default "top"
         start : int, optional
-            Frame to start, by default 0
+            Frame to start, by default None. If None uses all the trajectory
         final : int, optional
-            final frame, by default -1
+            final frame, by default None. If None uses all the trajectory
         step : int, optional
-            Frames to skip, by default 1
+            Frames to skip, by default None. If None uses all the trajectory
         lipid_list : list, optional
             lipids involved in the computation, by default None
         nbins : int, optional
-            number of bins for the grid, by default 180
+            number of bins for the grid, by default None
         edges : list, optional
             A list with the limits of the grid [xmin,xmax,ymin,ymax]
 
         Returns
         -------
         ndarray
-            Array with the averaged 2D APL, edges
+            Array with the averaged 2D splay angle, edges
         """
         if lipid_list is None:
             lipid_list = list(self.lipid_list)
@@ -691,9 +644,9 @@ class Voronoi2D(MembProp):
 
     def project_property(self,
                       layer = "top",
-                      start = 0,
-                      final = -1,
-                      step = 1,
+                      start = None,
+                      final = None,
+                      step = None,
                       function = None,
                       nbins = None,
                       edges = None):
@@ -704,32 +657,32 @@ class Voronoi2D(MembProp):
         layer : str, optional
             working lipid layer, by default "top"
         start : int, optional
-            Frame to start, by default 0
+            Frame to start, by default None. If None uses all the trajectory
         final : int, optional
-            final frame, by default -1
+            final frame, by default None. If None uses all the trajectory
         step : int, optional
-            Frames to skip, by default 1
+            Frames to skip, by default None. If None uses all the trajectory
         lipid_list : list, optional
             lipids involved in the computation, by default None
         nbins : int, optional
-            number of bins for the grid, by default 180
+            number of bins for the grid, by default None
         edges : list, optional
             A list with the limits of the grid [xmin,xmax,ymin,ymax]
 
         Returns
         -------
         ndarray
-            Array with the averaged 2D APL, edges
+            Array with the averaged 2D properties (coming from fuction), edges
         """
-        if nbins is None:
-            nbins = self.nbins
-        if edges is None:
-            edges = self.edges
+        lipid_list = list(self.lipid_list) if lipid_list is None else lipid_list
+        start = self.start if start is None else start
+        final = self.final if final is None else final
+        step = self.step if step is None else step
+        nbins = self.nbins if nbins is None else nbins
         matrices = []
         for _ in self.u.trajectory[start:final:step]:
             voronoi_dict = self.voronoi_properties(layer = layer, function = function)
             property_vect = voronoi_dict["function"]
-
             matrix_height,_ = self.map_voronoi(voronoi_dict["points"],
                                          property_vect,
                                          nbins,
