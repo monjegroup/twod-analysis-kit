@@ -40,8 +40,11 @@
 
    .. autosummary::
    
+      ~BioPolymer2D.endF
       ~BioPolymer2D.endT
+      ~BioPolymer2D.startF
       ~BioPolymer2D.startT
+      ~BioPolymer2D.stepF
       ~BioPolymer2D.stepT
    
    

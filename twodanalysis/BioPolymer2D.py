@@ -11,6 +11,7 @@ Classes
     :undoc-members:
     :show-inheritance:
 """
+import matplotlib.pyplot as plt
 
 import MDAnalysis as mda
 import pandas as pd
@@ -31,18 +32,24 @@ import sys
 
 
 class BioPolymer2D:
-    def __init__(self, obj, surf_selection=None,surf_axis='z'):
-        """Class Initialization.
+    """Class Initialization.
 
-        Parameters
-        ----------
-        obj : AtomGroup or Universe
-            Selection to initialize the class. If initialized with a Universe it will take the whole Universe as AtomGroup. The MDAnalysis Universe and AtomGroup will be accesible to with the `self.universe` and `self.atom_group` class attributes.
-        Raises
-        ------
-        TypeError
-            Error raised if class is not initialized with a Universe or AtomGroup
-        """
+    Parameters
+    ----------
+    obj : AtomGroup or Universe
+        Selection to initialize the class. If initialized with a Universe it will take the whole Universe as AtomGroup. The MDAnalysis Universe and AtomGroup will be accesible to with the ``self.universe`` and ``self.atom_group`` class attributes.
+    surf_selection : str, optional
+        String selection in MDAnalysis format to define the surface (recomended). If ``surf_selection`` is given, ``surf_pos`` attribute will save the mean position of the surface over the time. This will particularly important for setting the `zlim` variable some of the analysis require. By default None
+    surf_axis : str, optional
+        Set in which distance is the surface. By default 'z'
+
+    Raises
+    ------
+    TypeError
+        Error raised if class is not initialized with a Universe or AtomGroup
+    """
+    def __init__(self, obj, surf_selection=None,surf_axis='z'):
+
         if isinstance(obj, mda.Universe):
             self.universe = obj
             self.atom_group = obj.atoms  # Select all atoms
@@ -73,7 +80,6 @@ class BioPolymer2D:
         self.surf_pos = None
 
         if not surf_selection is None:
-            print('****** IN *******')
             self.surf_pos=self.getPositions(select=surf_selection,inplace=False,surf_is_zero=False).mean(axis=(0,1)) #If want mean only over atoms set axis=1
             print(self.surf_pos)
 
@@ -87,13 +93,14 @@ class BioPolymer2D:
         self.hbonds = None
 
     def _recalculate_frames(self, triggered_by="time"):
-        """Recalculate frame-related attributes based on startT, endT, and stepT 
+        """Recalculate frame-related attributes based on ``startT``, ``endT``, and ``stepT`` 
         or startF, endF, and stepF."""
         if triggered_by == "time":
             # Update frame-related attributes based on time-related attributes
             self._startF = int(self._startT / self._stepT)
             self._endF = int(self._endT / self._stepT)
-            self._stepF = int(self._stepT / self._stepT)  # Should always be 1
+            self._stepF = int(self._stepT / (self.universe.trajectory.dt * 0.001))  # Should always be 1
+            # self._stepF = int(self._stepT / self._stepT)  # Should always be 1
         if triggered_by == "frame":
             # Update time-related attributes based on frame-related attributes
             self._startT = self._startF * self._stepT
@@ -180,24 +187,25 @@ class BioPolymer2D:
         print("  N selected segments:", len(self.atom_group.segments))
 
     def getPositions(self,pos_type='COM', surf_is_zero=True, inplace=True, select=None,getselection=False):
-        """Computes positions of selection from self.startT to self.endT with self.stepT steps of frames.
+        r"""Computes positions of selection from `self.startT` to ``self.endT`` with ``self.stepT`` steps of times.
         By default, these parameters are set to compute over the whole trajectory.
 
         Parameters
         ----------
         pos_type : str, optional
             Computes the positions of "all" atoms of the object or the "COM" (center of mass) of residues, by default 'COM'.
+        surf_is_zero : bool, optional
+            Whether to set position coordinate of the BioPolymer respect to the surface, computing :math:`z_{\textrm{biopol}}^i-z_{\textrm{surf}}` for each residue or atom. By default is True.        
         inplace : bool, optional
            If True, position values are assigned to the self.pos attribute and None is returned. If False, positions are returned, by default True
         select : None or str, optional
-            If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None., by default None
-        getselection : bool, optional
+            If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None.
             Whether or not to return the selected MDAnalysis AtomGroup as output.
 
         Returns
         -------
         None or np.ndarray
-            None if inplace=True, numpy array if inplace=False with the positions of the center of mass of residues (if pos_type="COM")or positions of all atoms (pos_type="all")
+            None if ``inplace=True``, numpy array if inplace=False with the positions of the center of mass of residues (if pos_type="COM") or positions of all atoms (pos_type="all")
         """
 
         print('Getting positions from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
@@ -233,7 +241,7 @@ class BioPolymer2D:
             return np.array(pos)
 
     def getCOMs(self, inplace=True, select=None):
-        """Computes positions of selection from self.startT to self.endT with self.stepT steps of frames.
+        """Computes positions of selection from ``self.startT`` to ``self.endT`` with ``self.stepT`` steps of time.
         By default, these parameters are set to compute over the whole trajectory.
 
         Parameters
@@ -246,7 +254,7 @@ class BioPolymer2D:
         Returns
         -------
         None or np.ndarray
-           None if inplace=True, numpy array if inplace=False with the center of mass of the AtomGroup.
+           None if ``inplace=True``, numpy array if ``inplace=False`` with the center of mass of the AtomGroup.
         """
 
         print('Getting center of masses from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
@@ -271,8 +279,7 @@ class BioPolymer2D:
 
     @staticmethod
     def FilterMinFrames(pos, zlim,Nframes,control_plots=False):
-        """Selects a set of Nframes in which the AtomGroup is closer to the surface and bellow a zlim threshold distance to the surface.
-
+        """Selects a set of ``Nframes`` in which the AtomGroup is closer to the surface and bellow a zlim threshold distance to the surface.
 
         Parameters
         ----------
@@ -285,6 +292,11 @@ class BioPolymer2D:
         control_plots : bool, optional
             If control plots are to be shown, by default False
 
+        Raises
+        ------
+        ValueError
+            Error raised if ``Nframes`` is bigger than the number of frames within the ``zlim`` angs threshold from the surface.
+        
         Returns
         -------
         np.ndarray
@@ -300,9 +312,14 @@ class BioPolymer2D:
         zMask= mean_z_top < zlim
         pos_masked=pos[zMask]
         print('There are', len(pos_masked),' frames < %i A in Z'%zlim)
-        print('Taking', Nframes, 'closest frames to surface...')
-        pos_masked=pos_masked[np.argsort(pos_masked[:,:,3].mean(axis=1),axis=0)][:Nframes]
-        # print(pos_masked[:5:,0,0],'pos_masked shuffled')
+
+        if Nframes is None:
+            pos_masked=pos_masked[np.argsort(pos_masked[:,:,3].mean(axis=1),axis=0)]
+        elif len(pos_masked) >= Nframes:
+            print('Taking', Nframes, 'closest frames to surface...')
+            pos_masked=pos_masked[np.argsort(pos_masked[:,:,3].mean(axis=1),axis=0)][:Nframes]
+        else:
+            raise ValueError(f"There are less than {Nframes} within the {zlim} angs threshold from the surface. Set `Nframes=None` if you want to consider all the frames < zlim. Otherwise, educe `Nframes` or  increase `zlim`.")
 
         if control_plots:
             ires=[0,1] ## If want to change defaut residue to make control plots, change here
@@ -312,8 +329,9 @@ class BioPolymer2D:
             plt.show()
         return pos_masked
 
-    def PolarAnalysis(self,select_res,Nframes,max_hist=None,sort=None,ax=None,plot=False,control_plots=False, zlim=14,Nbins=1000,resolution=5):
-        """Makes a Polar Histogram of the positions of the center of mass of select_res residues considering Nframes closest to the surface within the < zlim threshold. self.pos attribute is used to compute the center of mass of the AtomGroup, which will be the referential center of the histograms.
+    def PolarAnalysis(self,select_res,Nframes, zlim=14,max_hist=None,sort=None,ax=None,plot=False,control_plots=False,Nbins=1000,resolution=5):
+        """Makes a Polar Histogram of the positions of the center of mass of ``select_res`` residues considering ``Nframes`` closest to the surface within the < zlim threshold. 
+        ``self.pos`` attribute is used to compute the center of mass of the AtomGroup, which will be the referential center of the histograms.
         The colors of the histogram are ordered according to sort parameter.
 
         Parameters
@@ -321,7 +339,10 @@ class BioPolymer2D:
         select_res : str
             MDAnalysis string selection of the residues to which compute the histograms.
         Nframes : int
-            Nframes closest to the surface within the frames where the AtomGroup is < zlim.
+            Number of frames closest to the surface to consider that are at ``zlim`` distance from ``self.surf_pos``. ``self.surf_pos`` `must not` be `None`. 
+            If ``Nframes`` > `the total number of frames` in tha ``zlim`` adsorption threshold,the total of frames in the thresh are considered. 
+        zlim : float, optional
+            Distance (in angstroms) threshold limit in which the AtomGroup is considered adsorped to the surface, by default 14
         max_hist : None or float, optional
             Value to normalize the histograms. If None, highest histogram value is used to normalize the histograms, by default None
         sort : str, list, ndarray or None, optional
@@ -332,13 +353,16 @@ class BioPolymer2D:
             Show the polar plot (True) or only return the data (False), by default False
         control_plots : bool, optional
             Show control plots of the different steps of the polar analysis calculation., by default False
-        zlim : float, optional
-            Distance (in angstroms) threshold limit in which the AtomGroup is considered adsorped to the surface, by default 14
         Nbins : int, optional
              How many bins to use in the histograms., by default 1000
         resolution : float, optional
             One the position vectors of each residue are normalized, resolution is the value too which the normalized positions are multiplied. An increase in this value will make higher peaks in the histograms since position vector are further away. Reducing this value represents an increase of resolution of the histogram. By default 5
 
+        Raises
+        ------
+        KeyError
+            Error raised if ``self.surf_axis`` is not 'x', 'y' or 'z'.
+        
         Returns
         -------
         list,np.ndarray
@@ -367,7 +391,7 @@ class BioPolymer2D:
         if self.surf_axis=='z':                                        # If surf_axis if not 'z' by default, this must change slightly
             pos_centered=pos-np.array([0,to_center[0],to_center[1],0])
         else: 
-            raise TypeError("Must indicate the normal axis of the surface with surf_axis parameter. Options are 'x','y' or 'z'")
+            raise KeyError("Must indicate the normal axis of the surface with surf_axis parameter. Options are 'x','y' or 'z'")
         # if not self.surf_pos is None:
         #     dict_axis={'x':1,'y':2,'z':3}
         #     # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
@@ -529,7 +553,7 @@ class BioPolymer2D:
         Returns
         -------
         np.ndarray
-            3D, perpendicular and parallel radius of gyration values at each frame (`self.endF`-`self.startF` frames,3, `Natoms`)
+            3D, perpendicular and parallel radius of gyration values at each frame (``self.endF``-``self.startF`` frames,3, ``Natoms``)
         """
 
         # Define the classic color cycle
@@ -555,7 +579,8 @@ class BioPolymer2D:
             # plt.show()
         return rg_arr
 
-    def RgPerpvsRgsPar(self,rgs,color, marker='s',plot=True,show=False,ax=None,legend=True):
+    def RgPerpvsRgsPar(self,rgs,color, marker='s',plot='both',ax=None,legend=True,show=False,mfc='k',markersize=10):
+    # def RgPerpvsRgsPar(self,rgs,color,plot='both',ax=None,legend=True,show=False,**kwargs):
         r"""Generates :math:`R_{g\perp}` vs. :math:`R_{g\parallel}` plots. Also, returns the :math:`\langle R_{g\perp}^2 \rangle /\langle R_{g\parallel}^2 \rangle` ratio
 
         Parameters
@@ -566,10 +591,23 @@ class BioPolymer2D:
             Color used to plot points. Color names use the same of those of Matplotlib package.
         marker : str, optional
             Marker used to plot. Marker names use the same of those of Matplotlib package. , by default 's'
-        plot : bool, optional
-            If False, only the :math:`\langle R_{g\perp}^2 \rangle /\langle R_{g\parallel}^2 \rangle` ir returned with out make plot, by default True
+        plot : str, optional 
+            Whether to plot only the raw data (``plot='data'``), only the mean value of the data (``plot='mean'``), or both (``plot='both.'``)
+        ax : matplotlib.axes.Axes, optional
+            Set plot on a predefined Axis. If None, function defines if own axis internally. By default None
+        legend : bool, optional
+            Whether or not to make the default legend, by default True
         show : bool, optional
             If True, matplotlib.pyplot.show() is executed. This is left optional in case further characterization of plot is desired. Also, this enables showing multple data in the same figure. By default False.
+        mfc : str, optional
+            Set marker face color. Color options are intrinsic colors used in Matplotlib library. 
+        markersize : int, optional
+            Size of colors. Uses the same values as intrinsic values of Matplotlib library. 
+        
+        Raises
+        ------
+        KeyError
+            Error raised if ``plot`` is different than 'data', 'mean' or 'both'.
 
         Returns
         -------
@@ -579,18 +617,27 @@ class BioPolymer2D:
         data=rgs[:,2:]
         print(data.shape)
         rg_ratio=(data[:,0]**2).mean()/(data[:,1]**2).mean()
-        if plot:
-            if ax is None:
-                fig, ax = plt.subplots()  # Create a new figure and axes if not provided
-            ax.plot(data[:,1],data[:,0],'o',markersize=1,c=color)
+
+        if ax is None:
+            fig, ax = plt.subplots()  # Create a new figure and axes if not provided
+        if plot=='both':
             label='%s (%.3f)'%(self.system_name,rg_ratio)
-            ax.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=10, label=label,color='k')
-            ax.set_xlabel(r'$Rg_\parallel$ ($\mathrm{\AA}$)')
-            ax.set_ylabel(r'$Rg_\perp$ ($\mathrm{\AA}$)')
-            if legend:
-                ax.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)', fontsize=10)
-            if show:
-                plt.show()
+            ax.plot(data[:,1],data[:,0],'o',markersize=1,c=color,)
+            ax.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=markersize, label=label,color='k',mfc=mfc)
+        elif plot=='data':
+            ax.plot(data[:,1],data[:,0],'o',markersize=1,c=color,)
+        elif plot=='mean':
+            label='%s (%.3f)'%(self.system_name,rg_ratio)
+            # ax.plot(data[:,1].mean(),data[:,0].mean(),label=label,**kwargs)
+            ax.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=markersize, label=label,color='k',mfc=mfc)
+        else:
+            raise KeyError("`plot` must be 'data', 'mean' or 'both' ")
+        ax.set_xlabel(r'$Rg_\parallel$ ($\mathrm{\AA}$)')
+        ax.set_ylabel(r'$Rg_\perp$ ($\mathrm{\AA}$)')
+        if legend:
+            ax.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)', fontsize=10)
+        if show:
+            plt.show()
         return rg_ratio
 
     ############# Compute Contour Area #################
@@ -687,6 +734,8 @@ class BioPolymer2D:
             If True, stores the paths of al contour levels in self.kdeanalysis.paths. Otherwise, it only returns it. By default True
         ax : matplotlib.axes.Axes, optional
             Set plot on a predefined Axis. If None, function defines if own axis internally. By default None
+        show : bool, optional
+            If True, matplotlib.pyplot.show() is executed. This is left optional in case further characterization of plot is desired. Also, this enables showing multple data in the same figure. By default False.
         control_plots : bool, optional
             Make control plots, by default False
 
@@ -742,7 +791,7 @@ class BioPolymer2D:
 
     @staticmethod
     def getAreas(paths,contour_lvl,getTotal=False):
-        """Computes the area of each path a given contour level. Negative values of area are holes in the contour level. If getTotal=True, computes the area of the whole contour level.
+        """Computes the area of each path a given contour level. Negative values of area are holes in the contour level. If ``getTotal=True``, computes the area of the whole contour level.
 
         Parameters
         ----------
@@ -751,7 +800,7 @@ class BioPolymer2D:
         contour_lvl : int
             Contour level to compute the area.
         getTotal : bool, optional
-            If False, gives the area of each path of the contour level. If getTotal=True, sums up the contribution of each path in the contour level returning the area of the whole contour level. By default False
+            If False, gives the area of each path of the contour level. If ``getTotal=True``, sums up the contribution of each path in the contour level returning the area of the whole contour level. By default False
 
         Returns
         -------
@@ -772,7 +821,7 @@ class BioPolymer2D:
             return Areas
         
         
-    def KDEAnalysisSelection(self,select_res,Nframes=1000,zlim=15,ax=None,show=False,legend=False,plot_COM=True):
+    def KDEAnalysisSelection(self,select_res,Nframes,zlim=15,ax=None,show=False,legend=False,plot_COM=True):
         """KDE Contours for a set of selected residues. This computes the paths of all the contour levels of each residue.
 
         Parameters
@@ -780,13 +829,18 @@ class BioPolymer2D:
         select_res : str
             MDAnalaysis-like selection of residues to compute their KDE Contour paths
         Nframes : int, optional
-            Number of frames to use. This fills value of :code:`self.FilterMinFrames`, by default 1000
+            Number of frames to use within :math:`mean(z_{select\_res})` < ``zlim``. This fills value of :code:`self.FilterMinFrames`.
         zlim : float, optional
             Height limit to consider as adsorted frames. This fills value of :code:`self.FilterMinFrames`, by default 15
+        ax : matplotlib.axes.Axes, optional
+            Set plot on a predefined Axis. If None, function defines if own axis internally. By default None
         show : bool, optional
             Where or not to show plot. Convinient to use False if you want modify the default plot, by default False
         legend : bool, optional
             Whether or not to make the default legend, by default False
+        plot_COM : bool, optional
+            Whether or not to plot the center of mass of ``select_res``. Particularly relevant if comparing results with ``PolarAnalysis`` method, 
+            since this will be the center of the polar histograms if ``select_res`` are the same in both analysis. By default True
 
         Returns
         -------
@@ -870,7 +924,11 @@ class BioPolymer2D:
             True to have a look at the Hbonds over the trajectory. By default False
         inplace : bool, optional
             If True, it stores results of H-bond run in self.hbonds. by default True
-
+        
+        Raises
+        ------
+        SelectionError
+            Error raised if any of the two selections lack of hydrogens or acceptors.
 
         Returns
         -------
@@ -920,17 +978,18 @@ class BioPolymer2D:
         return hbonds.results
 
     def HbondsPerResidues(self,sorted=True, unique_res=False):
-        """Computes the number of H-bonds of each residue during the simulation. self.getHbonds(inplace=True) must be computed prior to the use this function.
+        """Computes the number of H-bonds of each residue during the simulation. ``self.getHbonds(inplace=True)`` must be computed prior to the use this function.
 
         Parameters
         ----------
         sorted : bool, optional
             If True, returns data sorted by number of H-bonds. By default True
-
+        unique_res : bool, optional
+            Whether or not to consider only one hydrogen bond per residue. Important to consider percentage in which a participates in some H-bond. By default False
         Returns
         -------
         pandas.DataFrame
-            DataFrame showing all the residues with H-bonds.
+            DataFrame showing all the residues with H-bonds and H-bond count
         """
         result=np.array(self.hbonds.hbonds[:,[2,3]], dtype=int) #Indexes of Hydrogen and acceptors starting from 0.
         # print(result[0,0],self.universe.atoms[result[0,0]-1], 'result check') ## [result[0,0]-1 is an O, not a hydrogen, not correct to substract 1
@@ -975,6 +1034,8 @@ class BioPolymer2D:
             Residue names to be filtered out of the plot and the output table.
         print_table : bool, optional
             Whether or not to print the pandas.DataFrame table with the data shown in figure, by default True
+        ax : matplotlib.axes.Axes, optional
+            Set plot on a predefined Axis. If None, function defines if own axis internally. By default None
         show : bool, optional
             Whether or not to show the figure. Convinient to use False if want to do further tunning the plot. By default False
 
@@ -1048,6 +1109,8 @@ class BioPolymer2D:
             Color to plot the contour level , by default 'k', corresponding to a black color.
         alpha : float, optional
             Sets trasparency. Fills parameter alpha of matplolib.pyplot.plot method by default 0.3
+        ax : matplotlib.axes.Axes, optional
+            Set plot on a predefined Axis. If None, function defines if own axis internally. By default None
         show : bool, optional
             Where to show or not the plot yet with matplolib.pyplot.plot, by default False
         """
