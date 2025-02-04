@@ -96,6 +96,11 @@ class MembProp:
         # Set radius sizes of different elements
         self.radii_dict = None
         self.chain_info = {}
+        self.chain_conections = {}
+        self.non_polar_dict = {}
+        self.polar_dict = {}
+        self.first_lipids = {}
+        self.non_polar_visualize = {}
 
         self.working_lip = {
                                 "CHL1" : {"head" :"O3", "charge" : 0},
@@ -142,7 +147,7 @@ class MembProp:
 
     def add_radii(self, radii_dict = None):
         if radii_dict is None:
-            radii_dict = {"H": 1.1,
+            self.radii_dict = {"H": 1.1,
                             "N": 1.55,
                             "C": 1.7,
                             "P": 1.8,
@@ -195,7 +200,7 @@ class MembProp:
             else:
                 non_polar = self.memb.select_atoms(f"resid {first_lipid} and (name *C3* or name H*Y or name H*X or name H*Z  or name *C2* or name H*R or name H*S or name H*T) and not (name C3 or name C31 or name HY or name HX or name HZ  or name C2 or name C21 or name HR or name HS or name HT)")
             self.non_polar_dict[lipid] = list(non_polar.names)
-            self.non_polar_visualize[lipid] = [all_lip, non_polar]
+
 
 
     @staticmethod
@@ -207,8 +212,8 @@ class MembProp:
         string = string + ") "
         return string
 
-    @staticmethod
-    def build_resname_head(resnames_list):
+    @classmethod
+    def build_resname_head(self, resnames_list):
         resnames_list = list(resnames_list)
         string = f"( (resname {resnames_list[0]}  and name {self.working_lip[resnames_list[0]]['head']}) "
 
@@ -385,7 +390,7 @@ class MembProp:
 
 
     def nx_polarity(self):
-        import matplotlib.pyplot as plt
+
 
 
         self.non_polar_dict = {}
@@ -446,7 +451,7 @@ class MembProp:
 
         self.first_lipids = {}
 
-        self.chain_conections = {}
+
         for lipid in self.lipid_list:
             first_lipid = self.memb.select_atoms(f"resname {lipid}")
             first_id = first_lipid.resids[0]
