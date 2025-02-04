@@ -67,52 +67,44 @@ class Cumulative2D(MembProp):
                         step = 1,
                         method = "numpy",
                         ):
+        """Generates 2D SCD for specific lipids
 
-
-        """ Computes the 2D histogram for SCD
+        Parameters
         ----------
-        lipid : str
-            Working lipid to compute the order parameters
-        layer : str
-            working layer, can be top, bot or both
-        nbins : int
-            number of divisions of the grid
-        n_chain : int or list
-            number of carbons in the first chain or in both chains, e.g., 16 or [16,18], defaults to None
-        v_min : float, optional
-            min value for the 2D grid, by default None
-        v_max : float, optional
-            min value for the 2D grid,, by default None
-        all_head : AtomGroup, optional
-            atoms considered to define the middle of the membrane (all p atoms used as default), by default None
+        lipid : str, optional
+            Lipid to compute SCD, by default "DOPC"
+        layer : str, optional
+            Layer to project in the 2D plane, by default "top"
+        nbins : int, optional
+            Number of bins, by default None
+        n_chain : list(int), optional
+            list with the number of carbons in each chain i.e., [16,18], by default None
+        edges : list(int), optional
+            Edges for the 2D grid in the shape [xmin,xmax,ymin,ymax], by default None
         start : int, optional
-            start frame, by default None
+            Frame to start, by default None
         final : int, optional
-            final frame, by default None
+            Final frame to consider, by default None
         step : int, optional
-            frames to skip, by default 1
+            Frames to skip, by default 1
         method : str, optional
-            method to compute the 2d histogram, by default "numpy" which uses np.histogram2d for each
-            carbon in the lipid tails.
+            Method to do the averages, by default "numpy"
 
         Returns
         -------
-        ndarray(n_grid,n_grid), ndarray(4) (Still check the return)
-            matrix containind the 2D SCD and the edges in the following disposition [v_min,v_max,v_min,_vmax]
+        ndarray(n_grid,n_grid), list
+            matrix containing the 2D SCD and list containing edges in
+            the following disposition [v_min,v_max,v_min,_vmax]
             (Can be used to plot directly with extent)
         """
-        if nbins is None:
-            nbins = self.nbins
 
+
+        nbins = self.nbins if nbins is None else nbins
+        start = self.start if start is None else start
+        final = self.final if final is None else final
         all_head = self.all_head
 
-        if start is None:
-            start = self.start
-        if final is None:
-            final = self.final
-
-        if n_chain is None:
-            n_chain = self.chain_info[lipid]
+        n_chain = self.chain_info[lipid] if n_chain is None else n_chain
 
         try:
             n_chain1 = n_chain[0]
@@ -125,37 +117,28 @@ class Cumulative2D(MembProp):
         for _ in self.u.trajectory[start:final:step]:
             z = all_head.positions[:,2]
             z_mean = z.mean() # get middle of the membrane
-
             #Pick atoms in the layer
             if layer == "both":
                 layer_at = self.memb.select_atoms(f"byres ((resname {lipid} and name {self.working_lip[lipid]['head']}))")
             else:
                 layer_at = self.memb.select_atoms(f"byres ((resname {lipid} and name {self.working_lip[lipid]['head']}) and prop z {self.map_layers[layer]} {z_mean})")
-
-
             only_p = layer_at.select_atoms(f"name {self.working_lip[lipid]['head']}")
             positions = only_p.positions[:,:2]
             angles_sn1 = OrderParameters.individual_order_sn1(layer_at, lipid, n_chain1)
             angles_sn1 = angles_sn1.T
-
-
             positions = np.concatenate([positions, angles_sn1], axis = 1)
             if n_chain2 != 0:
                 angles_sn2 = OrderParameters.individual_order_sn2(layer_at, lipid, n_chain2)
                 angles_sn2 = angles_sn2.T
                 positions = np.concatenate([positions, angles_sn2], axis = 1)
-
             matrix.append(positions) # Expect dim (n_lipids, 2+n_chain1+n_chain2)
-
-
-
 
         #matrix = np.array(matrix) # Expect dim (frames, n_lipids, 2+n_chain1+n_chain2)
         matrix = np.concatenate(matrix, axis = 0) # Expect dim (n_lipids*frames, 2+n_chain1+n_chain2)
-        #print(matrix.shape)
 
-        if edges is None:
-            edges = self.edges
+
+
+        edges = self.edges if edges is None else edges
 
         if method == "numpy":
             H, edges = self.numpyhistogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = nbins, edges = edges)
@@ -174,7 +157,7 @@ class Cumulative2D(MembProp):
                     sample1,
                     weights,
                     n_chain,
-                    bins = 10,
+                    bins = None,
                     edges = None):
         """ Computes the 2D histogram of 2D data with various values taking an average of them
 
@@ -189,7 +172,7 @@ class Cumulative2D(MembProp):
         bins : int, optional
             Number of bins to split the space, by default 10
         edges : list(float)
-            Edges for the 2D grid
+            Edges for the 2D grid in the shape [xmin,xmax,ymin,ymax]
 
         Returns
         -------
@@ -200,32 +183,24 @@ class Cumulative2D(MembProp):
             limits = [[self.edges[0],self.edges[1]], [self.edges[2], self.edges[2]]]
         else:
             limits = [[edges[0],edges[1]], [edges[2], edges[3]]]
-
         nbin = np.empty(2,np.intp)
         edges = 2*[None]
-
         for i in range(2):
             edges[i] = np.linspace(limits[i][0], limits[i][1], bins +1)
             nbin[i] = len(edges[i]) + 1
-
         Ncount = (tuple(np.searchsorted(edges[i], sample1[:,i], side = "right") for i in range(2)))
-
         for i in range(2):
             on_edge = (sample1[:,i] == edges[i][-1])
             Ncount[i][on_edge] -= 1
-
         xy = np.ravel_multi_index(Ncount, nbin)
         xy_test = xy.reshape(-1,1)
-
         xy_test = np.concatenate((xy_test, weights), axis = 1)
-
         hist = self.count_order(xy_test, nbin.prod(), n_chain)
         hist = hist.reshape(nbin)
         hist = hist.astype(float, casting = "safe")
         core = 2*(slice(1,-1),)
         hist = hist[core]
         edges = [edges[0][0], edges[0][-1], edges[1][0], edges[1][-1]]
-
         return hist, edges
 
     # Computes teh histogram of the average order parameters in each bin
@@ -368,7 +343,7 @@ class Cumulative2D(MembProp):
                         edges = None,
                         start = None,
                         final = None,
-                        step = 1,
+                        step = None,
                         plot = False):
         """all_lip_order Find the 2D order parameters for all lipids
 
@@ -382,8 +357,6 @@ class Cumulative2D(MembProp):
             number of bins
         edges : list(float)
             Edges for the grid in the shape [xmin,xmax,ymin,ymax]
-        all_head : (mda selection, optional), optional
-            heads to be considered, by default None
         start : (int, optional), optional
             start frame, by default None
         final : (int, optional), optional
@@ -469,15 +442,16 @@ class Cumulative2D(MembProp):
              Lipid to work, by default "DSPC"
         layer : str, optional
             Layer to work, by default 'top'
-        filename : str, optional
-            filename to write data, by default None
-        include_charge : bool, optional
-            Include or not charge, by default False
+        function : function, optional
+            Function that returns two arrays, the first with ids, and the second with any property value.
+            Defaults to None
+        splay : bool, optional
+            Include or not splay angle computations, by default False
 
         Returns
         -------
-        _type_
-            _description_
+        pd.DataFrame
+            Dataframe containing x,y,z,id,splay,function for each lipid
         """
 
 
@@ -624,14 +598,10 @@ class Cumulative2D(MembProp):
     def build_resname_atom(resnames, atomsnames):
         resnames = list(resnames)
         string = f"( (resname {resnames[0]}  and name {atomsnames[0]} ) "
-
         for i, resname in enumerate(resnames[1:]):
             string += f" or (resname {resname}  and name {atomsnames[ i + 1]}) "
-
         string +=  " ) "
         return string
-
-
     #def individual_splay(self, atom_group, lipids):
 
 
@@ -648,12 +618,12 @@ class Cumulative2D(MembProp):
 
         Parameters
         ----------
-        lipids : list(str)
+        lipid_list : list(str)
             Lipids to include in the height analysis
         layer : str
-            Working layer for thickness
+            Working layer for heigt. It can be bot/top
         edges : list
-            Edges for the grid
+            Edges for the grid in the shape [xmin,xmax,ymin,ymax]
         start : int, optional
             Frame to start analysis, by default None
         final : int, optional
@@ -662,12 +632,11 @@ class Cumulative2D(MembProp):
             Steps to skip, by default None
         nbins : int, optional
             Number of bins to divide the grid space, by default 50
-        clean : bool, optional
-            Decide if rerun and overwrite surface generated files, by default True
+
 
         Returns
         -------
-        ndarray(nbins,nbins)
+        ndarray(nbins,nbins), edges
             Retun a matrix with the height information
         """
         nbins = self.nbins if nbins is None else nbins
@@ -725,16 +694,16 @@ class Cumulative2D(MembProp):
                      final = None,
                      step = None,
                      nbins = None):
-        """ Code to divide the space in a 2D grid and compute the height referenced to zmean
+        """ Code to divide the space in a 2D grid and compute the splay angle
 
         Parameters
         ----------
-        lipids : list(str)
-            Lipids to include in the height analysis
+        lipid_list : list(str)
+            Lipids to include in the analysis
         layer : str
-            Working layer for thickness
+            Working layer. Can be top/bot
         edges : list
-            Edges for the grid
+            Edges for the grid in the shape [xmin,xmax,ymin,ymax]
         start : int, optional
             Frame to start analysis, by default None
         final : int, optional
@@ -742,13 +711,12 @@ class Cumulative2D(MembProp):
         step : int, optional
             Steps to skip, by default None
         nbins : int, optional
-            Number of bins to divide the grid space, by default 50
-        clean : bool, optional
-            Decide if rerun and overwrite surface generated files, by default True
+            Number of bins to divide the grid space, by default None
+
 
         Returns
         -------
-        ndarray(nbins,nbins)
+        ndarray(nbins,nbins), edges
             Retun a matrix with the height information
         """
 
@@ -793,33 +761,33 @@ class Cumulative2D(MembProp):
                   nbins = None,
                   edges = None,
                   lipid_list = None,
-                  start = 0,
-                  final=-1,
-                  step = 1):
-        """Find the thichness mapped in a 2d grid
+                  start = None,
+                  final=None,
+                  step = None):
+        """Find the thickness mapped in a 2d grid
 
         Parameters
         ----------
         nbins : int
             number of bins for thickness
         edges : list
-            Edges for the grid
+            Edges for the grid in the shape [xmin,xmax,ymin,ymax]
         lipids : list(str)
             Lipids to be considered in the thickness computation
         start : int, optional
-            Start frame, by default 0
+            Start frame, by default None
         final : int, optional
-            Final frame, by default -1
+            Final frame, by default None
         step : int, optional
-            Step frame, by default 1
+            Step frame, by default None
 
         Returns
         -------
-        np.array, np.array
+        np.array(nbins,nbins), edges
             Matrix with the thickness, edeges for the matrix
         """
-        if nbins is None:
-            nbins = self.nbins
+
+        nbins = self.nbins if nbins is None else nbins
         if lipid_list is None:
             lipid_list = list(self.lipid_list)
             if "CHL1" in lipid_list:
@@ -856,16 +824,20 @@ class Cumulative2D(MembProp):
                       step = None,
                       nbins = None,
                       ):
-        """ Code to divide the space in a 2D grid and compute the height referenced to zmean
+        """ Code to divide the space in a 2D grid and project the value of a property
 
         Parameters
         ----------
-        lipids : list(str)
-            Lipids to include in the height analysis
+        function : function
+            Function that takes mda.Atomgroup and returns two arrays: (1) array containing ids
+            (2) array containing values for those ids
         layer : str
-            Working layer for thickness
-        edges : list
-            Edges for the grid
+            Working layer can be bot/top, defaults to "top"
+        distribution : bool
+            If true compute the histogram instead of the averages. This is useful when someone wants
+            to visualize the lipid lateral distribution over time.
+        edges : list(float)
+            Edges for the grid in the shape [xmin,xmax,ymin,ymax]
         start : int, optional
             Frame to start analysis, by default None
         final : int, optional
@@ -874,12 +846,11 @@ class Cumulative2D(MembProp):
             Steps to skip, by default None
         nbins : int, optional
             Number of bins to divide the grid space, by default 50
-        clean : bool, optional
-            Decide if rerun and overwrite surface generated files, by default True
+
 
         Returns
         -------
-        ndarray(nbins,nbins)
+        ndarray(nbins,nbins), edges
             Retun a matrix with the height information
         """
 
