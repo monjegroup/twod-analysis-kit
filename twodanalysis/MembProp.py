@@ -27,6 +27,8 @@ class MembProp:
                 self,
                 obj,
                 lipid_list = None,
+                connection_chains = None,
+                working_lip = None,
                 verbose = False,
             ):
         """Class set up common properties and to automatically guess useful membrane properties
@@ -44,8 +46,13 @@ class MembProp:
             If not provided, the code will guess them based on eliminating protein and RNA
             from the atoms. If you upload a trajectory with water and ions and does not specify this
             information it can lead to errors, by default None
-        edges : list(str), optional
-            edges in the for [xmin,xmax,ymin,ymax]
+        connection_chains : dict, optional
+            Dictionary with the information of the atoms that connect the lipid tails and the hidrophilic head.
+            This dictionary should be as follows {"CHL1" : [("O3", "C3")], "DODMA" : [("C21", "C22"), ("C31", "C32")],}
+            and should be provided for each lipid. Defaults to None (If None we use ([("C21", "C22"), ("C31", "C32")] for most lipids))
+        working_lip : dict, optional
+            Dictionary with the information of the lipid heads to use for the multiple analysis. The dictionary should be as follows
+            {"CHL1" : {"head" : "O3"}, "DODMA" : {"head" : "N1"}, "DSPC" : {"head":"P"}} and should have entries for all the lipids
         verbose : bool, optional
             Print information of the membrane, by default False
         """
@@ -111,7 +118,8 @@ class MembProp:
                 self.working_lip[lipid] = {"head" : "P", "charge" : 0}
                 self.connection_chains[lipid] = [("C21", "C22"), ("C31", "C32")]
 
-
+        self.connection_chains = self.connection_chains if connection_chains is None else connection_chains
+        self.working_lip = self.working_lip if working_lip is None else working_lip
         self.all_head = self.memb.select_atoms(self.build_resname(self.lipid_list) + " and name P")
 
 
