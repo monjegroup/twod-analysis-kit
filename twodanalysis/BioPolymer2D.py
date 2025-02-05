@@ -48,7 +48,7 @@ class BioPolymer2D:
     TypeError
         Error raised if class is not initialized with a Universe or AtomGroup
     """
-    def __init__(self, obj, start=None, step=None,end=None,by_frames=True,surf_selection=None,surf_axis='z'):
+    def __init__(self, obj,biopol_selection=None ,surf_selection=None, start=None, step=None,end=None,by_frames=True,surf_axis='z'):
 
         if isinstance(obj, mda.Universe):
             self.universe = obj
@@ -59,73 +59,90 @@ class BioPolymer2D:
         else:
             raise TypeError("Input must be an MDAnalysis Universe or AtomGroup")
         
+        # if not biopol_selection is None:
+        #     if isinstance(biopol_selection, str): 
+
+
+
+        
         #Error or default value for surface direction? 
         # if surf_selection and not surf_axis:
         #     raise TypeError("If a surface selections if assigned, you must indicate the axis of the surface with surf_axis parameter. Options are 'x','y' or 'z')"
 
         # Initialize trajectory attributes
-        if start is None:
-            self._startT = self.universe.trajectory[0].time * 0.001
-            self._startF = self.universe.trajectory[0].frame
-        elif not start is None and isinstance(start,(float,int)):
-            if by_frames is True:
-                if isinstance(start,int):
-                    self._startF=start
-                    # self._recalculate_frames(triggered_by='frame',to_update='start')
-                else:
-                    raise TypeError("`start` must be an integer.")
+        self._startT = self.universe.trajectory[0].time * 0.001
+        self._endT = self.universe.trajectory[-1].time * 0.001
+        self._stepT = self.universe.trajectory.dt * 0.001
 
-            elif by_frames is False:
-                self._startT=start
-                # self._recalculate_frames(triggered_by='time',to_update='start')
+        self._startF = self.universe.trajectory[0].frame
+        self._endF = self.universe.trajectory[-1].frame
+        self._stepF = 1
+        # Initialize trajectory attributes
+        
+        # if start is None:
+        #     self._startT = self.universe.trajectory[0].time * 0.001
+        #     self._startF = self.universe.trajectory[0].frame
+        if not start is None:
+            if isinstance(start,(float,int)):
+                if by_frames is True:
+                    if isinstance(start,int):
+                        self._startF=start
+                        # self._recalculate_frames(triggered_by='frame',to_update='start')
+                    else:
+                        raise TypeError("`start` must be an integer.")
+
+                elif by_frames is False:
+                    self._startT=start
+                    # self._recalculate_frames(triggered_by='time',to_update='start')
+                else:
+                    raise TypeError("`by_frames` must be boolean. Can only be True or False.")
             else:
-                raise TypeError("`by_frames` must be boolean. Can only be True or False.")
-        else:
-            raise TypeError("`start` must be a float, or integer if `by_frames` is True.")
+                raise TypeError("`start` must be a float, or integer if `by_frames` is True.")
         
 
-        if step is None:
-            self._stepT = self.universe.trajectory.dt * 0.001
-            self._stepF = 1
-        elif not step is None and isinstance(step,(float,int)):
-            if by_frames is True:
-                if isinstance(step,int):
-                    self._stepF=step
-                    # self._recalculate_frames(triggered_by='frame',to_update='step')
-                else:
-                    raise TypeError("`step` must be an integer.")
+        # if step is None:
+        #     self._stepT = self.universe.trajectory.dt * 0.001
+        #     self._stepF = 1
+        if not step is None:
+            if isinstance(step,(float,int)):
+                if by_frames is True:
+                    if isinstance(step,int):
+                        self._stepF=step
+                        # self._recalculate_frames(triggered_by='frame',to_update='step')
+                    else:
+                        raise TypeError("`step` must be an integer.")
 
-            elif by_frames is False:
-                self._stepT=step
-                # self._recalculate_frames(triggered_by='time',to_update='step')
+                elif by_frames is False:
+                    self._stepT=step
+                    # self._recalculate_frames(triggered_by='time',to_update='step')
+                else:
+                    raise TypeError("`by_frames` must be boolean. Can only be True or False.")
             else:
-                raise TypeError("`by_frames` must be boolean. Can only be True or False.")
-        else:
-            raise TypeError("`step` must be a float, or integer if `by_frames` is True.")
+                raise TypeError("`step` must be a float, or integer if `by_frames` is True.")
         
 
-        if end is None:
-            self._endT = self.universe.trajectory[-1].time * 0.001
-            self._endF = self.universe.trajectory[-1].frame
-        elif not end is None and isinstance(end,(float,int)):
-            if by_frames is True:
-                if isinstance(end,int):
-                    self._endF=end
-                    # self._recalculate_frames(triggered_by='frame',to_update='end')
+        if not end is None:
+            if isinstance(end,(float,int)):
+                if by_frames is True:
+                    if isinstance(end,int):
+                        self._endF=end
+                        # self._recalculate_frames(triggered_by='frame',to_update='end')
+                    else:
+                        raise TypeError("`end` must be an integer.")
+
+                elif by_frames is False:
+                    self._endT=end
+                    # self._recalculate_frames(triggered_by='time',to_update='end')
                 else:
-                    raise TypeError("`end` must be an integer.")
-
-            elif by_frames is False:
-                self._endT=end
-                # self._recalculate_frames(triggered_by='time',to_update='end')
+                    raise TypeError("`by_frames` must be boolean. Can only be True or False.")
             else:
-                raise TypeError("`by_frames` must be boolean. Can only be True or False.")
-        else:
-            raise TypeError("`end` must be a float, or integer if `by_frames` is True.")
+                raise TypeError("`end` must be a float, or integer if `by_frames` is True.")
+        
+        self._sim_startT = self.universe.trajectory[0].time * 0.001
+        self._sim_dt = self.universe.trajectory.dt * 0.001
 
-
-        # Calculate dependent attributes
-        self._recalculate_frames()
+        # Call _recalculate_frames only after setting the value
+        self._recalculate_frames(triggered_by="frame" if by_frames else "time")
         self.surf_axis=surf_axis
         self.surf_pos = None
 
@@ -142,39 +159,21 @@ class BioPolymer2D:
         self.kdeanalysis.kde = None
         self.hbonds = None
 
-    def _recalculate_frames(self,to_update='all', triggered_by="time",):
+
+    def _recalculate_frames(self, triggered_by="time",):
         """Recalculate frame-related attributes based on ``startT``, ``endT``, and ``stepT`` 
         or startF, endF, and stepF."""
         if triggered_by == "time":
             # Update frame-related attributes based on time-related attributes
-            if to_update is 'start':
-                self._startF = int(self._startT / self._stepT)
-            elif to_update is 'end':
-                self._endF = int(self._endT / self._stepT)
-            elif to_update is 'step':
-                self._stepF = int(self._stepT / (self.universe.trajectory.dt * 0.001)) 
-            elif to_update is 'all':
-                self._startF = int(self._startT / self._stepT)
-                self._endF = int(self._endT / self._stepT)
-                self._stepF = int(self._stepT / (self.universe.trajectory.dt * 0.001)) 
-                # self._stepF = int(self._stepT / self._stepT)  # Should always be 1
-            else:
-                raise KeyError("`to_update` must be 'start', 'step' or 'end'. ")
+            self._startF = round(self._startT / self._sim_dt)
+            self._endF = round(self._endT / self._sim_dt)
+            self._stepF = round(self._stepT / self._sim_dt) 
+            # self._stepF = int(self._stepT / self._stepT)  # Should always be 1
 
         if triggered_by == "frame":
-            # Update time-related attributes based on frame-related attributes
-            if to_update is 'start':
-                self._startT = self._startF * self._stepT
-            elif to_update is 'end':
-                self._endT = self._endF * self._stepT
-            elif to_update is 'step':
-                self._stepT = self._stepF * self.universe.trajectory.dt * 0.001
-            elif to_update is 'all':
-                self._startT = self._startF * self._stepT
-                self._endT = self._endF * self._stepT
-                self._stepT = self._stepF * self.universe.trajectory.dt * 0.001
-            else:
-                raise KeyError("`to_update` must be 'start', 'step' or 'end'. ")
+            self._stepT = self._stepF * self._sim_dt
+            self._startT = self._startF * self._sim_dt
+            self._endT = self._endF * self._sim_dt
 
         self.times = np.arange(self._startT, self._endT, self._stepT)
         self.frames = np.arange(self._startF, self._endF,self._stepF)
