@@ -50,12 +50,18 @@ class BioPolymer2D:
     """
     def __init__(self, obj,biopol_selection=None ,surf_selection=None, start=None, step=None,end=None,by_frames=True,surf_axis='z'):
 
-        if isinstance(obj, mda.Universe):
+        if isinstance(obj, mda.Universe) and biopol_selection is None:
             self.universe = obj
             self.atom_group = obj.atoms  # Select all atoms
-        elif isinstance(obj, mda.core.groups.AtomGroup):
+        elif isinstance(obj, mda.core.groups.AtomGroup) and biopol_selection is None:
             self.universe = obj.universe
             self.atom_group = obj
+        elif not biopol_selection is None:
+            if isinstance(biopol_selection, str):
+                self.universe = obj.universe
+                self.atom_group = obj.select_atoms(biopol_selection)
+            else:
+                raise TypeError("`biopol_selection` must be a string and a valid MDAnalysis selection")
         else:
             raise TypeError("Input must be an MDAnalysis Universe or AtomGroup")
         
@@ -147,8 +153,12 @@ class BioPolymer2D:
         self.surf_pos = None
 
         if not surf_selection is None:
-            self.surf_pos=self.getPositions(select=surf_selection,inplace=False,surf_is_zero=False).mean(axis=(0,1)) #If want mean only over atoms set axis=1
-            print(self.surf_pos)
+            if isinstance(surf_selection, str):
+                self.surf_pos=self.getPositions(select=surf_selection,inplace=False,surf_is_zero=False).mean(axis=(0,1)) #If want mean only over atoms set axis=1
+                print(' Mean position of the surface is', self.surf_pos)
+            else:
+                raise TypeError("`surf_selection` must be a string and a valid MDAnalysis selection")
+
 
 
         self.pos = None
@@ -437,6 +447,10 @@ class BioPolymer2D:
             Histogram data (Nresidues, 2 <X_bin_values,Y_bin_values>, Nbins),
             Positions in order in which they were plotted (Nframes,Nresidues or Natoms,4 <t,x,y,z>)
         """
+        if self.surf_axis in ['x','y']:
+            raise KeyError("`PolarAnalysis` method is currently only working with surfaces with normal axis in 'z' direction. Future versions will include computing this method for 'x', 'y' and 'z' directions.")
+        elif self.surf_axis is None:
+            raise KeyError("Must indicate the normal axis of the surfaces with `surf_axis` attribute. `PolarAnalysis` method is currently only working with surface with normal axis in 'z' direction. Future versions will include computing this method for 'x', 'y' and 'z' directions.")
 
         # colors=['C%s'%(c+7) for c in range(10)]
         prot_center=self.atom_group
@@ -452,14 +466,15 @@ class BioPolymer2D:
         print(pos.shape)
         # sys.exit()
         print(pos.mean(axis=(0,1)), 'pos mean')
-        if self.surf_axis=='x':
-            pos_centered=pos-np.array([0,0,to_center[1],to_center[2]])
-        if self.surf_axis=='y':
-            pos_centered=pos-np.array([0,to_center[0],0,to_center[2]])
+        # if self.surf_axis=='x':
+        #     pos_centered=pos-np.array([0,0,to_center[1],to_center[2]])
+        # if self.surf_axis=='y':
+        #     pos_centered=pos-np.array([0,to_center[0],0,to_center[2]])
         if self.surf_axis=='z':                                        # If surf_axis if not 'z' by default, this must change slightly
             pos_centered=pos-np.array([0,to_center[0],to_center[1],0])
         else: 
-            raise KeyError("Must indicate the normal axis of the surface with surf_axis parameter. Options are 'x','y' or 'z'")
+            raise KeyError("Must indicate the normal axis of the surfaces with `surf_axis` attribute. `PolarAnalysis` method is currently only working with surface with normal axis in 'z' direction. Future versions will include computing this method for 'x', 'y' and 'z' directions.")
+            # raise KeyError("Must indicate the normal axis of the surface with surf_axis parameter. Options are 'x','y' or 'z'")
         # if not self.surf_pos is None:
         #     dict_axis={'x':1,'y':2,'z':3}
         #     # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
