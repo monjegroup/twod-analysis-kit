@@ -212,7 +212,7 @@ class MembProp:
         string = string + ") "
         return string
 
-    @classmethod
+
     def build_resname_head(self, resnames_list):
         resnames_list = list(resnames_list)
         string = f"( (resname {resnames_list[0]}  and name {self.working_lip[resnames_list[0]]['head']}) "

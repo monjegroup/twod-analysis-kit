@@ -237,7 +237,7 @@ class Cumulative2D(MembProp):
                      [edges[2], edges[3]]]
 
         #print(sample1.shape, weights.shape)
-        if type(n_chain) == int:
+        if isinstance(n_chain, int):
             n_chain = [n_chain]
 
         hist, xedges,yedges = np.histogram2d(sample1[:,0],
@@ -253,9 +253,7 @@ class Cumulative2D(MembProp):
         for chain in n_chain:
             n_feat += chain
 
-        #print("here", n_feat, weights.shape[1])
-        if n_feat == weights.shape[1]:
-            "Dimensions are correct"
+        #print("here", n_feat, weights.shape[1]
 
         weights = 1.5*weights-0.5
 
@@ -443,22 +441,13 @@ class Cumulative2D(MembProp):
         """
 
 
-        if start is None:
-            start = self.start
-        if final is None:
-            final = self.final
-        if step is None:
-            step = self.step
+
+        start = self.start if start is None else start
+        final = self.final if final is None else final
+        step = self.step if step is None else step
 
 
-
-
-
-
-        if layer == "top":
-            sign = " > "
-        elif layer == "bot":
-            sign = " < "
+        sign = self.map_layers[layer]
 
 
         ##### Select all the P atoms to find the middle of the membrane
