@@ -445,7 +445,7 @@ class MembProp:
 
 
     def nx_chain_names(self):
-        import matplotlib.pyplot as plt
+
 
 
 
@@ -486,8 +486,7 @@ class MembProp:
                     chain_graphs.append(G.subgraph(chain))
                     filtered_sorted_carbs = [item for item in chain if "C" in item]
                     carbons.append(filtered_sorted_carbs)
-                nx.draw(G, with_labels = True)
-                plt.show()
+
 
                 carbon_conections = {}
 

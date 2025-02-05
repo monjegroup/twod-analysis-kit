@@ -19,8 +19,8 @@ import MDAnalysis as mda
 import numpy as np
 import pandas as pd
 from twodanalysis import MembProp
-from twodanalysis.analysis import OrderParameters
-
+from scipy.spatial import Voronoi
+from scipy.spatial import ConvexHull
 
 
 class Voronoi2D(MembProp):
@@ -88,10 +88,8 @@ class Voronoi2D(MembProp):
             dictionary with vertices, areas, apl (if true), function values (if provided)
         """
 
-        if layer == "top":
-            sign = " > "
-        elif layer == "bot":
-            sign = " < "
+
+        sign = self.map_layers[layer]
 
         if lipid_list is None:
             lipid_list = list(self.lipid_list)
@@ -165,12 +163,11 @@ class Voronoi2D(MembProp):
         heads_pos, others = self.extend_data(heads_pos, dimensions, self.periodicity, others = others)
         resnames_pos = others[0]
         height_pos = others[1]
-        from scipy.spatial import Voronoi, voronoi_plot_2d
-        from scipy.spatial import ConvexHull
 
-        voronoi_dict = {"vertices":list(),
+
+        voronoi_dict = {"vertices":[],
                         "points":heads_pos,
-                        "areas":list(),
+                        "areas":[],
                         "orig_len":orig_len
                          }
 
@@ -353,9 +350,7 @@ class Voronoi2D(MembProp):
                     final = -1,
                     step = 1,
                     w_size = 10,
-                    lipid_list = None,
-                    nbins = 180,
-                    edges = None):
+                    nbins = 180,):
         """Function to compute APL and map it to a 2D grid in windows of time defined by the user.
 
         Parameters
@@ -399,8 +394,8 @@ class Voronoi2D(MembProp):
         return matrices
 
 
-    @staticmethod
-    def create_sel_string(lipid_list, sign, mean_z):
+    @classmethod
+    def create_sel_string(self,lipid_list, sign, mean_z):
         selection_string = f"(((resname {lipid_list[0]} and name {self.working_lip[lipid_list[0]]['head']}) and prop z {sign} {mean_z}))"
         for lipid in lipid_list[1:]:
             selection_string += f" or (((resname {lipid} and name {self.working_lip[lipid]['head']}) and prop z {sign} {mean_z}))"

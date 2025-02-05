@@ -6,6 +6,7 @@ from twodanalysis import MembProp
 class PackingDefects(MembProp):
     def __init__(self,
                  universe,
+                 connection_chains = None,
                 lipid_list = None,
                 verbose = False,
                 edges = None,
@@ -14,6 +15,7 @@ class PackingDefects(MembProp):
 
         super().__init__(universe,
                          lipid_list=lipid_list,
+                         connection_chains=connection_chains,
                          verbose=verbose)
 
         if edges is None:

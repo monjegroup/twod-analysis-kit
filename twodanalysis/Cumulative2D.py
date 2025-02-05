@@ -200,8 +200,8 @@ class Cumulative2D(MembProp):
         hist = hist.astype(float, casting = "safe")
         core = 2*(slice(1,-1),)
         hist = hist[core]
-        edges = [edges[0][0], edges[0][-1], edges[1][0], edges[1][-1]]
-        return hist, edges
+
+        return hist, limits
 
     # Computes teh histogram of the average order parameters in each bin
     def numpyhistogram2D(self,
@@ -343,8 +343,7 @@ class Cumulative2D(MembProp):
                         edges = None,
                         start = None,
                         final = None,
-                        step = None,
-                        plot = False):
+                        step = None,):
         """all_lip_order Find the 2D order parameters for all lipids
 
 
@@ -400,17 +399,6 @@ class Cumulative2D(MembProp):
         matrices = np.array(matrices)
         matrices = np.nanmean(matrices, axis = 0)
 
-        if plot:
-            plt.close()
-            plt.imshow(matrices[1:-1,1:-1] ,
-                       cmap = "Spectral",
-                       extent = [edges[0][0],
-                                 edges[0][-1],
-                                 edges[1][0],
-                                 edges[1][-1]])
-            plt.colorbar(cmap = "Spectral")
-            plt.savefig(f"all_lip1_{layer}.png")
-            plt.close()
 
         return matrices, edges
 
