@@ -101,9 +101,6 @@ class BioPolymer2D:
         self._stepF = 1
         # Initialize trajectory attributes
         
-        # if start is None:
-        #     self._startT = self.universe.trajectory[0].time * 0.001
-        #     self._startF = self.universe.trajectory[0].frame
         if not start is None:
             if isinstance(start,(float,int)):
                 if by_frames is True:
@@ -122,9 +119,6 @@ class BioPolymer2D:
                 raise TypeError("`start` must be a float, or integer if `by_frames` is True.")
         
 
-        # if step is None:
-        #     self._stepT = self.universe.trajectory.dt * 0.001
-        #     self._stepF = 1
         if not step is None:
             if isinstance(step,(float,int)):
                 if by_frames is True:
@@ -148,13 +142,11 @@ class BioPolymer2D:
                 if by_frames is True:
                     if isinstance(end,int):
                         self._endF=end
-                        # self._recalculate_frames(triggered_by='frame',to_update='end')
                     else:
                         raise TypeError("`end` must be an integer.")
 
                 elif by_frames is False:
                     self._endT=end
-                    # self._recalculate_frames(triggered_by='time',to_update='end')
                 else:
                     raise TypeError("`by_frames` must be boolean. Can only be True or False.")
             else:
@@ -295,6 +287,8 @@ class BioPolymer2D:
         select : None or str, optional
             If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None.
             Whether or not to return the selected MDAnalysis AtomGroup as output.
+        getselection:
+            Whether or not to return the positions `and` the AtomGroup of residues.
 
         Returns
         -------
@@ -679,7 +673,6 @@ class BioPolymer2D:
         return rg_arr
 
     def RgPerpvsRgsPar(self,rgs,color, marker='s',plot='both',ax=None,legend=True,show=False,mfc='k',markersize=10):
-    # def RgPerpvsRgsPar(self,rgs,color,plot='both',ax=None,legend=True,show=False,**kwargs):
         r"""Generates :math:`R_{g\perp}` vs. :math:`R_{g\parallel}` plots. Also, returns the :math:`\langle R_{g\perp}^2 \rangle /\langle R_{g\parallel}^2 \rangle` ratio
 
         Parameters
