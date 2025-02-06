@@ -84,18 +84,21 @@ class PackingDefects(MembProp):
         height : bool, optional
             Store height matrix (To study deepness of th packing defects), by default False
         periodic : bool, optional
-            Defines if using periodicity or not. When True, takes into acount periodicity and returns a 2D grid with of the size of the periodic box, by default False
-        vmin : float, optional
-            Store the min value for x and y
-        vmax : float, optional
-            Store the max value for x and y
+            Defines if using periodicity or not. When True, takes into acount periodicity and
+            returns a 2D grid with of the size of the periodic box, by default False
+        edges : list(float)
+            List with edges in the shape [xmin,xmax,ymin,ymax], defaults to None
+        area : bool
+            If True computes tha area of the packing defects for return
+        count : bool
+            If True computes the number of packing defects in the region
 
         Returns
         -------
         ndarray
             If height == Flase: matrix with packing defects
         ndarray, ndarray
-            If height === True: matrix with packing defects, amtrix with height information
+            If height === True: matrix with packing defects, matrix with height information
         """
 
         if nbins is None:
@@ -156,6 +159,7 @@ class PackingDefects(MembProp):
             sign = " > "
         elif layer == "bot":
             sign = " < "
+
 
 
         ##### Select all the P atoms to find the middle of the membrane
@@ -551,16 +555,8 @@ class PackingDefects(MembProp):
 
 
 
-        if edges is not None:
-            xmin = edges[0]
-            xmax = edges[1]
-            ymin = edges[2]
-            ymax = edges[3]
-        else:
-            xmin = self.v_min
-            ymin = self.v_min
-            xmax = self.v_max
-            ymax = self.v_max
+        edges = self.edges if edges is None else edges
+        xmin, xmax, ymin, ymax = edges
 
 
         ran = [[xmin,xmax],[ymin,ymax]]
