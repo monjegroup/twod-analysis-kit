@@ -4,15 +4,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 sys.path.insert(0,'/home/antonio/Desktop/VIRMAT/2Danalysis/twod-analysis-kit/twodanalysis')
-from BioPolymer2D import BioPolymer2D # type: ignore
-# from twodanalysis import BioPolymer2D
+# from BioPolymer2D import BioPolymer2D # type: ignore
+from twodanalysis import BioPolymer2D
 from twodanalysis.data.files import MD_NOWATER_TPR, MD_TRAJ
+# from MDAnalysis.topology.guessers import guess_gasteiger_charges
+
+
 
 
 
 u=mda.Universe(MD_NOWATER_TPR,MD_TRAJ)
 
 sel = u.select_atoms("resid 193-200 or protein")
+# charges = mda.guesser.default_guesser.guess_gasteiger_charges(sel)
+# u.guess_TopologyAttrs(context='default', to_guess=['elements'])
+# charges = guess_gasteiger_charges(u.atoms)
+# u.add_TopologyAttr("charges", charges)
+
 ag_analysis = BioPolymer2D(sel, surf_selection='resname DOL and name O1 and prop z > 16')
 ag_analysis.system_name='Omicron PBL1'
 # ag_analysis.startT=100

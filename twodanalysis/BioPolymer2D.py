@@ -37,9 +37,25 @@ class BioPolymer2D:
     Parameters
     ----------
     obj : AtomGroup or Universe
-        Selection to initialize the class. If initialized with a Universe it will take the whole Universe as AtomGroup. The MDAnalysis Universe and AtomGroup will be accesible to with the ``self.universe`` and ``self.atom_group`` class attributes.
+        Selection to initialize the class. If initialized with a Universe it will take the whole Universe as AtomGroup.
+        The MDAnalysis Universe and AtomGroup will be accesible to with the ``self.universe`` and ``self.atom_group`` class attributes.
     surf_selection : str, optional
-        String selection in MDAnalysis format to define the surface (recomended). If ``surf_selection`` is given, ``surf_pos`` attribute will save the mean position of the surface over the time. This will particularly important for setting the `zlim` variable some of the analysis require. By default None
+        String selection in MDAnalysis format to define the surface (recomended). If ``surf_selection`` is given, ``surf_pos`` attribute will save the mean position 
+        of the surface over the time. This will particularly important for setting the ``zlim`` variable some of the analysis require. By default None
+    biopol_selection : str, optional
+        String selection in MDAnalysis format to define the biopolymer as a selection of a Universe or AtomGroup.
+        If None, all the AtomGroup or Universe from ``obj`` is used. Default in None.
+    start : float, optional
+        Starting time or frame from the trajectory to initialize the object. If ``by_frames=True``, it will be considered as the frame number of the trajectory to start 
+        the object. If ``by_frames=False``, it will set the time in ns. If None, `start` is frame 0 of the trajectory. By default None
+    step : float, optional
+        Time or frame steps from the trajectory to initialize the object. If ``by_frames=True``, it will be considered as the step of frames of the trajectory to
+        consider. If ``by_frames=False``, it will set the time steps in ns. If None, all the frames of the trajectory are considered. By default None
+    end : float, optional
+        Final time or frame from the trajectory to initialize the object. If ``by_frames=True``, it will be considered as the final frame number of the trajectory to consider.
+        If ``by_frames=False``, it will set the time in ns. If None, `end` is frame 0 of the trajectory. By default None
+    by_frame : bool, optional
+        Whether or not to consider 'start', 'step' and 'end' inputs as frame values. If False, they are consider as time values in ns.
     surf_axis : str, optional
         Set in which distance is the surface. By default 'z'
 
@@ -48,16 +64,28 @@ class BioPolymer2D:
     TypeError
         Error raised if class is not initialized with a Universe or AtomGroup
     """
-    def __init__(self, obj, surf_selection=None,surf_axis='z'):
+    def __init__(self, obj,surf_selection=None,biopol_selection=None , start=None, step=None,end=None,by_frames=True,surf_axis='z'):
 
-        if isinstance(obj, mda.Universe):
+        if isinstance(obj, mda.Universe) and biopol_selection is None:
             self.universe = obj
             self.atom_group = obj.atoms  # Select all atoms
-        elif isinstance(obj, mda.core.groups.AtomGroup):
+        elif isinstance(obj, mda.core.groups.AtomGroup) and biopol_selection is None:
             self.universe = obj.universe
             self.atom_group = obj
+        elif not biopol_selection is None:
+            if isinstance(biopol_selection, str):
+                self.universe = obj.universe
+                self.atom_group = obj.select_atoms(biopol_selection)
+            else:
+                raise TypeError("`biopol_selection` must be a string and a valid MDAnalysis selection")
         else:
             raise TypeError("Input must be an MDAnalysis Universe or AtomGroup")
+        
+        # if not biopol_selection is None:
+        #     if isinstance(biopol_selection, str): 
+
+
+
         
         #Error or default value for surface direction? 
         # if surf_selection and not surf_axis:
@@ -71,17 +99,74 @@ class BioPolymer2D:
         self._startF = self.universe.trajectory[0].frame
         self._endF = self.universe.trajectory[-1].frame
         self._stepF = 1
+        # Initialize trajectory attributes
+        
+        if not start is None:
+            if isinstance(start,(float,int)):
+                if by_frames is True:
+                    if isinstance(start,int):
+                        self._startF=start
+                        # self._recalculate_frames(triggered_by='frame',to_update='start')
+                    else:
+                        raise TypeError("`start` must be an integer.")
 
-        # self._pos_in_surf_=False ## This attribute is set to True, if surface has already been substracted to positions. 
+                elif by_frames is False:
+                    self._startT=start
+                    # self._recalculate_frames(triggered_by='time',to_update='start')
+                else:
+                    raise TypeError("`by_frames` must be boolean. Can only be True or False.")
+            else:
+                raise TypeError("`start` must be a float, or integer if `by_frames` is True.")
+        
 
-        # Calculate dependent attributes
-        self._recalculate_frames()
+        if not step is None:
+            if isinstance(step,(float,int)):
+                if by_frames is True:
+                    if isinstance(step,int):
+                        self._stepF=step
+                        # self._recalculate_frames(triggered_by='frame',to_update='step')
+                    else:
+                        raise TypeError("`step` must be an integer.")
+
+                elif by_frames is False:
+                    self._stepT=step
+                    # self._recalculate_frames(triggered_by='time',to_update='step')
+                else:
+                    raise TypeError("`by_frames` must be boolean. Can only be True or False.")
+            else:
+                raise TypeError("`step` must be a float, or integer if `by_frames` is True.")
+        
+
+        if not end is None:
+            if isinstance(end,(float,int)):
+                if by_frames is True:
+                    if isinstance(end,int):
+                        self._endF=end
+                    else:
+                        raise TypeError("`end` must be an integer.")
+
+                elif by_frames is False:
+                    self._endT=end
+                else:
+                    raise TypeError("`by_frames` must be boolean. Can only be True or False.")
+            else:
+                raise TypeError("`end` must be a float, or integer if `by_frames` is True.")
+        
+        self._sim_startT = self.universe.trajectory[0].time * 0.001
+        self._sim_dt = self.universe.trajectory.dt * 0.001
+
+        # Call _recalculate_frames only after setting the value
+        self._recalculate_frames(triggered_by="frame" if by_frames else "time")
         self.surf_axis=surf_axis
         self.surf_pos = None
 
         if not surf_selection is None:
-            self.surf_pos=self.getPositions(select=surf_selection,inplace=False,surf_is_zero=False).mean(axis=(0,1)) #If want mean only over atoms set axis=1
-            print(self.surf_pos)
+            if isinstance(surf_selection, str):
+                self.surf_pos=self.getPositions(select=surf_selection,inplace=False,surf_is_zero=False).mean(axis=(0,1)) #If want mean only over atoms set axis=1
+                print(' Mean position of the surface is', self.surf_pos)
+            else:
+                raise TypeError("`surf_selection` must be a string and a valid MDAnalysis selection")
+
 
 
         self.pos = None
@@ -92,20 +177,21 @@ class BioPolymer2D:
         self.kdeanalysis.kde = None
         self.hbonds = None
 
-    def _recalculate_frames(self, triggered_by="time"):
+
+    def _recalculate_frames(self, triggered_by="time",):
         """Recalculate frame-related attributes based on ``startT``, ``endT``, and ``stepT`` 
         or startF, endF, and stepF."""
         if triggered_by == "time":
             # Update frame-related attributes based on time-related attributes
-            self._startF = int(self._startT / self._stepT)
-            self._endF = int(self._endT / self._stepT)
-            self._stepF = int(self._stepT / (self.universe.trajectory.dt * 0.001))  # Should always be 1
+            self._startF = round(self._startT / self._sim_dt)
+            self._endF = round(self._endT / self._sim_dt)
+            self._stepF = round(self._stepT / self._sim_dt) 
             # self._stepF = int(self._stepT / self._stepT)  # Should always be 1
+
         if triggered_by == "frame":
-            # Update time-related attributes based on frame-related attributes
-            self._startT = self._startF * self._stepT
-            self._endT = self._endF * self._stepT
-            self._stepT = self._stepF * self.universe.trajectory.dt * 0.001  # Typically, stepF is 1
+            self._stepT = self._stepF * self._sim_dt
+            self._startT = self._startF * self._sim_dt
+            self._endT = self._endF * self._sim_dt
 
         self.times = np.arange(self._startT, self._endT, self._stepT)
         self.frames = np.arange(self._startF, self._endF,self._stepF)
@@ -201,6 +287,8 @@ class BioPolymer2D:
         select : None or str, optional
             If None, all atoms in the Atom group are computed. Otherwise, it is a string selection analogue to MDAnalysis format. Selection must be a set of atoms of the Atom group.  Defaults to None.
             Whether or not to return the selected MDAnalysis AtomGroup as output.
+        getselection:
+            Whether or not to return the positions `and` the AtomGroup of residues.
 
         Returns
         -------
@@ -369,6 +457,10 @@ class BioPolymer2D:
             Histogram data (Nresidues, 2 <X_bin_values,Y_bin_values>, Nbins),
             Positions in order in which they were plotted (Nframes,Nresidues or Natoms,4 <t,x,y,z>)
         """
+        if self.surf_axis in ['x','y']:
+            raise KeyError("`PolarAnalysis` method is currently only working with surfaces with normal axis in 'z' direction. Future versions will include computing this method for 'x', 'y' and 'z' directions.")
+        elif self.surf_axis is None:
+            raise KeyError("Must indicate the normal axis of the surfaces with `surf_axis` attribute. `PolarAnalysis` method is currently only working with surface with normal axis in 'z' direction. Future versions will include computing this method for 'x', 'y' and 'z' directions.")
 
         # colors=['C%s'%(c+7) for c in range(10)]
         prot_center=self.atom_group
@@ -384,14 +476,15 @@ class BioPolymer2D:
         print(pos.shape)
         # sys.exit()
         print(pos.mean(axis=(0,1)), 'pos mean')
-        if self.surf_axis=='x':
-            pos_centered=pos-np.array([0,0,to_center[1],to_center[2]])
-        if self.surf_axis=='y':
-            pos_centered=pos-np.array([0,to_center[0],0,to_center[2]])
+        # if self.surf_axis=='x':
+        #     pos_centered=pos-np.array([0,0,to_center[1],to_center[2]])
+        # if self.surf_axis=='y':
+        #     pos_centered=pos-np.array([0,to_center[0],0,to_center[2]])
         if self.surf_axis=='z':                                        # If surf_axis if not 'z' by default, this must change slightly
             pos_centered=pos-np.array([0,to_center[0],to_center[1],0])
         else: 
-            raise KeyError("Must indicate the normal axis of the surface with surf_axis parameter. Options are 'x','y' or 'z'")
+            raise KeyError("Must indicate the normal axis of the surfaces with `surf_axis` attribute. `PolarAnalysis` method is currently only working with surface with normal axis in 'z' direction. Future versions will include computing this method for 'x', 'y' and 'z' directions.")
+            # raise KeyError("Must indicate the normal axis of the surface with surf_axis parameter. Options are 'x','y' or 'z'")
         # if not self.surf_pos is None:
         #     dict_axis={'x':1,'y':2,'z':3}
         #     # pos_centered=pos-np.array([0,to_center[0],to_center[1],self.surf_pos[2]])
@@ -580,7 +673,6 @@ class BioPolymer2D:
         return rg_arr
 
     def RgPerpvsRgsPar(self,rgs,color, marker='s',plot='both',ax=None,legend=True,show=False,mfc='k',markersize=10):
-    # def RgPerpvsRgsPar(self,rgs,color,plot='both',ax=None,legend=True,show=False,**kwargs):
         r"""Generates :math:`R_{g\perp}` vs. :math:`R_{g\parallel}` plots. Also, returns the :math:`\langle R_{g\perp}^2 \rangle /\langle R_{g\parallel}^2 \rangle` ratio
 
         Parameters
