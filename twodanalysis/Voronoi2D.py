@@ -637,12 +637,11 @@ class Voronoi2D(MembProp):
 
 
 
-    def project_property(self,
+    def project_property(self, function,
                       layer = "top",
                       start = None,
                       final = None,
                       step = None,
-                      function = None,
                       nbins = None,
                       edges = None):
         """Function to compute and map the grid APL for several frames, map them to a 2D grid and average them
@@ -669,7 +668,8 @@ class Voronoi2D(MembProp):
         ndarray
             Array with the averaged 2D properties (coming from fuction), edges
         """
-        lipid_list = list(self.lipid_list) if lipid_list is None else lipid_list
+
+
         start = self.start if start is None else start
         final = self.final if final is None else final
         step = self.step if step is None else step
