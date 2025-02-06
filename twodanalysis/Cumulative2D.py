@@ -141,9 +141,17 @@ class Cumulative2D(MembProp):
         edges = self.edges if edges is None else edges
 
         if method == "numpy":
-            H, edges = self.numpyhistogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = nbins, edges = edges)
+            H, edges = self.numpyhistogram2D(matrix[:,:2],
+                                             matrix[:,2:],
+                                             n_chain,
+                                             bins = nbins,
+                                             edges = edges)
         else:
-            H, edges = self.histogram2D(matrix[:,:2], matrix[:,2:], n_chain, bins = nbins, edges = edges)
+            H, edges = self.histogram2D(matrix[:,:2],
+                                        matrix[:,2:],
+                                        n_chain,
+                                        bins = nbins,
+                                        edges = edges)
 
         H = np.rot90(H)
         H[H==0] = np.nan
@@ -429,7 +437,8 @@ class Cumulative2D(MembProp):
         layer : str, optional
             Layer to work, by default 'top'
         function : function, optional
-            Function that returns two arrays, the first with ids, and the second with any property value.
+            Function that returns two arrays, the first with ids, and the second with any
+            property value.
             Defaults to None
         splay : bool, optional
             Include or not splay angle computations, by default False
@@ -484,7 +493,7 @@ class Cumulative2D(MembProp):
 
         if self.verbose:
             print("######### Running surface function ########## ")
-            print(f"We will compute the surface files for a membrane with there lipids {lipid_list}")
+            print(f"We will compute the surface for a membrane with these lipids {lipid_list}")
             print(f"Currently working on: {lipid_list}")
             print(f"Layer: {layer}")
 
@@ -512,8 +521,11 @@ class Cumulative2D(MembProp):
                 c2 = lipid_ats.select_atoms(carbons2)
                 v1 = c1.positions - head_p.positions
                 v2 = c2.positions - head_p.positions
-                #print(heads,carbons2,carbons1, head_p.n_atoms, c1.n_atoms)
-                costheta = np.sum(v1 * v2, axis=1)/(np.linalg.norm(v1, axis = 1)* np.linalg.norm(v2, axis = 1))# Compute the cos of splay angle, must bet lenmght nlipids
+
+
+                # Compute the cos of splay angle, must bet lenmght nlipids
+                costheta = (np.sum(v1 * v2, axis=1)/
+                            (np.linalg.norm(v1, axis = 1)* np.linalg.norm(v2, axis = 1)))
                 costheta = np.arccos(costheta)
                 costheta = np.rad2deg(costheta[:,np.newaxis])
                 atoms = lipid_ats.select_atoms(selection_string)
