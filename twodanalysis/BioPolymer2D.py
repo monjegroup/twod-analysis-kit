@@ -37,9 +37,25 @@ class BioPolymer2D:
     Parameters
     ----------
     obj : AtomGroup or Universe
-        Selection to initialize the class. If initialized with a Universe it will take the whole Universe as AtomGroup. The MDAnalysis Universe and AtomGroup will be accesible to with the ``self.universe`` and ``self.atom_group`` class attributes.
+        Selection to initialize the class. If initialized with a Universe it will take the whole Universe as AtomGroup.
+        The MDAnalysis Universe and AtomGroup will be accesible to with the ``self.universe`` and ``self.atom_group`` class attributes.
     surf_selection : str, optional
-        String selection in MDAnalysis format to define the surface (recomended). If ``surf_selection`` is given, ``surf_pos`` attribute will save the mean position of the surface over the time. This will particularly important for setting the `zlim` variable some of the analysis require. By default None
+        String selection in MDAnalysis format to define the surface (recomended). If ``surf_selection`` is given, ``surf_pos`` attribute will save the mean position 
+        of the surface over the time. This will particularly important for setting the ``zlim`` variable some of the analysis require. By default None
+    biopol_selection : str, optional
+        String selection in MDAnalysis format to define the biopolymer as a selection of a Universe or AtomGroup.
+        If None, all the AtomGroup or Universe from ``obj`` is used. Default in None.
+    start : float, optional
+        Starting time or frame from the trajectory to initialize the object. If ``by_frames=True``, it will be considered as the frame number of the trajectory to start 
+        the object. If ``by_frames=False``, it will set the time in ns. If None, `start` is frame 0 of the trajectory. By default None
+    step : float, optional
+        Time or frame steps from the trajectory to initialize the object. If ``by_frames=True``, it will be considered as the step of frames of the trajectory to
+        consider. If ``by_frames=False``, it will set the time steps in ns. If None, all the frames of the trajectory are considered. By default None
+    end : float, optional
+        Final time or frame from the trajectory to initialize the object. If ``by_frames=True``, it will be considered as the final frame number of the trajectory to consider.
+        If ``by_frames=False``, it will set the time in ns. If None, `end` is frame 0 of the trajectory. By default None
+    by_frame : bool, optional
+        Whether or not to consider 'start', 'step' and 'end' inputs as frame values. If False, they are consider as time values in ns.
     surf_axis : str, optional
         Set in which distance is the surface. By default 'z'
 
@@ -48,7 +64,7 @@ class BioPolymer2D:
     TypeError
         Error raised if class is not initialized with a Universe or AtomGroup
     """
-    def __init__(self, obj,biopol_selection=None ,surf_selection=None, start=None, step=None,end=None,by_frames=True,surf_axis='z'):
+    def __init__(self, obj,surf_selection=None,biopol_selection=None , start=None, step=None,end=None,by_frames=True,surf_axis='z'):
 
         if isinstance(obj, mda.Universe) and biopol_selection is None:
             self.universe = obj
