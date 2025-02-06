@@ -2,7 +2,7 @@ import MDAnalysis as mda
 import numpy as np
 import pandas as pd
 from twodanalysis import MembProp
-
+from scipy.ndimage import label
 class PackingDefects(MembProp):
     def __init__(self,
                  universe,
@@ -146,7 +146,7 @@ class PackingDefects(MembProp):
 
 
 
-        lipid_list = list(self.lipid_list)
+
 
 
 
@@ -202,7 +202,10 @@ class PackingDefects(MembProp):
             if not height:
                 indexes = self.get_indexes(pos_ats[:,:2], nbins_aug, edges=[xmin_ex,xmax_ex,ymin_ex,ymax_ex])
             else:
-                indexes, matrix_temp = self.get_indexes(pos_ats, nbins_aug, edges=[xmin_ex,xmax_ex,ymin_ex,ymax_ex], matrix_height = True)
+                indexes, matrix_temp = self.get_indexes(pos_ats,
+                                                        nbins_aug,
+                                                        edges=[xmin_ex,xmax_ex,ymin_ex,ymax_ex],
+                                                        matrix_height = True)
                 matrix_height = np.maximum(matrix_height.copy(), matrix_temp.copy())
 
 
@@ -252,7 +255,7 @@ class PackingDefects(MembProp):
                                "total": area_tot}
 
         if count:
-            from scipy.ndimage import label
+
             binary_matrix = ~np.isnan(defects)
             structure = np.array([[1,1,1], [1,1,1], [1,1,1]])
             labeled_array, num_features = label(binary_matrix, structure = structure)
@@ -396,7 +399,7 @@ class PackingDefects(MembProp):
             matrix matrix filled with the defects
         """
 
-        matrix = matrix
+
 
         for i in range(len(indexes[0])):
 
@@ -561,8 +564,8 @@ class PackingDefects(MembProp):
             pandas dataframe with the area information of packing defects over time and informationabout the size of the packing defects
         """
 
-        results = list()
-        sizes = list()
+        results = []
+        sizes = []
         for ts in self.u.trajectory[start:final:step]:
             _, packing_dict = self.packing_defects(layer = layer,
                              nbins = nbins,
