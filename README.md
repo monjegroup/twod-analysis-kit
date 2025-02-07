@@ -46,6 +46,7 @@ conda activate twod-analysis-kit
 Install the development and documentation dependencies:
 
 ```
+cd twod-analysis-kit
 conda env update --name twod-analysis-kit --file devtools/conda-envs/test_env.yaml
 conda env update --name twod-analysis-kit --file docs/requirements.yaml
 ```
