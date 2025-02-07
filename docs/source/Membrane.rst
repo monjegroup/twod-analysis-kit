@@ -2,7 +2,7 @@ Membrane Simulations
 --------
 
 To study biophysical properties of membranes in 2D we developed 3 classes: :code:`Cumulative2D`, :code:`Voronoi2D`, and :code:`PackingDefects`.
-The first two classes project membrane properties and features such as deuterium order parameter and height to the membrane surface plane. Current structural properites the code computes and projects include:
+The first two classes project membrane properties and features to the membrane surface plane. Current structural properites the code computes and projects include:
 
  - Membrane thickness
  - Deuterium order parameters (Only for Cumulative2D)
@@ -11,7 +11,7 @@ The first two classes project membrane properties and features such as deuterium
 
 The third class :code:`PackingDefects` identifies regions where the hydrophobic membrane core is exposed. The implementation in Python is built and optimized from a method implemented in PackMem. 
 
-Below is a concise explanation and examples of the Cumulative2D, Voronoi2D, and PackingDefects workflows. For a detailed tutorial notebook visit https://github.com/pyF4all/2DanalysisTutorials/tree/main
+Below are concise explanations and examples of the Cumulative2D, Voronoi2D, and PackingDefects workflows. For a detailed tutorial notebook visit https://github.com/pyF4all/2DanalysisTutorials/tree/main
 
 Cumulative2D
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
