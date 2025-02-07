@@ -16,16 +16,13 @@ Below are concise explanations and examples of the Cumulative2D, Voronoi2D, and 
 Cumulative2D
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-`Cumulative2D` helps to project membranes properties in a two dimensional fashion, on a plane perpendicular to the z axis.
-This class uses the protocol showed in the image below. First, we divide the space in a grid :math:`m\times m` and
-we collect the x, y positions of each individual lipid, as well as the property of interest (i.e. height) across :math:`n` frames. Then, we check which lipids belong
-to each grid square using their x, y positions and finally, we take the average for each grid square. The output is
-a matrix :math:`m\times m` and its edges in the shape :math:`[x_{\text min},x_{\text max},y_{\text min}, y_{\text max}]`
+`Cumulative2D` projects membranes properties to the two dimensional plane of the membrane surface, perpendicular to the z axis. 
+The image below illustrates the protocol this class uses for the projection. The process begins by dividing the space into a :math:`m\times m` grid. The xy positions of lipid phosphorus atoms and the respective analysis are collected over a user-set number of frames. These values are averaged within each grid square and stored in a :math:`m\times m` matrix. Alongside this matrix, the grid edges are recorded in the format :math:`[x_\text{min},x_\text{max},y_\text{min},y_\text{max}]`.
 
 
 .. image:: cumulative.png
 
-To import :code:`Cumulative2D` you should type the following
+To import :code:`Cumulative2D`, type:
 
 .. code-block:: python
 
@@ -34,30 +31,29 @@ To import :code:`Cumulative2D` you should type the following
 
 
 
-To use this class you should call the class using  and mda.AtomGroup or a mda.Universe as follows:
+To use the class, call it using :code:`mda.AtomGroup` or a :code:`mda.Universe` as follows:
 
 .. code-block:: python
 
-    tpr = "membrane.tpr" # Replace this with you own membrane tpr or gro file
-    xtc = "membrane.xtc" # Replace this with you xtc fila
+    tpr = "membrane.tpr" # Replace with your tpr or gro file
+    xtc = "membrane.xtc" # Replace with your xtc file
 
-    universe = mda.Universe(tpr,xtc) # Define a universe with the trajectories
+    universe = mda.Universe(tpr,xtc) # Define a universe
 
-    membrane = Cumulative2D(universe,   # load universe
+    membrane = Cumulative2D(universe,   # load the universe
                     verbose = False, # Does not print intial information
                     )
 
 
 .. note::
-    If your trajectory contains water and/or ions, we recommend you pass the list of lipids that
-    compose the membrane by specifying :code:`lipid_list`.
+    If your trajectory contains water and/or ions, pass the list of lipids in the membrane by specifying :code:`lipid_list`.
 
 
 Membrane Thickness
 ++++++++++++++++++
 
-This code requires the number of bins, the edges, and the time interval that you want to use. Other options
-are also available, check the documentation for mor information.
+This code requires the user to set the number of bins, the edges, and the time interval. Additional options
+are listed in the documentation.
 
 .. code-block:: python
 
@@ -70,7 +66,7 @@ are also available, check the documentation for mor information.
 The output is a matrix :math:`nbins\times nbins` and the edges in the form
  :math:`[x_\text{min},x_\text{max},y_\text{min},y_\text{max}]`.
 
-We can visualize with `plt.imshow`
+To visualize with :code:`plt.imshow`:
 
  .. code-block:: python
 
@@ -89,8 +85,7 @@ We can visualize with `plt.imshow`
 Membrane order parameters
 +++++++++++++++++++++++++
 
-The computation of order parameters is as easy as the computation of thickness. In this case
-you can also choose which layer the analysis will run (top, bot, both). Follows an example of running order parameters
+To compute the order parameters the user must select the leaflet for which to run the analysis (top, bottom, or both) as shown below.
 
 .. code-block:: python
 
@@ -106,7 +101,7 @@ you can also choose which layer the analysis will run (top, bot, both). Follows 
                                                 step = 1)
 
 
-Now we can plot the results
+To plot the results:
 
 
  .. code-block:: python
@@ -138,8 +133,10 @@ Now we can plot the results
 
  .. image:: scd.png
 
-Here we highligted regions where the order parameters are low (red region) and high (blue region). From this region
-the lipids looks as follows
+The image shows regions where the order parameters are low (in red) and high (in blue). Visual examination of those regions shows the lipids have the following configurations:
+
+ .. image:: image1aa.png
+
 path_arr_arr,res=obj.KDEAnalysisSelection(select_res,Nframes=1000,zlim=15,show=False,legend=False)
 
 
@@ -147,10 +144,7 @@ path_arr_arr,res=obj.KDEAnalysisSelection(select_res,Nframes=1000,zlim=15,show=F
 Splay Angle
 +++++++++++
 
-Another property we can map to a 2D grid is splay angle. Splay angle is the aperture angle of
-the two fatty acid chains of a lipid. For this, two vectors are defined as those that gro from the lipid
-head (Usually P atom) to the last carbons in the lipid tails. The angle between these vectors is mapped with voronoi
-and then averaged over  frames to get the following plot.
+The splay angle between lipid tails can also be projected to a 2D grid using :code:`Cumulative2D`. To do so, the user defines two vectors from the lipid head (usually a P-atom) to the last carbons of the lipid tails, respectively. The angle between these vectors is mapped and averaged over the set number of frames to get the following plot.
 
 
 .. code:: python
@@ -182,19 +176,14 @@ and then averaged over  frames to get the following plot.
 Voronoi2D
 ^^^^^^^^^^
 
-`Voronoi2D` can also project properties in a 2D fashion, but it uses a different method to do so.
-:code:`Voronoi2D` first constructs a Voronoi diagram using the positions of lipid head groups (typically
-the phosphorus atoms), which is mapped into a :math:`m\times m` grid. During the mapping step, the value
-of the desired property is assigned to the grid squares corresponding to each lipid.
-This mapped grid is created for each frame, as illustrated in the figure below,
-and then averaged across n frames. The output, similar to Cumulative2D, is a matrix :math:`m \times m`,
-along with the edges :math:`[x_{\text{min}}, x_{\text{max}}, y_{\text{min}}, y_{\text{max}}]`.
+:code:`Voronoi2D` also projects properties to a 2D grid, but using a different method. 
+:code:`Voronoi2D` first constructs a Voronoi diagram using the positions of lipid head groups (typically lipid P-atoms), and mapping them into a :math:`m\times m` grid. The mapping step is done on each frame as illustrated in the figure below, and averages computed across n frames. At each step, the value of the computed property is assigned to the grid squares that correspond to the xy position of each lipid.  The output, similar to :code:`Cumulative2D`, is a matrix :math:`m \times m`, along with the edges :math:`[x_{\text{min}}, x_{\text{max}}, y_{\text{min}}, y_{\text{max}}]`.
 
 .. image:: voronoii.png
 
 
 
-To import :code:`Voronoi2D` you should type the following
+To import :code:`Voronoi2D` type:
 
 .. code-block:: python
 
@@ -203,30 +192,28 @@ To import :code:`Voronoi2D` you should type the following
 
 
 
-To use this class you should call the class using  and mda.AtomGroup or a mda.Universe as follows:
+Call the class using an :code:`mda.AtomGroup` or :code:`mda.Universe` as follows:
 
 .. code-block:: python
 
-    tpr = "membrane.tpr" # Replace this with you own membrane tpr or gro file
-    xtc = "membrane.xtc" # Replace this with you xtc fila
+    tpr = "membrane.tpr" # Replace with you own tpr or gro file
+    xtc = "membrane.xtc" # Replace with you xtc file
 
     universe = mda.Universe(tpr,xtc) # Define a universe with the trajectories
 
-    membrane = Voronoi2D(universe,   # load universe
+    membrane = Voronoi2D(universe,   # load the universe
                     verbose = False, # Does not print initial information
                     )
 
 
-..note::
-    If your trajectory contains water and/or ions, we recommend you pass the list of lipids that
-    compose the membrane by specifying :code:`lipid_list`.
+.. note::
+    If your trajectory contains water and/or ions, pass the list of lipids in the membrane by specifying :code:`lipid_list`.
 
 
 Membrane Thickness
 ++++++++++++++++++
 
-This code requires the number of bins, the edges, and the time interval that you want to use. Other options
-are also available, check the documentation for mor information.
+The user must set the number of bins, the edges, and the time interval. Additional options are available in the documentation.
 
 .. code-block:: python
 
@@ -241,7 +228,7 @@ are also available, check the documentation for mor information.
 
 The output is a matrix :math:`nbins\times nbins` and the edges in the form :math:`[x_{\text{min}}, x_{\text{max}}, y_{\text{min}}, y_{\text{max}}]`.
 
-We can visualize with `plt.imshow`
+Visualize the output with :code:`plt.imshow`:
 
  .. code-block:: python
 
@@ -262,17 +249,19 @@ We can visualize with `plt.imshow`
 Area per lipid
 ++++++++++++++
 
-We include the possibility of getting Voronoi APL. For one frame can be obtained as follows:
+The area per lipid (APL) is a metric of lipid lateral packingm typically used to determine thermal equilibrium of a lipid bilayer. This code plots the Voronoi APL for a single frame, output images can be merged into a giff or short movies.
+
+
+To run this analysis type:
 
 .. code:: python
 
     voronoi_dict = membrane.voronoi_properties(layer = "top")
 
 
-This return a dictionary that contains the areas per each lipid in the top bilayer by accesing to
-:code:`voronoi_dict["apl"]`.
+This will return a dictionary that contains the APL per residue in the top bilayer, accesible as :code:`voronoi_dict["apl"]`.
 
-We can further map this voronoi apl and take the mean over time by using:
+To map the Voronoi APL and compute its mean over time use:
 
 .. code:: python
 
@@ -284,7 +273,7 @@ We can further map this voronoi apl and take the mean over time by using:
 
 
 
-
+To render the plot use:
 
 .. code:: python
 
@@ -301,10 +290,7 @@ We can further map this voronoi apl and take the mean over time by using:
 Splay Angle
 +++++++++++
 
-Another property we can map to a 2D grid is splay angle. Splay angle is the aperture angle of
-the two fatty acid chains of a lipid. For this, two vectors are defined as those that gro from the lipid
-head (Usually P atom) to the last carbons in the lipid tails. The angle between these vectors is mapped with voronoi
-and then averaged over  frames to get the following plot.
+:code:`Voronoi2D` can also project the splay angle between lipid tails to a 2D grid. Similar to :code:`Cumulative2D`, the user must set the two vectors that define the lipid tails. Using the :code:`Voronoi2D` protocol, the splay angle is plot for a set number of frames as follows.
 
 
 .. code:: python
@@ -314,8 +300,6 @@ and then averaged over  frames to get the following plot.
                                             start = 61,
                                             final = 110,
                                             step = 1)
-
-
 
 
 
@@ -335,30 +319,34 @@ and then averaged over  frames to get the following plot.
 PackingDefects
 ^^^^^^^^^^^^^^^
 
-Packing defects is metric to evaluate the exposure of the hydrophobic core. It changes with membrane composition and
-also when proteins interact with the membrane. The computation of packing defects with packmemb implies extracting pdb files
-from the trajectories and then procesing them, which is time comsuming. Here we present an easy way to compute packing defects by
-only providing the trajectory and the topology file. Our
-code is able to compute packing defects for a single frame as well as for
-full trajectories with several frames. Also, our code outperforms packmemb, doing the computations faster.
+The membrane surface topology is highly dynamic, different lipid species and interactions with other biomolecules result in local changes that can be identified using :code:`2Danalysis` methods. Lipid packing defects analysis is used to quantify the exposure of the hydrophobic membrane core. :code:`PackingDefects`code allows efficient and robust statistical analysis of lipid packing deffects on the membrane surface. The analysis can be done for a single frame as well as for the full trajectory.
 
-To use packing defects you should import the class as follows:
+Import this class as follows:
+
 
 .. code-block:: python
 
-    tpr = "membrane.tpr" # Replace this with you own membrane tpr or gro file
-    xtc = "membrane.xtc" # Replace this with you xtc fila
+    import MDAnalysis as mda
+    from twodanalysis import PackingDefects
+
+
+Call the class using an :code:`mda.AtomGroup` or :code:`mda.Universe` as follows:
+
+.. code-block:: python
+
+    tpr = "membrane.tpr" # Replace with you own tpr or gro file
+    xtc = "membrane.xtc" # Replace with you xtc file
 
     universe = mda.Universe(tpr,xtc) # Define a universe with the trajectories
 
-    membrane = PackingDefects(universe,   # load universe
+    membrane = PackingDefects(universe,   # load the universe
                     verbose = False, # Does not print intial information
                     )
 
 Single Frame
 ++++++++++++
 
-For a single frame, say the frame 100 we can run
+To run the analysis for a single frame, set the frame number of interest and run:
 
 .. code-block:: python
 
@@ -370,7 +358,7 @@ For a single frame, say the frame 100 we can run
 
 
 
-To plot and visualize the packing defects you should run:
+To plot and visualize the output run:
 
 .. code-block:: python
 
@@ -381,10 +369,9 @@ To plot and visualize the packing defects you should run:
 
 .. image:: packing_defects.png
 
-Follows a comparison (C) of a plot made with VMD (A) and the packing defects computed with our code (B)
+The following figure shows: (A) the packing deffects plot on VMD, (B) the output from :code:`PackingDefects`, and (C) the overlay of both approaches for comparison and validation
 
 .. image:: packing1.png
-
 
 
 
@@ -393,9 +380,9 @@ Follows a comparison (C) of a plot made with VMD (A) and the packing defects com
 Multiple Frames
 +++++++++++++++
 
-For various frames, to get statistics. Here, the return is a pandas dataframe and an array with the
-sizes of the defects along the trajectory.
+For statistical analysis of packing deffects across several frames, :code:`PackingDefects` returns a pandas dataframe and an array with the size of individual packing defects along the trajectory.
 
+To run the analysis over n frames type:
 .. code-block:: python
 
     data_df, numpy_sizes = membrane.packing_defects_stats(nbins = 400,
@@ -406,7 +393,7 @@ sizes of the defects along the trajectory.
                                                       step=1)
 
 
-We can use this data to plot the probability of getting a packing defect of some areas
+To plot the distribution of packing defects areas type: 
 
 .. code-block:: python
 
@@ -423,8 +410,5 @@ We can use this data to plot the probability of getting a packing defect of some
     plt.show()
 
 .. image:: sizedefetc.png
-
-
-
 
 
