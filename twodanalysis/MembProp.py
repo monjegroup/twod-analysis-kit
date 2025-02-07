@@ -432,8 +432,8 @@ class MembProp:
                 components = list(nx.connected_components(G))
 
                 non_polar.append(next(comp for comp in components if edge[1] in comp))
-                if lipid == "CHL1":
-                    print(components, next(comp for comp in components if edge[1] in comp))
+                #if lipid == "CHL1":
+                    #print(components, next(comp for comp in components if edge[1] in comp))
 
             self.non_polar_dict[lipid] = [elem for s in non_polar for elem in s]
 
@@ -441,7 +441,7 @@ class MembProp:
 
             self.polar_dict[lipid] = polar
 
-            print(lipid , ":", self.polar_dict[lipid])
+            #print(lipid , ":", self.polar_dict[lipid])
 
 
     def nx_chain_names(self):
@@ -501,7 +501,7 @@ class MembProp:
 
             self.chain_conections[lipid] = carbon_conections
 
-        print(self.chain_conections)
+        #print(self.chain_conections)
 
 
 
