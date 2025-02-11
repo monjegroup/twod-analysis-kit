@@ -867,6 +867,7 @@ class BioPolymer2D:
             # plt.pause(2)
             if control_plots:
                 plt.pause(2)
+        plt.gca().set_aspect('equal', 'box')
         if not show:
             plt.close()
         if inplace:
