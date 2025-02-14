@@ -39,13 +39,14 @@ Ensure that you have [conda](https://docs.conda.io/projects/conda/en/latest/user
 Create a virtual environment and activate it:
 
 ```
-conda create --name twod-analysis-kit
-conda activate twod-analysis-kit
+conda create --name twod
+conda activate twod
 ```
 
 Install the development and documentation dependencies:
 
 ```
+git clone https://github.com/monjegroup/twod-analysis-kit.git
 cd twod-analysis-kit
 conda env update --name twod-analysis-kit --file devtools/conda-envs/test_env.yaml
 conda env update --name twod-analysis-kit --file docs/requirements.yaml
@@ -89,7 +90,7 @@ pip install ".[test,doc]"
 The 2D Analysis source code is hosted at https://github.com/monjegroup/twod-analysis-kit
 and is available under the GNU General Public License, version 2 (see the file [LICENSE](https://github.com/monjegroup/twod-analysis-kit/blob/main/LICENSE)).
 
-Copyright (c) 2024, Ricardo Ramirez, Antonio Bosch, Ruben Perez, Horacio V Guzman, and Viviana Monje
+Copyright (c) 2025, Ricardo Ramirez, Antonio Bosch, Ruben Perez, Horacio V Guzman, and Viviana Monje
 
 
 #### Acknowledgements
@@ -97,3 +98,8 @@ Copyright (c) 2024, Ricardo Ramirez, Antonio Bosch, Ruben Perez, Horacio V Guzma
 Project based on the 
 [MDAnalysis Cookiecutter](https://github.com/MDAnalysis/cookiecutter-mda) version 0.1.
 Please cite [MDAnalysis](https://github.com/MDAnalysis/mdanalysis#citation) when using 2D Analysis in published work.
+
+#### Funding
+
+H.V.G. acknowledges financial support from the Ramón y Cajal grant No. RYC2022-038082-I and Spanish Ministry of Science and Innovation, through project PIDPID2023-150536NA-I00, and the “Severo Ochoa” Grant No. CEX2023-001263-S for Centers of Excellence; and thanks the Red Española de Supercomputación (RES) for the computing time and technical support at the Finisterrae III supercomputer project FI-2024-3-0033.
+
