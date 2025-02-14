@@ -27,6 +27,8 @@ To import :code:`Cumulative2D`, type:
 .. code-block:: python
 
     import MDAnalysis as mda
+    import numpy as np
+    import matplotlib.pyplot as plt
     from twodanalysis import Cumulative2D
 
 
@@ -42,7 +44,7 @@ To use the class, call it using :code:`mda.AtomGroup` or a :code:`mda.Universe` 
 
     membrane = Cumulative2D(universe,   # load the universe
                     verbose = False, # Does not print intial information
-                    )
+                    nbins = 50)
 
 
 .. note::
@@ -60,7 +62,7 @@ are listed in the documentation.
     mat_thi, edges = membrane.thickness(50,           # nbins
                                         start = 61,   # Initial frame
                                         final = 110,  # Final Frame
-                                        step = 1,     # Frames to skip
+                                        step = 1     # Frames to skip
                                         )
 
 The output is a matrix :math:`nbins\times nbins` and the edges in the form
@@ -189,6 +191,7 @@ To import :code:`Voronoi2D` type:
 
     import MDAnalysis as mda
     from twodanalysis import Voronoi2D
+    import matplotlib.pyplot as plt
 
 
 
@@ -203,7 +206,7 @@ Call the class using an :code:`mda.AtomGroup` or :code:`mda.Universe` as follows
 
     membrane = Voronoi2D(universe,   # load the universe
                     verbose = False, # Does not print initial information
-                    )
+                    nbins = 100)
 
 
 .. note::
@@ -223,7 +226,7 @@ The user must set the number of bins, the edges, and the time interval. Addition
                                             nbins = 150,           # nbins
                                             start = 61,   # Initial frame
                                             final = 110,  # Final Frame
-                                            step = 1,     # Frames to skip
+                                            step = 1     # Frames to skip
                                             )
 
 The output is a matrix :math:`nbins\times nbins` and the edges in the form :math:`[x_{\text{min}}, x_{\text{max}}, y_{\text{min}}, y_{\text{max}}]`.
@@ -340,7 +343,7 @@ Call the class using an :code:`mda.AtomGroup` or :code:`mda.Universe` as follows
     universe = mda.Universe(tpr,xtc) # Define a universe with the trajectories
 
     membrane = PackingDefects(universe,   # load the universe
-                    verbose = False, # Does not print intial information
+                    verbose = False # Does not print intial information
                     )
 
 Single Frame
@@ -353,7 +356,7 @@ To run the analysis for a single frame, set the frame number of interest and run
     membrane.u.trajectory[100] # Compute deffects for the 80 frame
     defects, defects_dict = membrane.packing_defects(layer = "top",         # layer to compute packing defects
                                                     periodic = True,  # edges for output
-                                                    nbins = 400,            # number of bins
+                                                    nbins = 400            # number of bins
                                                     )
 
 
