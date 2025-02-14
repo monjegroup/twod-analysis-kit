@@ -109,5 +109,5 @@ Please cite [MDAnalysis](https://github.com/MDAnalysis/mdanalysis#citation) when
 
 #### Funding
 
-H.V.G. acknowledges financial support from the Ramón y Cajal grant No. RYC2022-038082-I and Spanish Ministry of Science and Innovation, through project PIDPID2023-150536NA-I00, and the “Severo Ochoa” Grant No. CEX2023-001263-S for Centers of Excellence; and thanks the Red Española de Supercomputación (RES) for the computing time and technical support at the Finisterrae III supercomputer project FI-2024-3-0033.
+H.V.G. acknowledges financial support from the Ramón y Cajal grant No. RYC2022-038082-I and Spanish Ministry of Science and Innovation, through project PID2023-150536NA-I00, and the “Severo Ochoa” Grant No. CEX2023-001263-S for Centers of Excellence; and thanks the Red Española de Supercomputación (RES) for the computing time and technical support at the Finisterrae III supercomputer project FI-2024-3-0033.
 
