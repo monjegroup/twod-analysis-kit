@@ -85,6 +85,14 @@ the dependencies required for tests and docs with:
 pip install ".[test,doc]"
 ```
 
+#### Tutorials!
+
+The toolkit offers tutorials with a detailed explanation of the routines included in 2Danalysis, follow the tutorials step by step in the repo of [pyF4all](https://github.com/pyF4all/2DanalysisTutorials) 
+
+```
+git clone https://github.com/pyF4all/2DanalysisTutorials.git
+```
+
 ### Copyright
 
 The 2D Analysis source code is hosted at https://github.com/monjegroup/twod-analysis-kit
