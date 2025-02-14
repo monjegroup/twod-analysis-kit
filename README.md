@@ -87,7 +87,7 @@ pip install ".[test,doc]"
 
 #### Tutorials!
 
-The toolkit offers tutorials with a detailed explanation of the routines included in 2Danalysis, follow the tutorials step by step in the repo of [pyF4all](https://github.com/pyF4all/2DanalysisTutorials) 
+The toolkit offers tutorials with a detailed explanation of the routines included in 2Danalysis, follow the tutorials step by step in this repo [pyF4all](https://github.com/pyF4all/2DanalysisTutorials) 
 
 ```
 git clone https://github.com/pyF4all/2DanalysisTutorials.git
