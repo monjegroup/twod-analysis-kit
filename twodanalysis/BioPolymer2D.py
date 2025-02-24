@@ -1110,7 +1110,16 @@ class BioPolymer2D:
             return df_final.sort_values('Count', ascending=False)
         else:
             return df_final
-    def plotHbondsPerResidues(self, paths_for_contour,top=-1,contour_lvls_to_plot=None, contour_colors=None,filter=None, print_table=True,show=False,ax=None):
+    def plotHbondsPerResidues(self,
+                            paths_for_contour,
+                            top=-1,contour_lvls_to_plot=None,
+                            contour_colors=None,
+                            contour_ls=None,
+                            contour_alphas=None,
+                            filter=None,
+                            print_table=True,
+                            show=False,
+                            ax=None):
         """Makes a figure showing the center of mass of the residues with H-bonds. Figure shows a contour plot as a reference of position of the whole molecule. Legend of the Figure shows the percentage of time in which there were Hbonds during the simulation of the plotted residues.
 
         Parameters
@@ -1159,11 +1168,16 @@ class BioPolymer2D:
             contour_lvls_to_plot=range(len(paths_for_contour))
         if not contour_colors:
             contour_colors=['k' for _ in paths_for_contour]
+        if not contour_ls:
+            contour_ls=['-' for _ in contour_ls]
+        if not contour_alphas:
+            contour_alphas=[0.3 for _ in contour_ls]
         if ax is None:
             fig,ax = plt.subplots()  # Create a new figure and axes if not provided
 
-        for lvl,c in zip(contour_lvls_to_plot,contour_colors):
-            self.plotPathsInLevel(paths_for_contour,lvl,color=c,ax=ax)
+        for lvl,c,i in zip(contour_lvls_to_plot,contour_colors, range(len(contour_lvls_to_plot))):
+            # self.plotPathsInLevel(paths_for_contour,lvl,color=c,ax=ax)
+            self.plotPathsInLevel(paths_for_contour,lvl,ax=ax,ls=contour_ls[i],alpha=contour_alphas[i])
 
         colors = ['C%s' % i for i in range(10)]  # Define color palette
         num_colors = len(colors)
@@ -1189,7 +1203,7 @@ class BioPolymer2D:
         return sorted_df
 
     @staticmethod
-    def plotPathsInLevel(paths, contour_lvl,color='k',alpha=0.3,show=False,ax=None):
+    def plotPathsInLevel(paths, contour_lvl,color='k',alpha=0.3,ls='-',show=False,ax=None,):
         """Plots the paths of a given contour level.
 
         Parameters
@@ -1212,7 +1226,8 @@ class BioPolymer2D:
         paths_in_lvl=paths[contour_lvl]
         for p in range(len(paths_in_lvl)):
             x_val,y_val=paths_in_lvl[p].T
-            ax.plot(x_val,y_val,color=color, alpha=alpha)
+            ax.plot(x_val,y_val,color=color, alpha=alpha,ls=ls)
+            # ax.plot(x_val,y_val,**kwargs)
         if show:
             plt.show()
 

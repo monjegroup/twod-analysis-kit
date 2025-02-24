@@ -16,7 +16,7 @@ ag_analysis.system_name='Omicron PBL1'
 ag_analysis.getPositions()
 print(ag_analysis.surf_pos, 'surface position')
 zlim=15
-Nframes=300
+Nframes=280
 
 print('########### TEST GENERAL MODULES #############')
 
@@ -59,5 +59,5 @@ ag_for_path = BioPolymer2D(sel_for_path,surf_selection='resname DOL and name O1 
 ag_for_path.getPositions()
 paths=ag_for_path.getKDEAnalysis(zlim,Nframes)
 ag_analysis.getHbonds('resname DOL','protein or resid 193-200', update_selections=False,trj_plot=False)
-ag_analysis.plotHbondsPerResidues(paths,contour_lvls_to_plot=[0,5,8],top=5, print_table=True,filter=['DOL'])
+ag_analysis.plotHbondsPerResidues(paths,contour_lvls_to_plot=[0,5,8],top=10, print_table=True,filter=['DOL'])
 plt.show()
