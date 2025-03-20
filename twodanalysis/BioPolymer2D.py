@@ -659,11 +659,11 @@ class BioPolymer2D:
 
         # Define the classic color cycle
         colors = ['b', 'm', 'c', 'r', 'g', 'y', 'k']
-        rg_arr=np.zeros((len(self.pos),4))
+        rg_arr=np.zeros((len(self.universe.trajectory[self.startF:self.endF:self.stepF]),4))
         i=0
         masses=self.atom_group.atoms.masses
         total_mass=np.sum(masses)
-
+        # This section could be optimized to use previously computed positions and coms to avoid recomputing them 
         for ts in self.universe.trajectory[self.startF:self.endF:self.stepF]:
             rg_arr[i,0]=ts.time/1000
             rgs=self.computeRG2D(masses, total_mass)
@@ -676,11 +676,11 @@ class BioPolymer2D:
             plt.plot(rg_arr[:,0], rg_arr[:,3], label=legend_names[2],color=colors[2])
             plt.legend()
             plt.xlabel('Time (ns)')
-            plt.ylabel('Radius of gyration ($\mathrm{\AA}$)')
+            plt.ylabel(r'Radius of gyration ($\mathrm{\AA}$)')
             # plt.show()
         return rg_arr
 
-    def RgPerpvsRgsPar(self,rgs,color, marker='s',plot='both',ax=None,legend=True,show=False,mfc='k',markersize=10):
+    def RgPerpvsRgsPar(self,rgs,color, marker='s',plot='both',ax=None,legend=True,show=False,mfc='k',markersize=10,system_label=None):
         r"""Generates :math:`R_{g\perp}` vs. :math:`R_{g\parallel}` plots. Also, returns the :math:`\langle R_{g\perp}^2 \rangle /\langle R_{g\parallel}^2 \rangle` ratio
 
         Parameters
@@ -703,12 +703,14 @@ class BioPolymer2D:
             Set marker face color. Color options are intrinsic colors used in Matplotlib library. 
         markersize : int, optional
             Size of colors. Uses the same values as intrinsic values of Matplotlib library. 
+        system_label : str, optional
+            Label to assign to the system in the legend. If None, the system name is used. By default None
         
         Raises
         ------
         KeyError
             Error raised if ``plot`` is different than 'data', 'mean' or 'both'.
-
+            Error raised if ``legend=True``,``system_label`` is None and the system name is not defined.
         Returns
         -------
         float
@@ -717,17 +719,21 @@ class BioPolymer2D:
         data=rgs[:,2:]
         print(data.shape)
         rg_ratio=(data[:,0]**2).mean()/(data[:,1]**2).mean()
-
+        if system_label is None:
+            system_label=self.system_name
+            
         if ax is None:
             fig, ax = plt.subplots()  # Create a new figure and axes if not provided
         if plot=='both':
-            label='%s (%.3f)'%(self.system_name,rg_ratio)
+            label='%s (%.3f)'%(system_label,rg_ratio)
             ax.plot(data[:,1],data[:,0],'o',markersize=1,c=color,)
             ax.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=markersize, label=label,color='k',mfc=mfc)
         elif plot=='data':
-            ax.plot(data[:,1],data[:,0],'o',markersize=1,c=color,)
+            label='%s (%.3f)'%(system_label,rg_ratio)
+            ax.plot(data[:,1],data[:,0],'o',markersize=1,c=color)
+            ax.plot([], [], 'o', c=color,label=label)  # Add a single label for all data points
         elif plot=='mean':
-            label='%s (%.3f)'%(self.system_name,rg_ratio)
+            label='%s (%.3f)'%(system_label,rg_ratio)
             # ax.plot(data[:,1].mean(),data[:,0].mean(),label=label,**kwargs)
             ax.plot(data[:,1].mean(),data[:,0].mean(),marker,markersize=markersize, label=label,color='k',mfc=mfc)
         else:
@@ -735,7 +741,10 @@ class BioPolymer2D:
         ax.set_xlabel(r'$Rg_\parallel$ ($\mathrm{\AA}$)')
         ax.set_ylabel(r'$Rg_\perp$ ($\mathrm{\AA}$)')
         if legend:
-            ax.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)', fontsize=10)
+            if not system_label is None:
+                ax.legend(title=r'Syst ($\langle Rg_\perp^2\rangle /\langle Rg_\parallel^2 \rangle$)', fontsize=10)
+            else:
+                raise KeyError("Must indicate the system name with `system_name` attribute to make a legend, or assign a label to the system with `system_label` parameter.")
         if show:
             plt.show()
         return rg_ratio
@@ -923,7 +932,7 @@ class BioPolymer2D:
         
         
     def KDEAnalysisSelection(self,select_res,Nframes,zlim=15,ax=None,show=False,legend=False,plot_COM=True,getNframes=False):
-        """KDE Contours for a set of selected residues. This computes the paths of all the contour levels of each residue.
+        r"""KDE Contours for a set of selected residues. This computes the paths of all the contour levels of each residue.
 
         Parameters
         ----------
@@ -1093,7 +1102,7 @@ class BioPolymer2D:
         sorted : bool, optional
             If True, returns data sorted by number of H-bonds. By default True
         unique_res : bool, optional
-            Whether or not to consider only one hydrogen bond per residue. Important to consider percentage in which a participates in some H-bond. By default False
+            Whether or not to consider only one hydrogen bond per residue. Important to consider percentage in which a residue participates in a H-bond. By default False
         Returns
         -------
         pandas.DataFrame
