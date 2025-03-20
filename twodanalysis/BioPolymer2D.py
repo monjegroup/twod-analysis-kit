@@ -26,6 +26,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib import colors
 from matplotlib.lines import Line2D
 import sys
+import logging
 
 
 
@@ -272,7 +273,7 @@ class BioPolymer2D:
         print("  N selected residues:", len(self.atom_group.residues))
         print("  N selected segments:", len(self.atom_group.segments))
 
-    def getPositions(self,pos_type='COM', surf_is_zero=True, inplace=True, select=None,getselection=False):
+    def getPositions(self,pos_type: str='COM', surf_is_zero=True, inplace=True, select=None,getselection=False):
         r"""Computes positions of selection from `self.startT` to ``self.endT`` with ``self.stepT`` steps of times.
         By default, these parameters are set to compute over the whole trajectory.
 
@@ -296,8 +297,9 @@ class BioPolymer2D:
             None if ``inplace=True``, numpy array if inplace=False with the positions of the center of mass of residues (if pos_type="COM") or positions of all atoms (pos_type="all")
         """
 
-        print('Getting positions from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
-
+        logging.debug('Getting positions from frame',self.startF, 'to', self.endF,'with steps of',self.stepF)
+        if select is None and getselection:
+            logging.warning("Ignoring `getselection=True` since `select` is None.")
         ag=self.atom_group
         if select:
             ag=self.universe.select_atoms(select)
@@ -366,7 +368,7 @@ class BioPolymer2D:
             return np.array(com)
 
     @staticmethod
-    def FilterMinFrames(pos, zlim,Nframes,control_plots=False):
+    def FilterMinFrames(pos, zlim,Nframes,control_plots=False,getNframes=False):
         """Selects a set of ``Nframes`` in which the AtomGroup is closer to the surface and bellow a zlim threshold distance to the surface.
 
         Parameters
@@ -379,6 +381,8 @@ class BioPolymer2D:
             Nframes closest to the surface within the frames where the AtomGroup is < zlim.
         control_plots : bool, optional
             If control plots are to be shown, by default False
+        getNframes : bool, optional
+            If True, returns the number of frames selected, by default False
 
         Raises
         ------
@@ -415,7 +419,11 @@ class BioPolymer2D:
             plt.plot(pos[:,ires,0],pos[:,ires,3],)
             plt.plot(pos_masked[:,ires,0],pos_masked[:,ires,3],'.',ms=2)
             plt.show()
-        return pos_masked
+        if getNframes:
+            return pos_masked, len(pos_masked)
+        else:
+            return pos_masked
+
 
     def PolarAnalysis(self,select_res,Nframes, zlim=14,max_hist=None,sort=None,ax=None,plot=False,control_plots=False,Nbins=1000,resolution=5):
         """Makes a Polar Histogram of the positions of the center of mass of ``select_res`` residues considering ``Nframes`` closest to the surface within the < zlim threshold. 
@@ -914,7 +922,7 @@ class BioPolymer2D:
             return Areas
         
         
-    def KDEAnalysisSelection(self,select_res,Nframes,zlim=15,ax=None,show=False,legend=False,plot_COM=True):
+    def KDEAnalysisSelection(self,select_res,Nframes,zlim=15,ax=None,show=False,legend=False,plot_COM=True,getNframes=False):
         """KDE Contours for a set of selected residues. This computes the paths of all the contour levels of each residue.
 
         Parameters
@@ -934,6 +942,8 @@ class BioPolymer2D:
         plot_COM : bool, optional
             Whether or not to plot the center of mass of ``select_res``. Particularly relevant if comparing results with ``PolarAnalysis`` method, 
             since this will be the center of the polar histograms if ``select_res`` are the same in both analysis. By default True
+        getNframes : bool, optional
+            If True, returns the number of frames selected, by default False
 
         Returns
         -------
@@ -956,8 +966,10 @@ class BioPolymer2D:
         # ListPaths(vertices,codes,plot_paths=True)
         # print(RBM.residues)
         # print(pos.shape)
-
-        all_pos_selected=self.FilterMinFrames(pos_res_contour, zlim,Nframes,control_plots=False)
+        if getNframes:
+            all_pos_selected,n_used_frames=self.FilterMinFrames(pos_res_contour, zlim,Nframes,control_plots=False,getNframes=True)
+        else:
+            all_pos_selected=self.FilterMinFrames(pos_res_contour, zlim,Nframes,control_plots=False)
         print(all_pos_selected.shape)
         # all_pos_selected_reshaped=np.reshape(all_pos_selected,(all_pos_selected.shape[0]*all_pos_selected.shape[1],4))
         # print(all_pos_selected_reshaped.shape)
@@ -1000,7 +1012,10 @@ class BioPolymer2D:
             plt.legend(handles=handles, labels=resnames, loc='upper right')
         if show:
             plt.show()
-        return paths_arr_arr, res
+        if getNframes:
+            return paths_arr_arr, res, n_used_frames
+        else:
+            return paths_arr_arr, res
 
     def getHbonds(self,selection1,selection2, update_selections=True,trj_plot=False, inplace=True ):
         """Computes H-bonds between to selection1 and selection2 of the trajectory using MDAnalysis.analysis.hydrogenbonds.HydrogenBondAnalysis.
@@ -1132,8 +1147,12 @@ class BioPolymer2D:
             Contour Levels to show in plot, by default None
         contour_colors : list, optional
             Colors to use to show the reference contour levels.This list must be the same size than `contour_lvls_to_plot` parameter. Default None, which all reference contour plots are shown in black.
-        contour_lvls_to_plot : str or list, optional
-            Residue names to be filtered out of the plot and the output table.
+        contour_ls : list, optional
+            Line style of the contour levels. Default is a solid line.
+        contour_alphas : list, optional
+            Transparency of the contour levels. Default is 0.3.
+        filter : str, optional
+            Filter out a residue from the plot. By default None
         print_table : bool, optional
             Whether or not to print the pandas.DataFrame table with the data shown in figure, by default True
         ax : matplotlib.axes.Axes, optional
@@ -1169,9 +1188,9 @@ class BioPolymer2D:
         if not contour_colors:
             contour_colors=['k' for _ in paths_for_contour]
         if not contour_ls:
-            contour_ls=['-' for _ in contour_ls]
+            contour_ls=['-' for _ in  paths_for_contour]
         if not contour_alphas:
-            contour_alphas=[0.3 for _ in contour_ls]
+            contour_alphas=[0.3 for _ in  paths_for_contour]
         if ax is None:
             fig,ax = plt.subplots()  # Create a new figure and axes if not provided
 
@@ -1203,7 +1222,7 @@ class BioPolymer2D:
         return sorted_df
 
     @staticmethod
-    def plotPathsInLevel(paths, contour_lvl,color='k',alpha=0.3,ls='-',show=False,ax=None,):
+    def plotPathsInLevel(paths, contour_lvl,color='k',alpha=0.3,ls='-',lw=None,show=False,ax=None,):
         """Plots the paths of a given contour level.
 
         Parameters
@@ -1226,7 +1245,7 @@ class BioPolymer2D:
         paths_in_lvl=paths[contour_lvl]
         for p in range(len(paths_in_lvl)):
             x_val,y_val=paths_in_lvl[p].T
-            ax.plot(x_val,y_val,color=color, alpha=alpha,ls=ls)
+            ax.plot(x_val,y_val,color=color, alpha=alpha,ls=ls,linewidth=lw)
             # ax.plot(x_val,y_val,**kwargs)
         if show:
             plt.show()

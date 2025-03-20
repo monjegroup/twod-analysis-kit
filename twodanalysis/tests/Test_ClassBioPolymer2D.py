@@ -106,6 +106,7 @@ print(len(ag.kdeanalysis.paths))
 test_getAreas(ag,contour_lvl=5,getTotal=False)
 test_getAreas(ag,contour_lvl=5,getTotal=True)
 test_KDEAnalysisSelection(ag)
+
 # ag.plotPathsInLevel(paths,1,show=False)
 # areas=BioPolymer2D.getAreas(paths,2,getTotal=True)
 # print(areas)
