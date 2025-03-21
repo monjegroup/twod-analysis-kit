@@ -1136,6 +1136,7 @@ class BioPolymer2D:
             return df_final
     def plotHbondsPerResidues(self,
                             paths_for_contour,
+                            max_circle_size=160,
                             top=-1,contour_lvls_to_plot=None,
                             contour_colors=None,
                             contour_ls=None,
@@ -1150,6 +1151,8 @@ class BioPolymer2D:
         ----------
         paths_for_contour : list
             List of paths of all the contour levels.
+        max_circle_size : int, optional
+            Maximum size of the circle representing the residue with most H-bonds. By default 160
         top : int, optional
             Residues are plotted ranked by residues with most contact to least. This parameters indicates how many residues to plot of these ranked residues, e.g. top=5 wil plot the 5 residues with most Hbonds during the simulations. By default -1, plots all the residues with H-bonds.
         contour_lvls_to_plot : list, optional
@@ -1219,7 +1222,7 @@ class BioPolymer2D:
                     label='%s-%s (%.2f)'%(sorted_df['ResIDs'].iloc[i],
                                         sorted_df['ResNames'].iloc[i],
                                         norm_val*100),)
-            ax.scatter(pos['X'],pos['Y'], s=(8*20*norm_val_plot)**2, alpha=.5, color=color)
+            ax.scatter(pos['X'],pos['Y'], s=(max_circle_size*norm_val_plot)**2, alpha=.5, color=color)
         ax.set_xlabel(r'X-axis($\AA$)',)#fontsize=20)
         ax.set_ylabel(r'Y-axis($\AA$)',)#fontsize=20)
         plt.gca().set_aspect('equal')
