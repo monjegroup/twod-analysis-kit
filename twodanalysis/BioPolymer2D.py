@@ -273,7 +273,7 @@ class BioPolymer2D:
         print("  N selected residues:", len(self.atom_group.residues))
         print("  N selected segments:", len(self.atom_group.segments))
 
-    def getPositions(self,pos_type: str='COM', surf_is_zero=True, inplace=True, select=None,getselection=False):
+    def getPositions(self,pos_type='COM', surf_is_zero=True, inplace=True, select=None,getselection=False):
         r"""Computes positions of selection from `self.startT` to ``self.endT`` with ``self.stepT`` steps of times.
         By default, these parameters are set to compute over the whole trajectory.
 
