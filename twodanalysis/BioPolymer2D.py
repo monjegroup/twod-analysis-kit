@@ -1185,7 +1185,7 @@ class BioPolymer2D:
                 df = df[~df_resname.isin(filter)]
             else:
                 df = df[df_resname != filter]
-        max_val=df['Count'].max()
+        # max_val=df['Count'].max()
         str_resids=' '.join(np.array(df['ResIDs'],dtype=str))
         print(str_resids)
 
@@ -1216,13 +1216,14 @@ class BioPolymer2D:
             # Use modular indexing to cycle through colors
             color = colors[i % num_colors]
             norm_val=sorted_df['Count'].iloc[i]/len(self.universe.trajectory) #max_val
-            norm_val_plot=sorted_df['Count'].iloc[i]/max_val
+            # norm_val_plot=sorted_df['Count'].iloc[i]/max_val
             pos=sorted_df[['X','Y','Z']].iloc[i]
             ax.plot(pos['X'],pos['Y'], 'o',color=color,
                     label='%s-%s (%.2f)'%(sorted_df['ResIDs'].iloc[i],
                                         sorted_df['ResNames'].iloc[i],
                                         norm_val*100),)
-            ax.scatter(pos['X'],pos['Y'], s=(max_circle_size*norm_val_plot)**2, alpha=.5, color=color)
+            # ax.scatter(pos['X'],pos['Y'], s=(max_circle_size*norm_val_plot)**2, alpha=.5, color=color)
+            ax.scatter(pos['X'],pos['Y'], s=(max_circle_size*norm_val)**2, alpha=.5, color=color)
         ax.set_xlabel(r'X-axis($\AA$)',)#fontsize=20)
         ax.set_ylabel(r'Y-axis($\AA$)',)#fontsize=20)
         plt.gca().set_aspect('equal')
