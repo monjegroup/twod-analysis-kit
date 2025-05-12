@@ -129,7 +129,13 @@ class MembProp:
 
 
         self.working_lip = self.working_lip if working_lip is None else working_lip
-        self.all_head = self.memb.select_atoms(self.build_resname(self.lipid_list) + " and name P")
+
+        
+        head_atoms = set([self.working_lip[lipid]["head"] for lipid in self.working_lip])
+        if "P" in head_atoms:
+            self.all_head = self.memb.select_atoms(self.build_resname(self.lipid_list) + " and name P")
+        else:
+            self.all_head = self.memb.select_atoms(self.build_resname_head(self.lipid_list))
 
 
         self.map_layers = {"top" : " > ",
