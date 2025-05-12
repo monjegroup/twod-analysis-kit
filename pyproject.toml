@@ -61,7 +61,7 @@ testpaths = [
 line-length = 80
 
 [tool.versioningit]
-default-version = "1.0.0"
+default-version = "1.1.1"
 
 [tool.versioningit.vcs]
 method = "git"
