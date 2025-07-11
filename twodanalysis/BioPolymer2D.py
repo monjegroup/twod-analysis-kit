@@ -163,7 +163,7 @@ class BioPolymer2D:
 
         if not surf_selection is None:
             if isinstance(surf_selection, str):
-                self.surf_pos=self.getPositions(select=surf_selection,inplace=False,surf_is_zero=False).mean(axis=(0,1)) #If want mean only over atoms set axis=1
+                self.surf_pos=self.getPositions(select=surf_selection,inplace=False,surf_is_zero=False,pos_type='all').mean(axis=(0,1)) #If want mean only over atoms set axis=1
                 print(' Mean position of the surface is', self.surf_pos)
             else:
                 raise TypeError("`surf_selection` must be a string and a valid MDAnalysis selection")
