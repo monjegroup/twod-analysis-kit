@@ -158,7 +158,7 @@ Other problems?
 +++++++++++++++++++
 
 If you encounter any other issues while using our code, feel free to open an issue on GitHub or contact the developers directly at
-ricardox@buffalo.edu or vmonje@buffalo.edu. Please use the subject line "2Danalysis issue" when reaching out via email.
+ricardox@buffalo.edu, vmonje@buffalo.edu or hguzman@csic.es. Please use the subject line "2Danalysis issue" when reaching out via email.
 
 
 
