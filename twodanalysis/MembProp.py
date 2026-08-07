@@ -255,9 +255,15 @@ class MembProp:
                 self.working_lip[lipid]["last_c"] = [actual_sn1[-1], actual_sn2[-1]]
         elif self.forcefield == "amber":
             for lipid in self.lipid_list:
+                # Cholesterol (and other sterols) do not have a pair of acyl
+                # tails, so a "last tail carbon" is not defined for them. Skip it
+                # here, consistent with the other amber-specific helpers that
+                # special-case "CHL".
+                if lipid == "CHL":
+                    continue
                 structure = self.extract_chain_info(lipid)
                 carbons_1 = [atom for conn in structure[0] for atom in conn if "C" in atom]
-                carbons_2 = [atom for conn in structure[0] for atom in conn if "C" in atom]
+                carbons_2 = [atom for conn in structure[1] for atom in conn if "C" in atom]
                 self.working_lip[lipid]["last_c"] = [carbons_1[-1], carbons_2[-1]]
 
 
