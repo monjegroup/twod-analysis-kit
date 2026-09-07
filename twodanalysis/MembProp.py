@@ -255,9 +255,15 @@ class MembProp:
                 self.working_lip[lipid]["last_c"] = [actual_sn1[-1], actual_sn2[-1]]
         elif self.forcefield == "amber":
             for lipid in self.lipid_list:
+                # Cholesterol (and other sterols) do not have a pair of acyl
+                # tails, so a "last tail carbon" is not defined for them. Skip it
+                # here, consistent with the other amber-specific helpers that
+                # special-case "CHL".
+                if lipid == "CHL":
+                    continue
                 structure = self.extract_chain_info(lipid)
                 carbons_1 = [atom for conn in structure[0] for atom in conn if "C" in atom]
-                carbons_2 = [atom for conn in structure[0] for atom in conn if "C" in atom]
+                carbons_2 = [atom for conn in structure[1] for atom in conn if "C" in atom]
                 self.working_lip[lipid]["last_c"] = [carbons_1[-1], carbons_2[-1]]
 
 
@@ -633,15 +639,21 @@ class MembProp:
             #print(bonds)
         except:
             bonds = mda.topology.guessers.guess_bonds(atgroup, atgroup.positions)
-        nodes = set()
-        for edge in bonds:
-            nodes.update(edge)
-        nodes = sorted(nodes)
 
-        names = atgroup.names
-        map_node_name = {nodes[i]:names[i] for i in range(len(nodes))}
+        # Map each atom's global (universe) index directly to its name. Both
+        # ``atgroup.indices`` and ``atgroup.names`` are ordered the same way, so
+        # they refer to the same atom position by position. Building the mapping
+        # this way (instead of positionally zipping the sorted set of bonded-atom
+        # indices with the names) keeps the labels correct even when some atoms
+        # have no bonds, when the atomgroup is not sorted by index, or when a bond
+        # reaches an atom that is not part of the atomgroup.
+        map_node_name = dict(zip(atgroup.indices, atgroup.names))
 
-        edges_labeled = [(map_node_name[u], map_node_name[v]) for u,v in bonds]
+        edges_labeled = [
+            (map_node_name[a], map_node_name[b])
+            for a, b in bonds
+            if a in map_node_name and b in map_node_name
+        ]
 
         G = nx.Graph()
         G.add_edges_from(edges_labeled)
